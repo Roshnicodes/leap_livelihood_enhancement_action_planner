@@ -1,0 +1,80 @@
+<% content_for :title, "Admin Employees | LEAP Planner" %>
+
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Admin workspace</p>
+    <h1>Employee details</h1>
+      <p class="muted">All seeded employees, login IDs, contact details, departments, and mapped BLI activity counts.</p>
+  </div>
+  <div class="header-card">
+    <span>Signed in as</span>
+    <strong>Administrator</strong>
+  </div>
+</section>
+
+<section class="metric-grid admin-grid">
+  <article class="metric metric-teal"><span>Employees</span><strong><%= @summary[:employees] %></strong></article>
+  <article class="metric metric-blue"><span>Active</span><strong><%= @summary[:active_employees] %></strong></article>
+  <article class="metric metric-blue"><span>Activities</span><strong><%= @summary[:activities] %></strong></article>
+  <article class="metric metric-gold"><span>Project PNB</span><strong><%= @summary[:verticals] %></strong></article>
+  <article class="metric metric-rose"><span>Action Plans</span><strong><%= @summary[:projects] %></strong></article>
+  <article class="metric metric-ink"><span>Utilised</span><strong><%= number_to_currency(@summary[:utilised], unit: "₹", precision: 0) %></strong></article>
+</section>
+
+<section class="table-panel" data-searchable-table>
+  <div class="table-heading">
+    <div>
+      <h2>Users and employee mapping</h2>
+      <p class="muted">User password defaults to the lowercase employee code after seeding.</p>
+    </div>
+    <div class="table-actions">
+      <input type="search" class="table-search" placeholder="Search employees" data-table-search-input>
+      <span class="table-count" data-filtered-count><%= @summary[:employees] %> rows</span>
+    </div>
+  </div>
+
+  <div class="responsive-table">
+    <table>
+      <thead>
+        <tr>
+          <th>Employee ID</th>
+          <th>Status</th>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Mobile</th>
+          <th>Designation</th>
+          <th>Functional Responsibility</th>
+          <th>Department</th>
+          <th>Branch</th>
+          <th>Sub Branch</th>
+          <th>Login</th>
+          <th>Office</th>
+          <th>Primary Project PNB</th>
+          <th>Primary Action Plan</th>
+          <th>Activities</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @employees.each do |employee| %>
+          <tr>
+            <td><span class="code-pill"><%= employee.employee_code %></span></td>
+            <td><span class="status-badge status-<%= employee.active? ? "approved" : "not_submitted" %>"><%= employee.active? ? "Active" : "Inactive" %></span></td>
+            <td><%= employee.name %></td>
+            <td><%= employee.email %></td>
+            <td><%= employee.mobile_number %></td>
+            <td><%= employee.designation %></td>
+            <td><%= employee.functional_responsibility %></td>
+            <td><%= employee.department %></td>
+            <td><%= employee.branch %></td>
+            <td><%= employee.sub_branch %></td>
+            <td><%= employee.user&.login %></td>
+            <td><%= employee.office_name %></td>
+            <td><%= employee.primary_vertical %></td>
+            <td><%= employee.primary_project %></td>
+            <td><%= employee.activities_count %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>

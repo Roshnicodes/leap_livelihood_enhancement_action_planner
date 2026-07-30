@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><%= content_for(:title) || "Leap Livelihood Enhancement Action Planner" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="Leap Livelihood Enhancement Action Planner">
+    <meta name="mobile-web-app-capable" content="yes">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <%= yield :head %>
+
+    <%# Enable PWA manifest for installable apps (make sure to enable in config/routes.rb too!) %>
+    <%#= tag.link rel: "manifest", href: pwa_manifest_path(format: :json) %>
+
+    <link rel="icon" href="/icon.png" type="image/png">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/icon.png">
+
+    <%= stylesheet_link_tag "tailwind", "application", "data-turbo-track": "reload" %>
+  </head>
+
+  <body class="app-body">
+    <% if current_user %>
+      <div class="app-frame">
+        <aside class="sidebar">
+          <%= link_to current_user.admin? ? admin_employees_path : dashboard_path, class: "sidebar-brand" do %>
+            <span class="brand-mark">L</span>
+            <span>
+              <strong>LEAP Planner</strong>
+              <small>Livelihood dashboard</small>
+            </span>
+          <% end %>
+
+          <nav class="sidebar-nav">
+            <span class="sidebar-label">Menu</span>
+            <% if current_user.admin? %>
+              <%= link_to admin_employees_path, class: controller_path == "admin/employees" ? "side-link active" : "side-link" do %>
+                <span class="side-icon">E</span>
+                <span>Employees</span>
+              <% end %>
+              <%= link_to plan_submissions_path, class: controller_name == "plan_submissions" ? "side-link active" : "side-link" do %>
+                <span class="side-icon">S</span>
+                <span>Allocated PNB</span>
+              <% end %>
+              <%= link_to project_summary_records_path, class: controller_name == "project_summary_records" ? "side-link active" : "side-link" do %>
+                <span class="side-icon">R</span>
+                <span>Project Summary Record</span>
+              <% end %>
+              <%= link_to project_summary_approvals_path, class: controller_name == "project_summary_approvals" ? "side-link active" : "side-link" do %>
+                <span class="side-icon">A</span>
+                <span>Summary Approval</span>
+                <% if pending_project_summary_approval_count.positive? %>
+                  <span class="nav-alert-badge"><%= pending_project_summary_approval_count %></span>
+                <% end %>
+              <% end %>
+            <% else %>
+              <%= link_to plan_submissions_path, class: controller_name == "plan_submissions" ? "side-link active" : "side-link" do %>
+                <span class="side-icon">S</span>
+                <span>Allocated PNB</span>
+              <% end %>
+              <%= link_to project_summary_path, class: controller_name == "project_summaries" ? "side-link active" : "side-link" do %>
+                <span class="side-icon">T</span>
+                <span>Project Summary</span>
+              <% end %>
+              <%= link_to project_summary_records_path, class: controller_name == "project_summary_records" ? "side-link active" : "side-link" do %>
+                <span class="side-icon">R</span>
+                <span>Project Summary Record</span>
+              <% end %>
+              <% if ProjectSummarySubmission.summary_access?(current_user.employee) %>
+                <%= link_to project_summary_approvals_path, class: controller_name == "project_summary_approvals" ? "side-link active" : "side-link" do %>
+                  <span class="side-icon">A</span>
+                  <span><%= ProjectSummarySubmission.summary_approver?(current_user.employee) ? "Summary Approval" : "Summary View" %></span>
+                  <% if pending_project_summary_approval_count.positive? %>
+                    <span class="nav-alert-badge"><%= pending_project_summary_approval_count %></span>
+                  <% end %>
+                <% end %>
+              <% end %>
+            <% end %>
+          </nav>
+
+          <div class="sidebar-user">
+            <div class="sidebar-user-main">
+              <span class="side-avatar"><%= current_user.admin? ? "A" : current_user.employee&.name.to_s.first %></span>
+              <div>
+                <strong><%= current_user.admin? ? "Admin" : current_user.employee&.name %></strong>
+                <small><%= current_user.admin? ? "Administrator" : [current_user.employee&.employee_code, current_user.employee&.department].compact_blank.join(" • ") %></small>
+              </div>
+            </div>
+            <% if current_user.employee&.mapped_vertical_names.present? %>
+              <div class="sidebar-verticals" aria-label="Mapped verticals">
+                <% current_user.employee.mapped_vertical_names.first(3).each do |vertical_name| %>
+                  <span><%= vertical_name %></span>
+                <% end %>
+                <% if current_user.employee.mapped_vertical_names.size > 3 %>
+                  <span>+<%= current_user.employee.mapped_vertical_names.size - 3 %></span>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+
+          <%= button_to "Logout", logout_path, method: :delete, class: "sidebar-logout" %>
+        </aside>
+
+        <section class="app-content">
+          <main class="app-shell">
+            <% flash.each do |type, message| %>
+              <div class="flash <%= type == "alert" ? "flash-alert" : "flash-notice" %>"><%= message %></div>
+            <% end %>
+            <%= yield %>
+          </main>
+        </section>
+      </div>
+    <% else %>
+      <main class="app-shell">
+        <% flash.each do |type, message| %>
+          <div class="flash <%= type == "alert" ? "flash-alert" : "flash-notice" %>"><%= message %></div>
+        <% end %>
+        <%= yield %>
+      </main>
+    <% end %>
+
+    <script>
+      (() => {
+        function bindSearch(panel) {
+          const input = panel.querySelector("[data-table-search-input]");
+          const rows = [...panel.querySelectorAll("tbody tr")];
+          const count = panel.querySelector("[data-filtered-count]");
+          if (!input || rows.length === 0) return;
+
+          input.addEventListener("input", () => {
+            const term = input.value.trim().toLowerCase();
+            let visible = 0;
+
+            rows.forEach((row) => {
+              const match = row.textContent.toLowerCase().includes(term);
+              row.hidden = !match;
+              if (match) visible += 1;
+            });
+
+            if (count) count.textContent = `${visible} rows`;
+          });
+        }
+
+        document.querySelectorAll("[data-searchable-table]").forEach(bindSearch);
+      })();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,569 @@
+<% content_for :title, "Project Summary Record | LEAP Planner" %>
+
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Records</p>
+    <h1>Project Summary Records</h1>
+  </div>
+  <div class="header-card">
+    <span>Total Projects</span>
+    <strong><%= @total_records %></strong>
+  </div>
+</section>
+
+<% editable_records = @record_groups.select { |record| record[:editable] } %>
+<% total_record_rows = @record_groups.sum { |record| record[:rows].size } %>
+
+<% if @show_vertical_filter %>
+  <section class="toolbar vertical-filter-toolbar">
+    <%= form_with url: project_summary_records_path, method: :get, class: "filter-form" do |form| %>
+      <% vertical_select_options = [["Select Vertical", ""]] + @vertical_options.map { |vertical| [vertical, vertical] } %>
+      <%= form.label :vertical, "Choose Vertical", class: "filter-label" %>
+      <%= form.select :vertical, options_for_select(vertical_select_options, @selected_vertical), {}, class: "select", onchange: "this.form.requestSubmit()" %>
+    <% end %>
+  </section>
+<% end %>
+
+<% if @selected_vertical.blank? %>
+  <section class="empty-state vertical-select-state">
+    <h2><%= @show_vertical_filter ? "Select a vertical" : "No vertical mapped" %></h2>
+  </section>
+<% elsif @record_groups.any? %>
+  <section class="toolbar records-search-toolbar">
+    <input type="search" class="table-search records-global-search" placeholder="Search records" data-global-record-search>
+    <span class="table-count" data-global-record-count><%= total_record_rows %> rows</span>
+  </section>
+
+  <% if @status_records.any? %>
+    <section class="record-status-strip">
+      <% @status_records.each do |record| %>
+        <article class="record-status-item">
+          <span class="status-badge status-<%= record[:status] %>"><%= record[:status_label] %></span>
+          <div>
+            <strong>
+              <% if record[:status] == "pending" %>
+                Sent to <%= approval_actor_label(record[:approver]) %>
+              <% elsif record[:status] == "approved" %>
+                Approved by <%= approval_actor_label(record[:approver]) %>
+              <% else %>
+                Returned by <%= approval_actor_label(record[:approver]) %>
+              <% end %>
+            </strong>
+            <p>
+              Submitted <%= record[:submitted_at].strftime("%d %b %Y, %I:%M %p") %>
+              <% if record[:reviewed_at].present? %>
+                • Reviewed <%= record[:reviewed_at].strftime("%d %b %Y, %I:%M %p") %>
+              <% end %>
+            </p>
+            <% if record[:approval_remark].present? %>
+              <p><%= record[:status] == "returned" ? "Return" : "Approval" %> remark: <%= record[:approval_remark] %></p>
+            <% end %>
+            <% if record[:submission_remark].present? %>
+              <p>Submission remark: <%= record[:submission_remark] %></p>
+            <% end %>
+          </div>
+        </article>
+      <% end %>
+    </section>
+  <% end %>
+
+  <% if editable_records.any? %>
+    <form action="<%= bulk_project_summary_records_path %>" method="post" data-bulk-summary-form>
+      <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
+      <input type="hidden" name="_method" value="patch">
+      <%= hidden_field_tag :vertical, @selected_vertical %>
+  <% end %>
+
+  <% @record_groups.each do |record| %>
+    <% editable = record[:editable] %>
+    <section id="summary-project-<%= record[:project_name].to_s.parameterize %>" class="table-panel submission-panel" data-record-table-panel <%= "data-record-summary-panel".html_safe if editable %>>
+      <% if editable %>
+        <%= hidden_field_tag "records[#{record[:form_key]}][project_name]", record[:project_name] %>
+      <% end %>
+
+      <div class="table-heading">
+        <div>
+          <h2><%= record[:project_name].presence || "Project Summary" %></h2>
+          <p class="muted">
+            <%= record[:employee].name %>
+            <% if record[:submitted_at] %> • <%= record[:submitted_at].strftime("%d %b %Y, %I:%M %p") %><% end %>
+            <% if editable %> • Editable<% end %>
+          </p>
+        </div>
+      </div>
+
+      <div class="responsive-table">
+        <table>
+          <thead>
+            <tr>
+              <th>S.No.</th>
+              <th>Project</th>
+              <th>ASA Activity</th>
+              <th>Project PNB</th>
+              <th>Total Amount</th>
+              <% VerticalPercent::MONTH_COLUMNS.each do |month| %>
+                <th><%= month.to_s.titleize %></th>
+              <% end %>
+              <th>Changed Total</th>
+              <th>Remark</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% record[:rows].each_with_index do |row, index| %>
+              <% changed_months = row[:month_deltas].select { |_month, delta| delta.abs >= 0.01 } %>
+              <tr data-summary-row data-original-total="<%= row[:total_amount].to_f %>" data-project-name="<%= h(row[:project_name]) %>" data-activity-name="<%= h(row[:activity_name]) %>" data-vertical-name="<%= h(row[:vertical_name]) %>" data-total-label="<%= number_to_currency(row[:total_amount], unit: "₹", precision: 2) %>">
+                <% if editable %>
+                  <%= hidden_field_tag "records[#{record[:form_key]}][rows][#{index}][project_name]", row[:project_name] %>
+                  <%= hidden_field_tag "records[#{record[:form_key]}][rows][#{index}][activity_name]", row[:activity_name] %>
+                  <%= hidden_field_tag "records[#{record[:form_key]}][rows][#{index}][vertical_name]", row[:vertical_name] %>
+                  <%= hidden_field_tag "records[#{record[:form_key]}][rows][#{index}][total_amount]", number_with_precision(row[:total_amount], precision: 2, delimiter: "", separator: ".") %>
+                <% end %>
+                <td><span class="code-pill"><%= index + 1 %></span></td>
+                <td><%= row[:project_name].presence || "-" %></td>
+                <td><%= row[:activity_name] %></td>
+                <td><%= row[:vertical_name] %></td>
+                <td class="money-cell"><%= number_to_currency(row[:total_amount], unit: "₹", precision: 2) %></td>
+                <% VerticalPercent::MONTH_COLUMNS.each do |month| %>
+                  <td class="<%= "is-edited-cell" if changed_months.key?(month) %>" data-summary-month-cell="<%= month %>" data-month-amount="<%= number_with_precision(row[:month_amounts][month], precision: 2, delimiter: "", separator: ".") %>" data-planned-amount="<%= number_with_precision(row[:planned_month_amounts][month], precision: 2, delimiter: "", separator: ".") %>">
+                    <% if editable %>
+                      <%= number_field_tag "records[#{record[:form_key]}][rows][#{index}][#{month}]", number_with_precision(row[:month_amounts][month], precision: 2, delimiter: "", separator: "."), min: 0, step: 0.01, class: ["summary-month-input", ("is-edited" if changed_months.key?(month))].compact.join(" "), data: { month: month, month_label: month.to_s.titleize, planned_amount: number_with_precision(row[:planned_month_amounts][month], precision: 2, delimiter: "", separator: ".") }, aria: { label: "#{month.to_s.titleize} amount for #{row[:activity_name]}" } %>
+                      <% delta = row[:month_deltas][month] %>
+                      <span class="cell-change-value <%= "is-hidden" if delta.abs < 0.01 %>" data-cell-change-value data-cell-change-delta="<%= number_with_precision(delta, precision: 2, delimiter: "", separator: ".") %>">
+                        Changes <%= delta.positive? ? "+" : "" %><%= number_to_currency(delta, unit: "₹", precision: 2) %>
+                      </span>
+                    <% else %>
+                      <%= number_to_currency(row[:month_amounts][month], unit: "₹", precision: 2) %>
+                      <% delta = row[:month_deltas][month] %>
+                      <% if delta.abs >= 0.01 %>
+                        <span class="cell-change-value" data-cell-change-value data-cell-change-delta="<%= number_with_precision(delta, precision: 2, delimiter: "", separator: ".") %>">
+                          Changes <%= delta.positive? ? "+" : "" %><%= number_to_currency(delta, unit: "₹", precision: 2) %>
+                        </span>
+                      <% end %>
+                    <% end %>
+                  </td>
+                <% end %>
+                <td class="money-cell" <%= "data-row-changed-total".html_safe if editable %>><%= number_to_currency(row[:changed_total], unit: "₹", precision: 2) %></td>
+                <td>
+                  <% if editable %>
+                    <%= text_field_tag "records[#{record[:form_key]}][rows][#{index}][remark]", row[:remark], class: "remark-input", placeholder: "Add remark" %>
+                  <% else %>
+                    <%= row[:remark].presence || "-" %>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+
+    </section>
+  <% end %>
+
+  <section class="overall-summary-panel">
+    <div class="overall-summary-heading">
+      <div>
+        <p class="eyebrow">Overall Summary</p>
+        <h2><%= @selected_vertical %> Summary</h2>
+      </div>
+      <strong data-overall-summary-total data-original-amount="<%= number_with_precision(@overall_summary[:total_amount], precision: 2, delimiter: "", separator: ".") %>">
+        <span data-summary-amount-value><%= number_to_currency(@overall_summary[:total_amount], unit: "₹", precision: 2) %></span>
+      </strong>
+    </div>
+
+    <div class="responsive-table activity-summary-table">
+      <table>
+        <thead>
+          <tr>
+            <th>S.No.</th>
+            <th>ASA Activity</th>
+            <th>Project Count</th>
+            <th>Total Amount</th>
+            <% VerticalPercent::MONTH_COLUMNS.each do |month| %>
+              <th><%= month.to_s.titleize %></th>
+            <% end %>
+          </tr>
+        </thead>
+        <tbody>
+          <% @activity_summaries.each_with_index do |activity, index| %>
+            <% modal_id = "activity-projects-#{index}" %>
+            <tr data-activity-summary-row="<%= h(activity[:activity_name]) %>">
+              <td><span class="code-pill"><%= index + 1 %></span></td>
+              <td><strong><%= activity[:activity_name] %></strong></td>
+              <td>
+                <button type="button" class="project-count-badge" data-open-activity-modal="<%= modal_id %>">
+                  <%= activity[:project_count] %>
+                </button>
+              </td>
+              <td class="money-cell" data-activity-total data-original-amount="<%= number_with_precision(activity[:total_amount], precision: 2, delimiter: "", separator: ".") %>">
+                <span data-summary-amount-value><%= number_to_currency(activity[:total_amount], unit: "₹", precision: 2) %></span>
+              </td>
+              <% VerticalPercent::MONTH_COLUMNS.each do |month| %>
+                <td class="money-cell" data-activity-month="<%= month %>" data-original-amount="<%= number_with_precision(activity[:month_totals][month], precision: 2, delimiter: "", separator: ".") %>">
+                  <span data-summary-amount-value><%= number_to_currency(activity[:month_totals][month], unit: "₹", precision: 2) %></span>
+                  <span class="cell-change-value is-hidden" data-summary-change-value></span>
+                </td>
+              <% end %>
+            </tr>
+          <% end %>
+          <tr class="summary-total-row" data-overall-summary-row>
+            <td><span class="code-pill">Total</span></td>
+            <td><strong>All Project Total</strong></td>
+            <td>
+              <span class="project-count-badge"><%= @overall_summary[:total_projects] %></span>
+            </td>
+            <td class="money-cell" data-overall-summary-row-total data-original-amount="<%= number_with_precision(@overall_summary[:total_amount], precision: 2, delimiter: "", separator: ".") %>">
+              <span data-summary-amount-value><%= number_to_currency(@overall_summary[:total_amount], unit: "₹", precision: 2) %></span>
+            </td>
+            <% VerticalPercent::MONTH_COLUMNS.each do |month| %>
+              <td class="money-cell" data-overall-month-total="<%= month %>" data-original-amount="<%= number_with_precision(@overall_summary[:month_totals][month], precision: 2, delimiter: "", separator: ".") %>">
+                <span data-summary-amount-value><%= number_to_currency(@overall_summary[:month_totals][month], unit: "₹", precision: 2) %></span>
+                <span class="cell-change-value is-hidden" data-summary-change-value></span>
+              </td>
+            <% end %>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <% @activity_summaries.each_with_index do |activity, index| %>
+    <% modal_id = "activity-projects-#{index}" %>
+    <section id="<%= modal_id %>" class="activity-modal is-hidden" data-activity-modal aria-hidden="true">
+      <div class="activity-modal-backdrop" data-close-activity-modal></div>
+      <div class="activity-modal-panel" role="dialog" aria-modal="true" aria-labelledby="<%= modal_id %>-title">
+        <div class="activity-modal-heading">
+          <div>
+            <p class="eyebrow">Projects</p>
+            <h2 id="<%= modal_id %>-title"><%= activity[:activity_name] %></h2>
+          </div>
+          <button type="button" class="modal-close-button" data-close-activity-modal aria-label="Close projects">×</button>
+        </div>
+        <div class="responsive-table modal-table">
+          <table>
+            <thead>
+              <tr>
+                <th>S.No.</th>
+                <th>Project Name</th>
+                <th>Total Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% activity[:projects].each_with_index do |project, project_index| %>
+                <tr>
+                  <td><span class="code-pill"><%= project_index + 1 %></span></td>
+                  <td><strong><%= project[:project_name] %></strong></td>
+                  <td class="money-cell"><%= number_to_currency(project[:total_amount], unit: "₹", precision: 2) %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  <% end %>
+
+  <% if editable_records.any? %>
+    <div class="submit-panel bulk-submit-panel">
+      <div>
+        <p data-bulk-submit-message>All rows are matched. Submit summaries for approval.</p>
+        <%= text_field_tag :submission_remark, nil, class: "remark-input approval-remark", placeholder: "Add approval remark" %>
+      </div>
+      <button type="submit" class="submit-plan-button" data-bulk-submit>Submit for Approval</button>
+    </div>
+    </form>
+  <% end %>
+<% else %>
+  <section class="empty-state">
+    <h2>No records for <%= @selected_vertical %></h2>
+  </section>
+<% end %>
+
+<script>
+  (() => {
+    const formatter = new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+
+    const form = document.querySelector("[data-bulk-summary-form]");
+    const submitButton = document.querySelector("[data-bulk-submit]");
+    const submitMessage = document.querySelector("[data-bulk-submit-message]");
+    const globalSearchInput = document.querySelector("[data-global-record-search]");
+    const globalSearchCount = document.querySelector("[data-global-record-count]");
+
+    function bindGlobalRecordSearch() {
+      if (!globalSearchInput) return;
+
+      const panels = [...document.querySelectorAll("[data-record-table-panel]")];
+      const rows = panels.flatMap((panel) => {
+        return [...panel.querySelectorAll("tbody tr[data-summary-row]")].map((row) => [panel, row]);
+      });
+
+      function refreshGlobalSearch() {
+        const term = globalSearchInput.value.trim().toLowerCase();
+        let visibleRows = 0;
+
+        panels.forEach((panel) => {
+          let panelVisibleRows = 0;
+          rows.filter(([rowPanel]) => rowPanel === panel).forEach(([, row]) => {
+            const match = row.textContent.toLowerCase().includes(term);
+            row.hidden = !match;
+            if (match) {
+              visibleRows += 1;
+              panelVisibleRows += 1;
+            }
+          });
+          panel.hidden = panelVisibleRows === 0;
+        });
+
+        if (globalSearchCount) globalSearchCount.textContent = `${visibleRows} rows`;
+      }
+
+      globalSearchInput.addEventListener("input", refreshGlobalSearch);
+      refreshGlobalSearch();
+    }
+
+    function formatSignedCurrency(value) {
+      if (Math.abs(value) < 0.01) return formatter.format(0);
+
+      return `${value > 0 ? "+" : ""}${formatter.format(value)}`;
+    }
+
+    function initializeSummaryBaselines() {
+      document.querySelectorAll(".summary-month-input").forEach((input) => {
+        input.dataset.originalAmount = input.value || "0";
+      });
+
+      document.querySelectorAll("[data-summary-month-cell]").forEach((cell) => {
+        cell.dataset.originalAmount = cell.dataset.monthAmount || "0";
+      });
+    }
+
+    function bindEditableRecord(panel) {
+      const rows = [...panel.querySelectorAll("[data-summary-row]")];
+      if (!rows.length || !submitButton) return;
+
+      function rowChangedTotal(row) {
+        return [...row.querySelectorAll(".summary-month-input")].reduce((sum, input) => {
+          return sum + Number.parseFloat(input.value || "0");
+        }, 0);
+      }
+
+      function refreshSummary() {
+        let panelMatched = true;
+
+        rows.forEach((row) => {
+          const originalTotal = Number.parseFloat(row.dataset.originalTotal || "0");
+          const changedTotal = rowChangedTotal(row);
+          const matched = Math.abs(changedTotal - originalTotal) < 0.01;
+          const totalCell = row.querySelector("[data-row-changed-total]");
+
+          if (totalCell) totalCell.textContent = formatter.format(changedTotal);
+          panelMatched = panelMatched && matched;
+        });
+
+        refreshInlineChanges(rows);
+        refreshOverallActivitySummary();
+        return panelMatched;
+      }
+
+      rows.forEach((row) => {
+        row.querySelectorAll(".summary-month-input").forEach((input) => {
+          input.addEventListener("input", () => {
+            refreshSummary();
+          });
+        });
+        row.querySelector(".remark-input")?.addEventListener("input", refreshSummary);
+      });
+
+      refreshSummary();
+    }
+
+    const panels = [...document.querySelectorAll("[data-record-summary-panel]")];
+    bindGlobalRecordSearch();
+    initializeSummaryBaselines();
+    panels.forEach(bindEditableRecord);
+
+    function changedMonthInputs(row) {
+      return [...row.querySelectorAll(".summary-month-input")].filter((input) => {
+        const current = Number.parseFloat(input.value || "0");
+        const planned = Number.parseFloat(input.dataset.plannedAmount || "0");
+        const delta = current - planned;
+
+        return Math.abs(delta) >= 0.01;
+      });
+    }
+
+    function refreshInlineChanges(rows) {
+      rows.forEach((row) => {
+        row.querySelectorAll(".summary-month-input").forEach((input) => {
+          const current = Number.parseFloat(input.value || "0");
+          const planned = Number.parseFloat(input.dataset.plannedAmount || "0");
+          const delta = current - planned;
+          const changed = Math.abs(delta) >= 0.01;
+          const changeValue = input.closest("td")?.querySelector("[data-cell-change-value]");
+
+          if (changeValue) {
+            changeValue.textContent = changed ? `Changes ${formatSignedCurrency(delta)}` : "";
+            changeValue.dataset.cellChangeDelta = delta.toFixed(2);
+            changeValue.classList.toggle("is-hidden", !changed);
+          }
+
+          input.classList.toggle("is-edited", changed);
+          input.closest("td")?.classList.toggle("is-edited-cell", changed);
+        });
+      });
+    }
+
+    function updateSummaryMoneyCell(cell, value, changeDelta = null) {
+      if (!cell) return;
+
+      const original = Number.parseFloat(cell.dataset.originalAmount || "0");
+      const changeList = Array.isArray(changeDelta) ? changeDelta.filter((delta) => Math.abs(delta) >= 0.01) : null;
+      const delta = changeList ? changeList.reduce((sum, item) => sum + item, 0) : (changeDelta ?? (value - original));
+      const changed = changeList ? changeList.length > 0 : Math.abs(delta) >= 0.01;
+      const changeValue = cell.querySelector("[data-summary-change-value], [data-overall-summary-change]");
+      const amountValue = cell.querySelector("[data-summary-amount-value]");
+
+      if (amountValue) amountValue.textContent = formatter.format(value);
+      cell.classList.toggle("is-edited-cell", Boolean(changeValue) && changed);
+
+      if (changeValue) {
+        changeValue.replaceChildren();
+        if (changed) {
+          const uniqueChanges = changeList
+            ? [...new Set(changeList.map((change) => formatSignedCurrency(change)))]
+            : [formatSignedCurrency(delta)];
+          const line = document.createElement("span");
+          line.textContent = `Changes ${uniqueChanges.join(" / ")}`;
+          changeValue.appendChild(line);
+        }
+        changeValue.classList.toggle("is-hidden", !changed);
+      }
+    }
+
+    function refreshOverallActivitySummary() {
+      const overallTotal = document.querySelector("[data-overall-summary-total]");
+      const editableSourceRows = [...document.querySelectorAll("[data-summary-row]")];
+      if (!editableSourceRows.length) return;
+
+      let grandTotal = 0;
+      const overallMonthTotals = {};
+      const overallMonthChanges = {};
+
+      document.querySelectorAll("[data-activity-summary-row]").forEach((summaryRow) => {
+        const activityName = summaryRow.dataset.activitySummaryRow;
+        const sourceRows = editableSourceRows.filter((row) => {
+          return row.dataset.activityName === activityName;
+        });
+        let activityTotal = 0;
+
+        summaryRow.querySelectorAll("[data-activity-month]").forEach((cell) => {
+          const month = cell.dataset.activityMonth;
+          let originalMonthTotal = 0;
+          const monthChanges = [];
+          const monthTotal = sourceRows.reduce((sum, row) => {
+            const input = row.querySelector(`.summary-month-input[data-month="${month}"]`);
+            const monthCell = row.querySelector(`[data-summary-month-cell="${month}"]`);
+            const amount = input ? input.value : (monthCell?.dataset.monthAmount || "0");
+            const currentAmount = Number.parseFloat(amount) || 0;
+            const originalAmount = Number.parseFloat(monthCell?.dataset.monthAmount || input?.dataset.originalAmount || amount || "0") || 0;
+            const sourceChange = monthCell?.querySelector("[data-cell-change-value]");
+            const monthDelta = sourceChange && !sourceChange.classList.contains("is-hidden")
+              ? (Number.parseFloat(sourceChange.dataset.cellChangeDelta || "0") || 0)
+              : 0;
+
+            originalMonthTotal += originalAmount;
+            if (Math.abs(monthDelta) >= 0.01) {
+              monthChanges.push(monthDelta);
+            }
+            return sum + currentAmount;
+          }, 0);
+
+          activityTotal += monthTotal;
+          overallMonthTotals[month] = (overallMonthTotals[month] || 0) + monthTotal;
+          overallMonthChanges[month] = [...(overallMonthChanges[month] || []), ...monthChanges];
+          cell.dataset.originalAmount = originalMonthTotal.toFixed(2);
+          updateSummaryMoneyCell(cell, monthTotal, monthChanges);
+        });
+
+        const totalCell = summaryRow.querySelector("[data-activity-total]");
+        updateSummaryMoneyCell(totalCell, activityTotal, 0);
+        grandTotal += activityTotal;
+      });
+
+      updateSummaryMoneyCell(overallTotal, grandTotal, 0);
+      updateSummaryMoneyCell(document.querySelector("[data-overall-summary-row-total]"), grandTotal, 0);
+      document.querySelectorAll("[data-overall-month-total]").forEach((cell) => {
+        const month = cell.dataset.overallMonthTotal;
+        updateSummaryMoneyCell(cell, overallMonthTotals[month] || 0, overallMonthChanges[month] || []);
+      });
+    }
+
+    function refreshAll() {
+      const allMatched = panels.every((panel) => {
+        const rows = [...panel.querySelectorAll("[data-summary-row]")];
+        return rows.every((row) => {
+          const originalTotal = Number.parseFloat(row.dataset.originalTotal || "0");
+          const changedTotal = [...row.querySelectorAll(".summary-month-input")].reduce((sum, input) => {
+            return sum + Number.parseFloat(input.value || "0");
+          }, 0);
+          const totalCell = row.querySelector("[data-row-changed-total]");
+          if (totalCell) totalCell.textContent = formatter.format(changedTotal);
+          return Math.abs(changedTotal - originalTotal) < 0.01;
+        });
+      });
+
+      if (submitButton) submitButton.disabled = !allMatched;
+      if (submitMessage) {
+        submitMessage.textContent = allMatched
+          ? "All rows are matched. Submit summaries for approval."
+          : "Every row changed total must match its total amount before submit.";
+      }
+
+      refreshOverallActivitySummary();
+    }
+
+    document.querySelectorAll(".summary-month-input").forEach((input) => {
+      input.addEventListener("input", () => {
+        refreshAll();
+      });
+    });
+
+    form?.addEventListener("submit", (event) => {
+      refreshAll();
+      if (!submitButton?.disabled) return;
+
+      event.preventDefault();
+    });
+
+    function closeActivityModals() {
+      document.querySelectorAll("[data-activity-modal]").forEach((modal) => {
+        modal.classList.add("is-hidden");
+        modal.setAttribute("aria-hidden", "true");
+      });
+    }
+
+    document.querySelectorAll("[data-open-activity-modal]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const modal = document.getElementById(button.dataset.openActivityModal);
+        if (!modal) return;
+
+        modal.classList.remove("is-hidden");
+        modal.setAttribute("aria-hidden", "false");
+      });
+    });
+
+    document.querySelectorAll("[data-close-activity-modal]").forEach((button) => {
+      button.addEventListener("click", closeActivityModals);
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeActivityModals();
+    });
+
+    refreshAll();
+  })();
+</script>

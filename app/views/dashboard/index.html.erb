@@ -1,0 +1,177 @@
+<% content_for :title, "My Dashboard | LEAP Planner" %>
+
+<section class="page-header">
+  <div>
+    <p class="eyebrow"><%= @employee.employee_code %></p>
+    <h1><%= @employee.name %></h1>
+    <p class="muted"><%= [@employee.designation, @employee.department, @employee.email, @employee.mobile_number, @employee.branch, @employee.primary_project].compact_blank.join(" • ") %></p>
+  </div>
+  <div class="header-card">
+    <span>Employee code</span>
+    <strong><%= @employee.employee_code %></strong>
+  </div>
+</section>
+
+<section class="toolbar">
+  <%= form_with url: dashboard_path, method: :get, class: "filter-form" do |form| %>
+    <%= form.hidden_field :mode, value: @mode %>
+    <%= form.label :filter, @mode == "project" ? "Choose Project PNB" : "Choose Project", class: "filter-label" %>
+    <%= form.select :filter, options_for_select(@filter_options, @selected), {}, class: "select", onchange: "this.form.requestSubmit()" %>
+  <% end %>
+</section>
+
+<section class="metric-grid metric-grid-compact">
+  <article class="metric metric-teal"><span>Activities</span><strong><%= @summary[:activities] %></strong></article>
+  <article class="metric metric-blue"><span>Allocated</span><strong><%= number_to_currency(@summary[:allocated], unit: "₹", precision: 0) %></strong></article>
+  <article class="metric metric-gold"><span>Utilised</span><strong><%= number_to_currency(@summary[:utilised], unit: "₹", precision: 0) %></strong></article>
+</section>
+
+<%= form_with url: plan_submissions_path, method: :post, class: "table-panel", data: { plan_form: true, searchable_table: true } do %>
+  <%= hidden_field_tag :mode, @mode %>
+  <%= hidden_field_tag :filter_name, @selected %>
+
+  <div class="table-heading">
+    <div>
+      <h2><%= @mode == "project" ? "Action Plan by Project PNB" : "Project PNB" %>: <%= @selected || "No mapping" %></h2>
+      <p class="muted"><%= @mode == "project" ? "Action plans grouped by your Project PNB." : "BLI sheet columns C, B, H, D for the selected project." %></p>
+    </div>
+    <div class="table-actions">
+      <input type="search" class="table-search" placeholder="Search activities" data-table-search-input>
+      <span class="table-count" data-filtered-count><%= @activities.size %> rows</span>
+    </div>
+  </div>
+
+  <div class="responsive-table">
+    <table>
+      <thead>
+        <% if @mode == "vertical" %>
+          <tr>
+            <th>BLI Code</th>
+            <th>BLI Name</th>
+            <th>ASA Activity</th>
+            <th>Allocated Fund</th>
+            <th>Change Fund</th>
+            <th>Remark</th>
+          </tr>
+        <% else %>
+          <tr>
+            <th>Project PNB</th>
+            <th>Action Plan</th>
+            <th>BLI Code</th>
+            <th>ASA Activity</th>
+            <th>Allocated Fund</th>
+            <th>Change Fund</th>
+            <th>Remark</th>
+          </tr>
+        <% end %>
+      </thead>
+      <tbody>
+        <% @activities.each do |activity| %>
+          <% saved_item = @saved_items_by_activity_id[activity.id] %>
+          <% if @mode == "vertical" %>
+            <tr>
+              <%= hidden_field_tag "items[#{activity.id}][bli_activity_id]", activity.id %>
+              <td><span class="code-pill"><%= activity.bli_code %></span></td>
+              <td><%= activity.name %></td>
+              <td><%= activity.activity_name %></td>
+              <td class="money-cell" data-original-fund="<%= activity.allocated_fund.to_f %>"><%= number_to_currency(activity.allocated_fund, unit: "₹", precision: 0) %></td>
+              <td>
+                <%= number_field_tag "items[#{activity.id}][changed_fund]", (saved_item&.changed_fund || activity.allocated_fund).to_f, min: 0, step: 0.01, class: "fund-input", aria: { label: "Change allocated fund for #{activity.activity_name}" } %>
+              </td>
+              <td>
+                <%= text_field_tag "items[#{activity.id}][remark]", saved_item&.remark, class: "remark-input", placeholder: "Add remark", aria: { label: "Remark for #{activity.activity_name}" } %>
+              </td>
+            </tr>
+          <% else %>
+            <tr>
+              <%= hidden_field_tag "items[#{activity.id}][bli_activity_id]", activity.id %>
+              <td><%= activity.vertical_name %></td>
+              <td><%= activity.project_name %></td>
+              <td><span class="code-pill"><%= activity.bli_code %></span></td>
+              <td><%= activity.activity_name %></td>
+              <td class="money-cell" data-original-fund="<%= activity.allocated_fund.to_f %>"><%= number_to_currency(activity.allocated_fund, unit: "₹", precision: 0) %></td>
+              <td>
+                <%= number_field_tag "items[#{activity.id}][changed_fund]", (saved_item&.changed_fund || activity.allocated_fund).to_f, min: 0, step: 0.01, class: "fund-input", aria: { label: "Change allocated fund for #{activity.activity_name}" } %>
+              </td>
+              <td>
+                <%= text_field_tag "items[#{activity.id}][remark]", saved_item&.remark, class: "remark-input", placeholder: "Add remark", aria: { label: "Remark for #{activity.activity_name}" } %>
+              </td>
+            </tr>
+          <% end %>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="fund-total-panel" data-fund-totals>
+    <div>
+      <span>Original Total</span>
+      <strong data-original-total><%= number_to_currency(@summary[:allocated], unit: "₹", precision: 0) %></strong>
+    </div>
+    <div>
+      <span>Changed Total</span>
+      <strong data-changed-total><%= number_to_currency(@summary[:allocated], unit: "₹", precision: 0) %></strong>
+    </div>
+    <div class="total-status is-balanced" data-total-status>Total matched</div>
+  </div>
+
+  <div class="submit-panel">
+    <p data-submit-message>Totals are matched. You can submit this plan.</p>
+    <button type="submit" class="submit-plan-button" data-submit-plan>Submit</button>
+  </div>
+<% end %>
+
+<script>
+  (() => {
+    const panel = document.querySelector("[data-fund-totals]");
+    if (!panel) return;
+
+    const originalCells = [...document.querySelectorAll("[data-original-fund]")];
+    const inputs = [...document.querySelectorAll(".fund-input")];
+    const originalTotalEl = panel.querySelector("[data-original-total]");
+    const changedTotalEl = panel.querySelector("[data-changed-total]");
+    const statusEl = panel.querySelector("[data-total-status]");
+    const submitButton = document.querySelector("[data-submit-plan]");
+    const submitMessage = document.querySelector("[data-submit-message]");
+    const formatter = new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      maximumFractionDigits: 0
+    });
+
+    const originalTotal = originalCells.reduce((sum, cell) => {
+      return sum + Number.parseFloat(cell.dataset.originalFund || "0");
+    }, 0);
+
+    function refreshTotals() {
+      const changedTotal = inputs.reduce((sum, input) => {
+        return sum + Number.parseFloat(input.value || "0");
+      }, 0);
+      const difference = changedTotal - originalTotal;
+      const matched = Math.abs(difference) < 0.01;
+
+      originalTotalEl.textContent = formatter.format(originalTotal);
+      changedTotalEl.textContent = formatter.format(changedTotal);
+      statusEl.classList.toggle("is-balanced", matched);
+      statusEl.classList.toggle("is-warning", !matched);
+      statusEl.textContent = matched ? "Total matched" : `Difference ${formatter.format(difference)}`;
+
+      if (submitButton && submitMessage) {
+        submitButton.disabled = !matched;
+        submitMessage.textContent = matched
+          ? "Totals are matched. You can submit this plan."
+          : "Changed total must match original total before submit.";
+      }
+    }
+
+    inputs.forEach((input) => input.addEventListener("input", refreshTotals));
+    document.querySelector("[data-plan-form]")?.addEventListener("submit", (event) => {
+      refreshTotals();
+      if (!submitButton.disabled) return;
+
+      event.preventDefault();
+      submitMessage.textContent = "Changed total must match original total before submit.";
+    });
+    refreshTotals();
+  })();
+</script>

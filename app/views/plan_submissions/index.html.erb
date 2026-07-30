@@ -1,0 +1,107 @@
+<% content_for :title, "Allocated PNB | LEAP Planner" %>
+
+<% total_rows = @record_groups.values.sum(&:size) %>
+<% employee = current_user.employee unless current_user.admin? %>
+
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Records</p>
+    <h1>Allocated PNB</h1>
+  </div>
+  <div class="header-card">
+    <span>Total Rows</span>
+    <strong><%= total_rows %></strong>
+  </div>
+</section>
+
+<% if employee %>
+  <section class="profile-panel">
+    <div class="profile-identity">
+      <span class="profile-avatar"><%= employee.name.to_s.first %></span>
+      <div>
+        <p class="eyebrow"><%= employee.employee_code %></p>
+        <h2><%= employee.name %></h2>
+        <p class="muted"><%= [employee.designation, employee.department, employee.email, employee.mobile_number, employee.branch].compact_blank.join(" • ") %></p>
+      </div>
+    </div>
+    <div class="profile-vertical-card">
+      <span>Mapped Verticals</span>
+      <% if employee.mapped_vertical_names.any? %>
+        <div class="vertical-chip-list">
+          <% employee.mapped_vertical_names.each do |vertical_name| %>
+            <span class="vertical-chip"><%= vertical_name %></span>
+          <% end %>
+        </div>
+      <% else %>
+        <strong>No vertical mapped</strong>
+      <% end %>
+    </div>
+  </section>
+<% end %>
+
+<section class="toolbar">
+  <%= form_with url: plan_submissions_path, method: :get, class: "filter-form" do |form| %>
+    <%= form.label :project, "Choose Project", class: "filter-label" %>
+    <%= form.select :project, options_for_select([["All Projects", ""]] + @project_options.map { |project| [project, project] }, @selected_project), {}, class: "select", onchange: "this.form.requestSubmit()" %>
+  <% end %>
+</section>
+
+<section class="metric-grid metric-grid-compact">
+  <article class="metric metric-teal"><span>Rows</span><strong><%= total_rows %></strong></article>
+  <article class="metric metric-blue"><span>Allocated Total</span><strong><%= number_to_currency(@activities.sum(&:allocated_fund), unit: "₹", precision: 0) %></strong></article>
+</section>
+
+<% if @record_groups.any? %>
+  <% @record_groups.each do |project_name, activities| %>
+    <% original_total = activities.sum(&:allocated_fund) %>
+
+    <section class="table-panel submission-panel" data-searchable-table>
+      <div class="table-heading">
+        <div>
+          <h2><%= project_name.presence || "No Project" %></h2>
+        </div>
+        <div class="table-actions">
+          <input type="search" class="table-search" placeholder="Search records" data-table-search-input>
+          <span class="table-count" data-filtered-count><%= activities.size %> rows</span>
+        </div>
+      </div>
+
+      <div class="fund-total-panel">
+        <div>
+          <span>Allocated Total</span>
+          <strong><%= number_to_currency(original_total, unit: "₹", precision: 0) %></strong>
+        </div>
+      </div>
+
+      <div class="responsive-table">
+        <table>
+          <thead>
+            <tr>
+              <th>BLI Code</th>
+              <th>Project Name</th>
+              <th>BLI Name</th>
+              <th>ASA Activity</th>
+              <th>Allocated Fund</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% activities.each do |activity| %>
+              <tr>
+                <td><span class="code-pill"><%= activity.bli_code %></span></td>
+                <td><%= activity.project_name %></td>
+                <td><%= activity.name %></td>
+                <td><%= activity.activity_name %></td>
+                <td><%= number_to_currency(activity.allocated_fund, unit: "₹", precision: 0) %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  <% end %>
+<% else %>
+  <section class="empty-state">
+    <h2>No Allocated PNB</h2>
+    <p class="muted">No mapped BLI rows are available for this employee.</p>
+  </section>
+<% end %>

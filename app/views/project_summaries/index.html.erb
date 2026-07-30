@@ -1,0 +1,186 @@
+<% content_for :title, "Project Summary | LEAP Planner" %>
+
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Project Summary</p>
+    <h1><%= selected_project_title.presence || "Select Project" %></h1>
+  </div>
+  <div class="header-card">
+    <span>Total Amount</span>
+    <strong><%= number_to_currency(@grand_total, unit: "₹", precision: 2) %></strong>
+  </div>
+</section>
+
+<section class="toolbar">
+  <%= form_with url: project_summary_path, method: :get, class: "filter-form" do |form| %>
+    <% project_select_options = [["Select Project", ""], ["All Project", ProjectSummariesController::ALL_PROJECTS_OPTION]] + @project_options.map { |project| [project, project] } %>
+    <%= form.label :project, "Choose Project", class: "filter-label" %>
+    <%= form.select :project, options_for_select(project_select_options, @selected_project), {}, class: "select", onchange: "this.form.requestSubmit()" %>
+  <% end %>
+</section>
+
+<% if @selected_project.present? %>
+  <%= form_with url: project_summary_path, method: :post, class: "table-panel", data: { summary_panel: true, searchable_table: true, summary_locked: @existing_summary_submission&.approved? } do %>
+  <%= hidden_field_tag :project_name, @selected_project %>
+
+  <div class="table-heading">
+    <div>
+      <h2><%= selected_project_title.presence || "No Project Selected" %></h2>
+    </div>
+    <div class="table-actions">
+      <input type="search" class="table-search" placeholder="Search summary" data-table-search-input>
+      <span class="table-count" data-filtered-count><%= @summary_rows.size %> rows</span>
+    </div>
+  </div>
+
+  <% if @existing_summary_submission %>
+    <section class="submission-status-card">
+      <span class="status-badge status-<%= @existing_summary_submission.status %>"><%= @existing_summary_submission.status_label %></span>
+      <div>
+        <strong>
+          <% if @existing_summary_submission.pending? %>
+            Sent to <%= approval_actor_label(@existing_summary_submission.approver || ProjectSummarySubmission.approver_employee) %>
+          <% elsif @existing_summary_submission.approved? %>
+            Approved by <%= approval_actor_label(@existing_summary_submission.approver) %>
+          <% else %>
+            Returned by <%= approval_actor_label(@existing_summary_submission.approver) %>
+          <% end %>
+        </strong>
+        <p>
+          Submitted <%= @existing_summary_submission.submitted_at.strftime("%d %b %Y, %I:%M %p") %>
+          <% if @existing_summary_submission.reviewed_at.present? %>
+            • Reviewed <%= @existing_summary_submission.reviewed_at.strftime("%d %b %Y, %I:%M %p") %>
+          <% end %>
+        </p>
+        <% if @existing_summary_submission.submission_remark.present? %>
+          <p>Remark: <%= @existing_summary_submission.submission_remark %></p>
+        <% end %>
+      </div>
+    </section>
+  <% end %>
+
+  <div class="responsive-table">
+    <table>
+      <thead>
+        <tr>
+          <th>S.No.</th>
+          <th>Project</th>
+          <th>ASA Activity</th>
+          <th>Project PNB</th>
+          <th>Total Amount</th>
+          <% VerticalPercent::MONTH_COLUMNS.each do |month| %>
+            <th><%= month.to_s.titleize %></th>
+          <% end %>
+          <th>Remark</th>
+          <th>Changed Total</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @summary_rows.each_with_index do |row, index| %>
+          <tr data-summary-row data-original-total="<%= row[:total_amount].to_f %>">
+            <td><span class="code-pill"><%= index + 1 %></span></td>
+            <td><%= row[:project_name] %></td>
+            <td><%= row[:activity_name] %></td>
+            <td><%= row[:vertical_name] %></td>
+            <td class="money-cell"><%= number_to_currency(row[:total_amount], unit: "₹", precision: 2) %></td>
+            <%= hidden_field_tag "summary[#{index}][project_name]", row[:project_name] %>
+            <%= hidden_field_tag "summary[#{index}][activity_name]", row[:activity_name] %>
+            <%= hidden_field_tag "summary[#{index}][vertical_name]", row[:vertical_name] %>
+            <%= hidden_field_tag "summary[#{index}][total_amount]", number_with_precision(row[:total_amount], precision: 2, delimiter: "", separator: ".") %>
+            <% VerticalPercent::MONTH_COLUMNS.each do |month| %>
+              <td>
+                <%= number_field_tag "summary[#{index}][#{month}]", number_with_precision(row[:month_amounts][month], precision: 2, delimiter: "", separator: "."), min: 0, step: 0.01, class: "summary-month-input", disabled: @existing_summary_submission&.approved?, aria: { label: "#{month.to_s.titleize} amount for #{row[:activity_name]}" } %>
+              </td>
+            <% end %>
+            <td><%= text_field_tag "summary[#{index}][remark]", row[:remark], class: "remark-input", placeholder: "Add remark", disabled: @existing_summary_submission&.approved? %></td>
+            <td class="money-cell" data-row-changed-total><%= number_to_currency(row[:total_amount], unit: "₹", precision: 2) %></td>
+            <td><span class="summary-status is-balanced" data-row-status>Matched</span></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="submit-panel">
+    <div>
+      <p data-summary-submit-message><%= @existing_summary_submission&.approved? ? "Approved project summary cannot be changed." : "All rows are matched. You can submit this summary." %></p>
+      <%= text_field_tag :submission_remark, @existing_summary_submission&.submission_remark, class: "remark-input approval-remark", placeholder: "Add approval remark", disabled: @existing_summary_submission&.approved? %>
+    </div>
+    <button type="submit" class="submit-plan-button" data-summary-submit <%= "disabled".html_safe if @existing_summary_submission&.approved? %>>Submit</button>
+  </div>
+  <% end %>
+
+  <section class="overall-total-panel">
+    <span><%= @all_projects_selected ? "All Project Total" : "Project Total" %></span>
+    <strong><%= number_to_currency(@grand_total, unit: "₹", precision: 2) %></strong>
+  </section>
+<% else %>
+  <section class="empty-state">
+    <h2>Select a project</h2>
+  </section>
+<% end %>
+
+<script>
+  (() => {
+    const panel = document.querySelector("[data-summary-panel]");
+    if (!panel) return;
+
+    const rows = [...panel.querySelectorAll("[data-summary-row]")];
+    const submitButton = panel.querySelector("[data-summary-submit]");
+    const submitMessage = panel.querySelector("[data-summary-submit-message]");
+    const locked = panel.dataset.summaryLocked === "true";
+    const formatter = new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+
+    function rowChangedTotal(row) {
+      return [...row.querySelectorAll(".summary-month-input")].reduce((sum, input) => {
+        return sum + Number.parseFloat(input.value || "0");
+      }, 0);
+    }
+
+    function refreshSummary() {
+      let allMatched = true;
+
+      rows.forEach((row) => {
+        const originalTotal = Number.parseFloat(row.dataset.originalTotal || "0");
+        const changedTotal = rowChangedTotal(row);
+        const difference = changedTotal - originalTotal;
+        const matched = Math.abs(difference) < 0.01;
+        const totalCell = row.querySelector("[data-row-changed-total]");
+        const status = row.querySelector("[data-row-status]");
+
+        totalCell.textContent = formatter.format(changedTotal);
+        status.classList.toggle("is-balanced", matched);
+        status.classList.toggle("is-warning", !matched);
+        status.textContent = matched ? "Matched" : `Diff ${formatter.format(difference)}`;
+        allMatched = allMatched && matched;
+      });
+
+      submitButton.disabled = locked || !allMatched;
+      submitMessage.textContent = allMatched
+        ? (locked ? "Approved project summary cannot be changed." : "All rows are matched. You can submit this summary.")
+        : "Every row changed total must match its total amount before submit.";
+    }
+
+    rows.forEach((row) => {
+      row.querySelectorAll(".summary-month-input").forEach((input) => {
+        input.addEventListener("input", refreshSummary);
+      });
+    });
+
+    panel.addEventListener("submit", (event) => {
+      refreshSummary();
+      if (!submitButton.disabled) return;
+
+      event.preventDefault();
+      submitMessage.textContent = "Every row changed total must match its total amount before submit.";
+    });
+
+    refreshSummary();
+  })();
+</script>

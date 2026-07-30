@@ -1,0 +1,351 @@
+<% content_for :title, "Project Summary Approval | LEAP Planner" %>
+
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Approval</p>
+    <h1>Project Summary Approval</h1>
+  </div>
+  <div class="header-card">
+    <span>Pending</span>
+    <strong><%= @pending_group_count %></strong>
+  </div>
+</section>
+
+<% can_approve = current_user.admin? || ProjectSummarySubmission.summary_approver?(current_user.employee) %>
+
+<section class="toolbar approval-filter-toolbar">
+  <%= form_with url: project_summary_approvals_path, method: :get, class: "filter-form" do |form| %>
+    <% vertical_select_options = [["Select Vertical", ""]] + @vertical_options.map { |vertical| [vertical, vertical] } %>
+    <%= form.label :vertical, "Choose Vertical", class: "filter-label" %>
+    <%= form.select :vertical, options_for_select(vertical_select_options, @selected_vertical), {}, class: "select", onchange: "this.form.requestSubmit()" %>
+  <% end %>
+</section>
+
+<% if @selected_vertical.blank? %>
+  <section class="empty-state vertical-select-state">
+    <h2>Select a vertical</h2>
+  </section>
+<% elsif @summary_rows.any? %>
+  <section class="overall-summary-panel approval-summary-only">
+    <div class="overall-summary-heading approval-summary-heading">
+      <div>
+        <p class="eyebrow"><%= @pending_submissions.any? ? "Pending Approval" : "Reviewed Summary" %></p>
+        <h2><%= @selected_vertical %></h2>
+        <p class="muted">Vertical-wise approval review</p>
+      </div>
+      <div class="approval-total-hero">
+        <span>All Project Total</span>
+        <strong><%= number_to_currency(@overall_total, unit: "₹", precision: 2) %></strong>
+      </div>
+    </div>
+
+    <section class="approval-summary-strip approval-meta-grid">
+      <div>
+        <span>Projects</span>
+        <strong><%= @summary_project_count %></strong>
+      </div>
+      <div>
+        <span>Rows</span>
+        <strong><%= @summary_rows.size %></strong>
+      </div>
+      <div>
+        <span>Requests</span>
+        <strong><%= @summary_submissions.size %></strong>
+      </div>
+      <div>
+        <span>Verticals</span>
+        <strong><%= @vertical_summaries.size %></strong>
+      </div>
+      <div>
+        <span>Departments</span>
+        <strong><%= @summary_departments.size %></strong>
+      </div>
+    </section>
+
+    <section class="approval-context-grid">
+      <div class="approval-note approval-summary-note">
+        <span>Department</span>
+        <p><%= @summary_departments.join(" • ") %></p>
+      </div>
+
+      <% if @summary_submission_remarks.any? %>
+        <div class="approval-note approval-summary-note">
+          <span>Submission Remark</span>
+          <p><%= @summary_submission_remarks.join(" • ") %></p>
+        </div>
+      <% end %>
+    </section>
+
+    <section class="approval-vertical-panel">
+      <div class="approval-section-heading">
+        <div>
+          <p class="eyebrow">Approval Inbox</p>
+          <h3>Vertical-wise incoming summary</h3>
+        </div>
+        <span><%= @vertical_summaries.size %> verticals</span>
+      </div>
+      <div class="approval-vertical-grid">
+        <% @vertical_summaries.each_with_index do |vertical, index| %>
+          <% modal_id = "approval-vertical-projects-#{index}" %>
+          <article>
+            <div>
+              <span>Vertical</span>
+              <strong><%= vertical[:vertical_name] %></strong>
+            </div>
+            <dl>
+              <div>
+                <dt>Projects</dt>
+                <dd>
+                  <button type="button" class="project-count-badge" data-open-activity-modal="<%= modal_id %>">
+                    <%= vertical[:project_count] %>
+                  </button>
+                </dd>
+              </div>
+              <div>
+                <dt>Rows</dt>
+                <dd><%= vertical[:row_count] %></dd>
+              </div>
+              <div>
+                <dt>Changes</dt>
+                <dd><%= vertical[:changed_month_count] %></dd>
+              </div>
+            </dl>
+            <p><%= number_to_currency(vertical[:total_amount], unit: "₹", precision: 2) %></p>
+          </article>
+        <% end %>
+      </div>
+    </section>
+
+    <section class="approval-month-total-panel">
+      <div class="approval-section-heading">
+        <div>
+          <p class="eyebrow">Month-wise Total</p>
+          <h3>Apr to Mar distribution</h3>
+        </div>
+      </div>
+      <div class="approval-month-total-grid">
+        <% VerticalPercent::MONTH_COLUMNS.each do |month| %>
+          <% change_labels = @overall_month_changes[month].map { |delta| "#{delta.positive? ? "+" : ""}#{number_to_currency(delta, unit: "₹", precision: 2)}" }.uniq %>
+          <article class="<%= "is-edited-cell" if change_labels.any? %>">
+            <span><%= month.to_s.titleize %></span>
+            <strong><%= number_to_currency(@overall_month_totals[month], unit: "₹", precision: 2) %></strong>
+            <% if change_labels.any? %>
+              <small>Changes <%= change_labels.join(" / ") %></small>
+            <% end %>
+          </article>
+        <% end %>
+      </div>
+    </section>
+
+    <div class="responsive-table activity-summary-table">
+      <table>
+        <thead>
+          <tr>
+            <th>S.No.</th>
+            <th>ASA Activity</th>
+            <th>Project Count</th>
+            <th>Total Amount</th>
+            <% VerticalPercent::MONTH_COLUMNS.each do |month| %>
+              <th><%= month.to_s.titleize %></th>
+            <% end %>
+          </tr>
+        </thead>
+        <tbody>
+          <% @activity_summaries.each_with_index do |activity, index| %>
+            <% modal_id = "approval-activity-projects-#{index}" %>
+            <tr>
+              <td><span class="code-pill"><%= index + 1 %></span></td>
+              <td class="activity-name-cell"><strong title="<%= activity[:activity_name] %>"><%= activity[:activity_name] %></strong></td>
+              <td>
+                <button type="button" class="project-count-badge" data-open-activity-modal="<%= modal_id %>">
+                  <%= activity[:project_count] %>
+                </button>
+              </td>
+              <td class="money-cell"><%= number_to_currency(activity[:total_amount], unit: "₹", precision: 2) %></td>
+              <% VerticalPercent::MONTH_COLUMNS.each do |month| %>
+                <% change_labels = activity[:month_changes][month].map { |delta| "#{delta.positive? ? "+" : ""}#{number_to_currency(delta, unit: "₹", precision: 2)}" }.uniq %>
+                <td class="money-cell <%= "is-edited-cell" if change_labels.any? %>">
+                  <%= number_to_currency(activity[:month_totals][month], unit: "₹", precision: 2) %>
+                  <% if change_labels.any? %>
+                    <span class="cell-change-value">
+                      Changes <%= change_labels.join(" / ") %>
+                    </span>
+                  <% end %>
+                </td>
+              <% end %>
+            </tr>
+          <% end %>
+        </tbody>
+        <tfoot>
+          <tr class="summary-total-row">
+            <td><span class="code-pill">Total</span></td>
+            <td><strong>All Project Total</strong></td>
+            <td><span class="project-count-badge"><%= @summary_project_count %></span></td>
+            <td class="money-cell"><%= number_to_currency(@overall_total, unit: "₹", precision: 2) %></td>
+            <% VerticalPercent::MONTH_COLUMNS.each do |month| %>
+              <% change_labels = @overall_month_changes[month].map { |delta| "#{delta.positive? ? "+" : ""}#{number_to_currency(delta, unit: "₹", precision: 2)}" }.uniq %>
+              <td class="money-cell <%= "is-edited-cell" if change_labels.any? %>">
+                <%= number_to_currency(@overall_month_totals[month], unit: "₹", precision: 2) %>
+                <% if change_labels.any? %>
+                  <span class="cell-change-value">
+                    Changes <%= change_labels.join(" / ") %>
+                  </span>
+                <% end %>
+              </td>
+            <% end %>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </section>
+
+  <% @vertical_summaries.each_with_index do |vertical, index| %>
+    <% modal_id = "approval-vertical-projects-#{index}" %>
+    <section id="<%= modal_id %>" class="activity-modal is-hidden" data-activity-modal aria-hidden="true">
+      <div class="activity-modal-backdrop" data-close-activity-modal></div>
+      <div class="activity-modal-panel" role="dialog" aria-modal="true" aria-labelledby="<%= modal_id %>-title">
+        <div class="activity-modal-heading">
+          <div>
+            <p class="eyebrow">Vertical Projects</p>
+            <h2 id="<%= modal_id %>-title"><%= vertical[:vertical_name] %></h2>
+          </div>
+          <button type="button" class="modal-close-button" data-close-activity-modal aria-label="Close projects">×</button>
+        </div>
+        <div class="responsive-table modal-table">
+          <table>
+            <thead>
+              <tr>
+                <th>S.No.</th>
+                <th>Project Name</th>
+                <th>Total Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% vertical[:projects].each_with_index do |project, project_index| %>
+                <tr>
+                  <td><span class="code-pill"><%= project_index + 1 %></span></td>
+                  <td><strong><%= project[:project_name] %></strong></td>
+                  <td class="money-cell"><%= number_to_currency(project[:total_amount], unit: "₹", precision: 2) %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  <% end %>
+
+  <% @activity_summaries.each_with_index do |activity, index| %>
+    <% modal_id = "approval-activity-projects-#{index}" %>
+    <section id="<%= modal_id %>" class="activity-modal is-hidden" data-activity-modal aria-hidden="true">
+      <div class="activity-modal-backdrop" data-close-activity-modal></div>
+      <div class="activity-modal-panel" role="dialog" aria-modal="true" aria-labelledby="<%= modal_id %>-title">
+        <div class="activity-modal-heading">
+          <div>
+            <p class="eyebrow">Activity Projects</p>
+            <h2 id="<%= modal_id %>-title"><%= activity[:activity_name] %></h2>
+          </div>
+          <button type="button" class="modal-close-button" data-close-activity-modal aria-label="Close projects">×</button>
+        </div>
+        <div class="responsive-table modal-table">
+          <table>
+            <thead>
+              <tr>
+                <th>S.No.</th>
+                <th>Project Name</th>
+                <th>Total Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% activity[:projects].each_with_index do |project, project_index| %>
+                <tr>
+                  <td><span class="code-pill"><%= project_index + 1 %></span></td>
+                  <td><strong><%= project[:project_name] %></strong></td>
+                  <td class="money-cell"><%= number_to_currency(project[:total_amount], unit: "₹", precision: 2) %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  <% end %>
+
+  <% if @pending_submissions.any? && can_approve %>
+    <div class="approval-action-panel" data-approval-action-panel>
+      <%= text_field_tag :shared_approval_remark, nil, class: "remark-input approval-remark shared-approval-remark", placeholder: "Remark", data: { shared_approval_remark: true } %>
+      <div class="approval-action-forms">
+        <%= form_with url: bulk_approve_project_summaries_path, method: :patch, class: "approval-form approval-bulk-form" do %>
+          <%= hidden_field_tag :vertical, @selected_vertical %>
+          <% @pending_submissions.each do |submission| %>
+            <%= hidden_field_tag "submission_ids[]", submission.id %>
+          <% end %>
+          <%= hidden_field_tag :approval_remark, nil, data: { approval_remark_target: true } %>
+          <button type="submit" class="submit-plan-button">Approve</button>
+        <% end %>
+
+        <%= form_with url: bulk_return_project_summaries_path, method: :patch, class: "approval-form approval-bulk-form" do %>
+          <%= hidden_field_tag :vertical, @selected_vertical %>
+          <% @pending_submissions.each do |submission| %>
+            <%= hidden_field_tag "submission_ids[]", submission.id %>
+          <% end %>
+          <%= hidden_field_tag :approval_remark, nil, data: { approval_remark_target: true } %>
+          <button type="submit" class="return-button">Return</button>
+        <% end %>
+      </div>
+    </div>
+  <% elsif @pending_submissions.any? %>
+    <section class="approval-note">
+      <span>View Only</span>
+      <p>You can review the summary, but approval actions are restricted to the approver.</p>
+    </section>
+  <% end %>
+<% else %>
+  <section class="empty-state">
+    <h2>No approval requests for <%= @selected_vertical %></h2>
+  </section>
+<% end %>
+
+<script>
+  (() => {
+    const sharedRemark = document.querySelector("[data-shared-approval-remark]");
+    const remarkTargets = [...document.querySelectorAll("[data-approval-remark-target]")];
+
+    function syncApprovalRemark() {
+      remarkTargets.forEach((target) => {
+        target.value = sharedRemark?.value || "";
+      });
+    }
+
+    sharedRemark?.addEventListener("input", syncApprovalRemark);
+    document.querySelectorAll("[data-approval-action-panel] form").forEach((form) => {
+      form.addEventListener("submit", syncApprovalRemark);
+    });
+
+    function closeActivityModals() {
+      document.querySelectorAll("[data-activity-modal]").forEach((modal) => {
+        modal.classList.add("is-hidden");
+        modal.setAttribute("aria-hidden", "true");
+      });
+    }
+
+    document.querySelectorAll("[data-open-activity-modal]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const modal = document.getElementById(button.dataset.openActivityModal);
+        if (!modal) return;
+
+        closeActivityModals();
+        modal.classList.remove("is-hidden");
+        modal.setAttribute("aria-hidden", "false");
+      });
+    });
+
+    document.querySelectorAll("[data-close-activity-modal]").forEach((button) => {
+      button.addEventListener("click", closeActivityModals);
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeActivityModals();
+    });
+  })();
+</script>
