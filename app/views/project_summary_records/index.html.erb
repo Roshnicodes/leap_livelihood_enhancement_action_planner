@@ -24,7 +24,7 @@
   </section>
 <% end %>
 
-<% if @selected_vertical.blank? %>
+<% if @selected_verticals.blank? %>
   <section class="empty-state vertical-select-state">
     <h2><%= @show_vertical_filter ? "Select a vertical" : "No vertical mapped" %></h2>
   </section>
@@ -163,7 +163,7 @@
     <div class="overall-summary-heading">
       <div>
         <p class="eyebrow">Overall Summary</p>
-        <h2><%= @selected_vertical %> Summary</h2>
+        <h2><%= @summary_vertical_label %> Summary</h2>
       </div>
       <strong data-overall-summary-total data-original-amount="<%= number_with_precision(@overall_summary[:total_amount], precision: 2, delimiter: "", separator: ".") %>">
         <span data-summary-amount-value><%= number_to_currency(@overall_summary[:total_amount], unit: "₹", precision: 2) %></span>
@@ -274,7 +274,7 @@
   <% end %>
 <% else %>
   <section class="empty-state">
-    <h2>No records for <%= @selected_vertical %></h2>
+    <h2>No records for <%= @summary_vertical_label %></h2>
   </section>
 <% end %>
 

@@ -73,7 +73,7 @@ class BliActivitySync
       allocated_fund: allocated_fund,
       remaining_fund: remaining_fund,
       financial_year: row_value(row, "Financial Year"),
-      project_name: row_value(row, "Project Name 2", "Project Name"),
+      project_name: project_label(row),
       office_name: row_value(row, "Office Name"),
       vertical_name: row_vertical,
       parent_activity: row_vertical,
@@ -175,6 +175,13 @@ class BliActivitySync
 
   def activity_label(row)
     row_value(row, "Activity", "ASA Activity", "Name", "Project Name", "BLI Code", "Project BLI Code") || "Untitled activity"
+  end
+
+  def project_label(row)
+    project_name = row_value(row, "Project Name 2", "Project Name")
+    return "Corteva (Existing & (New FPO)" if project_name.to_s.squish.casecmp("Corteva").zero?
+
+    project_name
   end
 
   def money(value)

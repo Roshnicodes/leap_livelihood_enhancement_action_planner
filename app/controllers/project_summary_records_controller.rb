@@ -12,7 +12,9 @@ class ProjectSummaryRecordsController < ApplicationController
     @vertical_options = vertical_options_for(@all_record_groups)
     @show_vertical_filter = privileged_record_view?
     @selected_vertical = selected_vertical_for_records
-    @record_groups = @selected_vertical.present? ? filter_record_groups_by_vertical(@all_record_groups, @selected_vertical) : []
+    @selected_verticals = selected_verticals_for_records
+    @summary_vertical_label = summary_vertical_label
+    @record_groups = @selected_verticals.any? ? filter_record_groups_by_verticals(@all_record_groups, @selected_verticals) : []
     @status_records = status_records_for(@record_groups)
     @total_records = @record_groups.size
     @overall_summary = overall_record_summary(@record_groups)
@@ -189,13 +191,25 @@ class ProjectSummaryRecordsController < ApplicationController
     selected = params[:vertical].to_s.presence_in(@vertical_options)
     return selected if @show_vertical_filter
 
-    own_verticals = current_user.employee.verticals & @vertical_options
-    selected.presence || own_verticals.first || @vertical_options.first
+    nil
   end
 
-  def filter_record_groups_by_vertical(record_groups, vertical_name)
+  def selected_verticals_for_records
+    return [ @selected_vertical ].compact_blank if @show_vertical_filter
+
+    own_verticals = current_user.employee.verticals & @vertical_options
+    own_verticals.presence || @vertical_options
+  end
+
+  def summary_vertical_label
+    return @selected_vertical if @show_vertical_filter
+
+    @selected_verticals.join(" + ")
+  end
+
+  def filter_record_groups_by_verticals(record_groups, vertical_names)
     record_groups.filter_map do |record|
-      rows = record[:rows].select { |row| (row[:vertical_name].presence || "Unassigned Vertical") == vertical_name }
+      rows = record[:rows].select { |row| vertical_names.include?(row[:vertical_name].presence || "Unassigned Vertical") }
       next if rows.blank?
 
       record.merge(

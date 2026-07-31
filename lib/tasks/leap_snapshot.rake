@@ -31,6 +31,11 @@ namespace :leap do
     path = ENV.fetch("FILE", Rails.root.join("tmp/leap_snapshot.json").to_s)
     payload = JSON.parse(File.read(path))
     tables = payload.fetch("tables")
+    row_count = tables.values.sum(&:size)
+
+    if row_count.zero? && ENV["ALLOW_EMPTY"] != "true"
+      abort "Snapshot has 0 rows. Refusing to replace data. Pass ALLOW_EMPTY=true only if this is intentional."
+    end
 
     ActiveRecord::Base.transaction do
       snapshot_delete_models.each(&:delete_all)

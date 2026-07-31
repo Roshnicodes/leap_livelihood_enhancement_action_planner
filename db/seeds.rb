@@ -5,7 +5,7 @@ require "zip"
 employee_xlsx_path = ENV.fetch("EMPLOYEE_XLSX_PATH", "/home/asa/Downloads/roshini emp.xlsx")
 employee_csv_path = ENV.fetch("EMPLOYEE_CSV_PATH", "/tmp/roshini emp.csv")
 vertical_percent_xlsx_path = ENV.fetch("VERTICAL_PERCENT_XLSX_PATH", "/home/asa/Downloads/ASA Theme User (1).xlsx")
-active_employee_codes = %w[937 397 237 939 840 644 1079 1666 1025 1155 1621].freeze
+active_employee_codes = %w[937 397 237 939 840 644 1079 1666 1025 1155 1621 1495 1686].freeze
 
 def money(value)
   BigDecimal(value.to_s.presence || "0")
