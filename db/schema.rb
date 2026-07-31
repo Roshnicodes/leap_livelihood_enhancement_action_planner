@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_29_103000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_31_070000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -45,9 +45,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_103000) do
     t.datetime "updated_at", null: false
     t.decimal "utilised_fund", precision: 15, scale: 2, default: "0.0", null: false
     t.string "vertical_name"
+    t.index ["employee_id", "project_name", "vertical_name"], name: "index_bli_activities_on_employee_project_vertical"
+    t.index ["employee_id", "vertical_name", "project_name", "activity_name"], name: "index_bli_activities_on_employee_vertical_project_activity"
     t.index ["employee_id"], name: "index_bli_activities_on_employee_id"
     t.index ["financial_year"], name: "index_bli_activities_on_financial_year"
     t.index ["project_name"], name: "index_bli_activities_on_project_name"
+    t.index ["vertical_name", "project_name"], name: "index_bli_activities_on_vertical_project"
     t.index ["vertical_name"], name: "index_bli_activities_on_vertical_name"
   end
 
@@ -92,6 +95,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_103000) do
     t.text "remark"
     t.datetime "updated_at", null: false
     t.index ["bli_activity_id"], name: "index_plan_submission_items_on_bli_activity_id"
+    t.index ["plan_submission_id", "bli_activity_id"], name: "index_plan_submission_items_on_submission_activity"
     t.index ["plan_submission_id"], name: "index_plan_submission_items_on_plan_submission_id"
   end
 
@@ -104,6 +108,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_103000) do
     t.decimal "original_total", precision: 15, scale: 2, default: "0.0", null: false
     t.datetime "submitted_at", null: false
     t.datetime "updated_at", null: false
+    t.index ["employee_id", "mode", "filter_name", "submitted_at"], name: "index_plan_submissions_lookup_latest"
     t.index ["employee_id"], name: "index_plan_submissions_on_employee_id"
     t.index ["mode"], name: "index_plan_submissions_on_mode"
     t.index ["submitted_at"], name: "index_plan_submissions_on_submitted_at"
@@ -131,8 +136,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_103000) do
     t.decimal "total_amount", precision: 15, scale: 2, default: "0.0", null: false
     t.datetime "updated_at", null: false
     t.string "vertical_name", null: false
+    t.index ["project_name", "activity_name", "vertical_name"], name: "index_project_summary_items_on_project_activity_vertical"
     t.index ["project_name"], name: "index_project_summary_submission_items_on_project_name"
+    t.index ["project_summary_submission_id", "project_name"], name: "index_project_summary_items_on_submission_project"
     t.index ["project_summary_submission_id"], name: "idx_on_project_summary_submission_id_82944b0850"
+    t.index ["vertical_name", "project_name"], name: "index_project_summary_items_on_vertical_project"
   end
 
   create_table "project_summary_submissions", force: :cascade do |t|
@@ -146,7 +154,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_103000) do
     t.datetime "submitted_at", null: false
     t.decimal "total_amount", precision: 15, scale: 2, default: "0.0", null: false
     t.datetime "updated_at", null: false
+    t.index ["approver_id", "status", "submitted_at"], name: "index_project_summary_submissions_on_approver_status_time"
     t.index ["approver_id"], name: "index_project_summary_submissions_on_approver_id"
+    t.index ["employee_id", "status", "submitted_at"], name: "index_project_summary_submissions_on_employee_status_time"
     t.index ["employee_id"], name: "index_project_summary_submissions_on_employee_id"
     t.index ["status"], name: "index_project_summary_submissions_on_status"
     t.index ["submitted_at"], name: "index_project_summary_submissions_on_submitted_at"
