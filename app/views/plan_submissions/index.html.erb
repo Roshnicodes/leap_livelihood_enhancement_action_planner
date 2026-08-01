@@ -48,7 +48,7 @@
 
 <section class="metric-grid metric-grid-compact">
   <article class="metric metric-teal"><span>Rows</span><strong><%= total_rows %></strong></article>
-  <article class="metric metric-blue"><span>Allocated Total</span><strong><%= number_to_currency(@activities.sum(&:allocated_fund), unit: "₹", precision: 0) %></strong></article>
+  <article class="metric metric-blue"><span>Allocated Total</span><strong><%= currency(@activities.sum(&:allocated_fund)) %></strong></article>
 </section>
 
 <% if @record_groups.any? %>
@@ -69,7 +69,7 @@
       <div class="fund-total-panel">
         <div>
           <span>Allocated Total</span>
-          <strong><%= number_to_currency(original_total, unit: "₹", precision: 0) %></strong>
+          <strong><%= currency(original_total) %></strong>
         </div>
       </div>
 
@@ -77,11 +77,11 @@
         <table>
           <thead>
             <tr>
-              <th>BLI Code</th>
-              <th>Project Name</th>
-              <th>BLI Name</th>
-              <th>ASA Activity</th>
-              <th>Allocated Fund</th>
+              <th>Project BLI code</th>
+              <th>Project</th>
+              <th>Project BLI</th>
+              <th>ASA BLI</th>
+              <th>Allocated budget</th>
             </tr>
           </thead>
           <tbody>
@@ -91,7 +91,7 @@
                 <td><%= activity.project_name %></td>
                 <td><%= activity.name %></td>
                 <td><%= activity.activity_name %></td>
-                <td><%= number_to_currency(activity.allocated_fund, unit: "₹", precision: 0) %></td>
+                <td><%= currency(activity.allocated_fund) %></td>
               </tr>
             <% end %>
           </tbody>

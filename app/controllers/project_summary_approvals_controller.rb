@@ -1,4 +1,6 @@
 class ProjectSummaryApprovalsController < ApplicationController
+  include ProjectSummaryReviewPresenter
+
   before_action :require_login
   before_action :require_summary_access
   before_action :require_summary_approver, only: %i[approve return_summary bulk_approve bulk_return]
@@ -20,7 +22,6 @@ class ProjectSummaryApprovalsController < ApplicationController
     @summary_rows = filter_summary_rows_by_vertical(@summary_rows, @selected_vertical) if @selected_vertical.present?
     @project_record_groups = project_record_groups_for(@summary_rows)
     @activity_summaries = activity_summaries_for(@summary_rows)
-    @vertical_summaries = vertical_summaries_for(@summary_rows)
     @overall_total = @summary_rows.sum { |row| row[:total_amount].to_d }
     @overall_month_totals = month_totals_for(@summary_rows)
     @overall_month_changes = month_changes_for(@summary_rows)
@@ -105,27 +106,6 @@ class ProjectSummaryApprovalsController < ApplicationController
     end
   end
 
-  def vertical_options_for(submissions)
-    submissions
-      .flat_map do |submission|
-        submission.project_summary_submission_items.map { |item| item.vertical_name.presence || "Unassigned Vertical" }
-      end
-      .uniq
-      .sort
-  end
-
-  def filter_submissions_by_vertical(submissions, vertical_name)
-    submissions.select do |submission|
-      submission.project_summary_submission_items.any? do |item|
-        (item.vertical_name.presence || "Unassigned Vertical") == vertical_name
-      end
-    end
-  end
-
-  def filter_summary_rows_by_vertical(rows, vertical_name)
-    rows.select { |row| (row[:vertical_name].presence || "Unassigned Vertical") == vertical_name }
-  end
-
   def summary_approver?
     ProjectSummarySubmission.summary_approver?(current_user.employee)
   end
@@ -148,6 +128,7 @@ class ProjectSummaryApprovalsController < ApplicationController
       {
         status: "pending",
         approver: final_approver,
+        first_approver: submission.first_approver || current_user&.employee || submission.approver,
         approval_remark: params[:approval_remark].to_s.strip,
         reviewed_at: nil
       }
@@ -176,135 +157,5 @@ class ProjectSummaryApprovalsController < ApplicationController
       end
       .uniq
       .size
-  end
-
-  def summary_rows_for(submissions)
-    submissions.flat_map(&:project_summary_submission_items).map do |item|
-      month_amounts = VerticalPercent::MONTH_COLUMNS.index_with { |month| item.public_send(month) }
-      planned_month_amounts = planned_month_amounts_for(item.total_amount, item.vertical_name)
-
-      {
-        project_name: item.project_name,
-        activity_name: item.activity_name,
-        vertical_name: item.vertical_name,
-        total_amount: item.total_amount,
-        changed_total: item.changed_total,
-        remark: item.remark,
-        employee_name: item.project_summary_submission.employee.name,
-        month_amounts: month_amounts,
-        planned_month_amounts: planned_month_amounts,
-        month_deltas: month_deltas_for(month_amounts, planned_month_amounts)
-      }
-    end
-  end
-
-  def project_record_groups_for(rows)
-    rows
-      .group_by { |row| row[:project_name].presence || "Unassigned Project" }
-      .map do |project_name, project_rows|
-        {
-          project_name: project_name,
-          employee_names: project_rows.map { |row| row[:employee_name] }.compact_blank.uniq.sort,
-          rows: project_rows.sort_by { |row| [ row[:activity_name].to_s, row[:vertical_name].to_s ] },
-          total_amount: project_rows.sum { |row| row[:total_amount].to_d },
-          month_totals: month_totals_for(project_rows)
-        }
-      end
-      .sort_by { |project| [ -project[:total_amount], project[:project_name].to_s ] }
-  end
-
-  def activity_summaries_for(rows)
-    rows
-      .group_by { |row| row[:activity_name].presence || "Unassigned Activity" }
-      .map do |activity_name, activity_rows|
-        projects = project_breakdown_for(activity_rows)
-
-        {
-          activity_name: activity_name,
-          project_count: projects.size,
-          total_amount: activity_rows.sum { |row| row[:total_amount].to_d },
-          month_totals: month_totals_for(activity_rows),
-          month_changes: month_changes_for(activity_rows),
-          projects: projects
-        }
-      end
-      .sort_by { |activity| [ -activity[:total_amount], activity[:activity_name].to_s ] }
-  end
-
-  def vertical_summaries_for(rows)
-    rows
-      .group_by { |row| row[:vertical_name].presence || "Unassigned Vertical" }
-      .map do |vertical_name, vertical_rows|
-        projects = project_breakdown_for(vertical_rows)
-        changed_month_count = vertical_rows.sum do |row|
-          row[:month_deltas].values.count { |delta| delta.to_d.abs >= 0.01 }
-        end
-
-        {
-          vertical_name: vertical_name,
-          project_count: projects.size,
-          row_count: vertical_rows.size,
-          total_amount: vertical_rows.sum { |row| row[:total_amount].to_d },
-          changed_month_count: changed_month_count,
-          projects: projects
-        }
-      end
-      .sort_by { |vertical| [ -vertical[:total_amount], vertical[:vertical_name].to_s ] }
-  end
-
-  def project_breakdown_for(rows)
-    rows
-      .group_by { |row| row[:project_name].presence || "Unassigned Project" }
-      .map do |project_name, project_rows|
-        {
-          project_name: project_name,
-          total_amount: project_rows.sum { |row| row[:total_amount].to_d }
-        }
-      end
-      .sort_by { |project| [ -project[:total_amount], project[:project_name].to_s ] }
-  end
-
-  def month_totals_for(rows)
-    VerticalPercent::MONTH_COLUMNS.index_with do |month|
-      rows.sum { |row| row[:month_amounts][month].to_d }
-    end
-  end
-
-  def month_changes_for(rows)
-    VerticalPercent::MONTH_COLUMNS.index_with do |month|
-      rows.filter_map do |row|
-        delta = row[:month_deltas][month].to_d
-        delta if delta.abs >= 0.01
-      end
-    end
-  end
-
-  def planned_month_amounts_for(total_amount, vertical_name)
-    month_amounts_for(total_amount, VerticalPercent.find_by(vertical_name: vertical_name))
-  end
-
-  def month_deltas_for(month_amounts, planned_month_amounts)
-    VerticalPercent::MONTH_COLUMNS.index_with do |month|
-      month_amounts[month].to_d - planned_month_amounts[month].to_d
-    end
-  end
-
-  def month_amounts_for(total_amount, percent)
-    amounts = {}
-    running_total = BigDecimal("0")
-
-    VerticalPercent::MONTH_COLUMNS.each_with_index do |month, index|
-      monthly_percent = percent&.public_send(month) || 0
-      amount = if index == VerticalPercent::MONTH_COLUMNS.size - 1
-        total_amount - running_total
-      else
-        (total_amount * monthly_percent / 100).round(2)
-      end
-
-      amounts[month] = amount
-      running_total += amount
-    end
-
-    amounts
   end
 end

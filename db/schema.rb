@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_01_080000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_01_103000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -160,6 +160,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_080000) do
     t.bigint "approver_id"
     t.datetime "created_at", null: false
     t.bigint "employee_id", null: false
+    t.bigint "first_approver_id"
     t.datetime "reviewed_at"
     t.string "status", default: "pending", null: false
     t.text "submission_remark"
@@ -170,6 +171,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_080000) do
     t.index ["approver_id"], name: "index_project_summary_submissions_on_approver_id"
     t.index ["employee_id", "status", "submitted_at"], name: "index_project_summary_submissions_on_employee_status_time"
     t.index ["employee_id"], name: "index_project_summary_submissions_on_employee_id"
+    t.index ["first_approver_id"], name: "index_project_summary_submissions_on_first_approver_id"
     t.index ["status"], name: "index_project_summary_submissions_on_status"
     t.index ["submitted_at"], name: "index_project_summary_submissions_on_submitted_at"
   end
@@ -218,5 +220,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_080000) do
   add_foreign_key "project_summary_submission_items", "project_summary_submissions"
   add_foreign_key "project_summary_submissions", "employees"
   add_foreign_key "project_summary_submissions", "employees", column: "approver_id"
+  add_foreign_key "project_summary_submissions", "employees", column: "first_approver_id"
   add_foreign_key "users", "employees"
 end

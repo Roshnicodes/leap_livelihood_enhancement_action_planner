@@ -22,8 +22,8 @@
 
 <section class="metric-grid metric-grid-compact">
   <article class="metric metric-teal"><span>Activities</span><strong><%= @summary[:activities] %></strong></article>
-  <article class="metric metric-blue"><span>Allocated</span><strong><%= number_to_currency(@summary[:allocated], unit: "₹", precision: 0) %></strong></article>
-  <article class="metric metric-gold"><span>Utilised</span><strong><%= number_to_currency(@summary[:utilised], unit: "₹", precision: 0) %></strong></article>
+  <article class="metric metric-blue"><span>Allocated</span><strong><%= currency(@summary[:allocated]) %></strong></article>
+  <article class="metric metric-gold"><span>Utilised</span><strong><%= currency(@summary[:utilised]) %></strong></article>
 </section>
 
 <%= form_with url: plan_submissions_path, method: :post, class: "table-panel", data: { plan_form: true, searchable_table: true } do %>
@@ -74,9 +74,9 @@
               <td><span class="code-pill"><%= activity.bli_code %></span></td>
               <td><%= activity.name %></td>
               <td><%= activity.activity_name %></td>
-              <td class="money-cell" data-original-fund="<%= activity.allocated_fund.to_f %>"><%= number_to_currency(activity.allocated_fund, unit: "₹", precision: 0) %></td>
+              <td class="money-cell" data-original-fund="<%= activity.allocated_fund.round %>"><%= currency(activity.allocated_fund) %></td>
               <td>
-                <%= number_field_tag "items[#{activity.id}][changed_fund]", (saved_item&.changed_fund || activity.allocated_fund).to_f, min: 0, step: 0.01, class: "fund-input", aria: { label: "Change allocated fund for #{activity.activity_name}" } %>
+                <%= number_field_tag "items[#{activity.id}][changed_fund]", currency_input_value(saved_item&.changed_fund || activity.allocated_fund), min: 0, step: 1, class: "fund-input", aria: { label: "Change allocated fund for #{activity.activity_name}" } %>
               </td>
               <td>
                 <%= text_field_tag "items[#{activity.id}][remark]", saved_item&.remark, class: "remark-input", placeholder: "Add remark", aria: { label: "Remark for #{activity.activity_name}" } %>
@@ -89,9 +89,9 @@
               <td><%= activity.project_name %></td>
               <td><span class="code-pill"><%= activity.bli_code %></span></td>
               <td><%= activity.activity_name %></td>
-              <td class="money-cell" data-original-fund="<%= activity.allocated_fund.to_f %>"><%= number_to_currency(activity.allocated_fund, unit: "₹", precision: 0) %></td>
+              <td class="money-cell" data-original-fund="<%= activity.allocated_fund.round %>"><%= currency(activity.allocated_fund) %></td>
               <td>
-                <%= number_field_tag "items[#{activity.id}][changed_fund]", (saved_item&.changed_fund || activity.allocated_fund).to_f, min: 0, step: 0.01, class: "fund-input", aria: { label: "Change allocated fund for #{activity.activity_name}" } %>
+                <%= number_field_tag "items[#{activity.id}][changed_fund]", currency_input_value(saved_item&.changed_fund || activity.allocated_fund), min: 0, step: 1, class: "fund-input", aria: { label: "Change allocated fund for #{activity.activity_name}" } %>
               </td>
               <td>
                 <%= text_field_tag "items[#{activity.id}][remark]", saved_item&.remark, class: "remark-input", placeholder: "Add remark", aria: { label: "Remark for #{activity.activity_name}" } %>
@@ -106,11 +106,11 @@
   <div class="fund-total-panel" data-fund-totals>
     <div>
       <span>Original Total</span>
-      <strong data-original-total><%= number_to_currency(@summary[:allocated], unit: "₹", precision: 0) %></strong>
+      <strong data-original-total><%= currency(@summary[:allocated]) %></strong>
     </div>
     <div>
       <span>Changed Total</span>
-      <strong data-changed-total><%= number_to_currency(@summary[:allocated], unit: "₹", precision: 0) %></strong>
+      <strong data-changed-total><%= currency(@summary[:allocated]) %></strong>
     </div>
     <div class="total-status is-balanced" data-total-status>Total matched</div>
   </div>
@@ -136,6 +136,7 @@
     const formatter = new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
+      minimumFractionDigits: 0,
       maximumFractionDigits: 0
     });
 

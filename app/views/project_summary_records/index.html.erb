@@ -111,38 +111,39 @@
           <tbody>
             <% record[:rows].each_with_index do |row, index| %>
               <% changed_months = row[:month_deltas].select { |_month, delta| delta.abs >= 0.01 } %>
-              <tr data-summary-row data-original-total="<%= row[:total_amount].to_f %>" data-project-name="<%= h(row[:project_name]) %>" data-activity-name="<%= h(row[:activity_name]) %>" data-vertical-name="<%= h(row[:vertical_name]) %>" data-total-label="<%= number_to_currency(row[:total_amount], unit: "₹", precision: 2) %>">
+              <% row_match_total = rounded_month_total(row[:month_amounts]) %>
+              <tr data-summary-row data-original-total="<%= row_match_total %>" data-project-name="<%= h(row[:project_name]) %>" data-activity-name="<%= h(row[:activity_name]) %>" data-vertical-name="<%= h(row[:vertical_name]) %>" data-total-label="<%= currency(row_match_total) %>">
                 <% if editable %>
                   <%= hidden_field_tag "records[#{record[:form_key]}][rows][#{index}][project_name]", row[:project_name] %>
                   <%= hidden_field_tag "records[#{record[:form_key]}][rows][#{index}][activity_name]", row[:activity_name] %>
                   <%= hidden_field_tag "records[#{record[:form_key]}][rows][#{index}][vertical_name]", row[:vertical_name] %>
-                  <%= hidden_field_tag "records[#{record[:form_key]}][rows][#{index}][total_amount]", number_with_precision(row[:total_amount], precision: 2, delimiter: "", separator: ".") %>
+                  <%= hidden_field_tag "records[#{record[:form_key]}][rows][#{index}][total_amount]", currency_input_value(row_match_total) %>
                 <% end %>
                 <td><span class="code-pill"><%= index + 1 %></span></td>
                 <td><%= row[:project_name].presence || "-" %></td>
                 <td><%= row[:activity_name] %></td>
                 <td><%= row[:vertical_name] %></td>
-                <td class="money-cell"><%= number_to_currency(row[:total_amount], unit: "₹", precision: 2) %></td>
+                <td class="money-cell"><%= currency(row[:total_amount]) %></td>
                 <% VerticalPercent::MONTH_COLUMNS.each do |month| %>
-                  <td class="<%= "is-edited-cell" if changed_months.key?(month) %>" data-summary-month-cell="<%= month %>" data-month-amount="<%= number_with_precision(row[:month_amounts][month], precision: 2, delimiter: "", separator: ".") %>" data-planned-amount="<%= number_with_precision(row[:planned_month_amounts][month], precision: 2, delimiter: "", separator: ".") %>">
+                  <td class="<%= "is-edited-cell" if changed_months.key?(month) %>" data-summary-month-cell="<%= month %>" data-month-amount="<%= currency_input_value(row[:month_amounts][month]) %>" data-planned-amount="<%= currency_input_value(row[:planned_month_amounts][month]) %>">
                     <% if editable %>
-                      <%= number_field_tag "records[#{record[:form_key]}][rows][#{index}][#{month}]", number_with_precision(row[:month_amounts][month], precision: 2, delimiter: "", separator: "."), min: 0, step: 0.01, class: ["summary-month-input", ("is-edited" if changed_months.key?(month))].compact.join(" "), data: { month: month, month_label: month.to_s.titleize, planned_amount: number_with_precision(row[:planned_month_amounts][month], precision: 2, delimiter: "", separator: ".") }, aria: { label: "#{month.to_s.titleize} amount for #{row[:activity_name]}" } %>
+                      <%= number_field_tag "records[#{record[:form_key]}][rows][#{index}][#{month}]", currency_input_value(row[:month_amounts][month]), min: 0, step: 1, class: ["summary-month-input", ("is-edited" if changed_months.key?(month))].compact.join(" "), data: { month: month, month_label: month.to_s.titleize, planned_amount: currency_input_value(row[:planned_month_amounts][month]) }, aria: { label: "#{month.to_s.titleize} amount for #{row[:activity_name]}" } %>
                       <% delta = row[:month_deltas][month] %>
-                      <span class="cell-change-value <%= "is-hidden" if delta.abs < 0.01 %>" data-cell-change-value data-cell-change-delta="<%= number_with_precision(delta, precision: 2, delimiter: "", separator: ".") %>">
-                        Changes <%= delta.positive? ? "+" : "" %><%= number_to_currency(delta, unit: "₹", precision: 2) %>
+                      <span class="cell-change-value <%= "is-hidden" if delta.abs < 0.01 %>" data-cell-change-value data-cell-change-delta="<%= currency_input_value(delta) %>">
+                        Changes <%= delta.positive? ? "+" : "" %><%= currency(delta) %>
                       </span>
                     <% else %>
-                      <%= number_to_currency(row[:month_amounts][month], unit: "₹", precision: 2) %>
+                      <%= currency(row[:month_amounts][month]) %>
                       <% delta = row[:month_deltas][month] %>
                       <% if delta.abs >= 0.01 %>
-                        <span class="cell-change-value" data-cell-change-value data-cell-change-delta="<%= number_with_precision(delta, precision: 2, delimiter: "", separator: ".") %>">
-                          Changes <%= delta.positive? ? "+" : "" %><%= number_to_currency(delta, unit: "₹", precision: 2) %>
+                        <span class="cell-change-value" data-cell-change-value data-cell-change-delta="<%= currency_input_value(delta) %>">
+                          Changes <%= delta.positive? ? "+" : "" %><%= currency(delta) %>
                         </span>
                       <% end %>
                     <% end %>
                   </td>
                 <% end %>
-                <td class="money-cell" <%= "data-row-changed-total".html_safe if editable %>><%= number_to_currency(row[:changed_total], unit: "₹", precision: 2) %></td>
+                <td class="money-cell" <%= "data-row-changed-total".html_safe if editable %>><%= currency(row[:changed_total]) %></td>
                 <td>
                   <% if editable %>
                     <%= text_field_tag "records[#{record[:form_key]}][rows][#{index}][remark]", row[:remark], class: "remark-input", placeholder: "Add remark" %>
@@ -165,8 +166,8 @@
         <p class="eyebrow">Overall Summary</p>
         <h2><%= @summary_vertical_label %> Summary</h2>
       </div>
-      <strong data-overall-summary-total data-original-amount="<%= number_with_precision(@overall_summary[:total_amount], precision: 2, delimiter: "", separator: ".") %>">
-        <span data-summary-amount-value><%= number_to_currency(@overall_summary[:total_amount], unit: "₹", precision: 2) %></span>
+      <strong data-overall-summary-total data-original-amount="<%= currency_input_value(@overall_summary[:total_amount]) %>">
+        <span data-summary-amount-value><%= currency(@overall_summary[:total_amount]) %></span>
       </strong>
     </div>
 
@@ -175,6 +176,7 @@
         <thead>
           <tr>
             <th>S.No.</th>
+            <th>Project BLI code</th>
             <th>ASA Activity</th>
             <th>Project Count</th>
             <th>Total Amount</th>
@@ -188,18 +190,19 @@
             <% modal_id = "activity-projects-#{index}" %>
             <tr data-activity-summary-row="<%= h(activity[:activity_name]) %>">
               <td><span class="code-pill"><%= index + 1 %></span></td>
+              <td><span class="code-pill"><%= activity[:bli_code].presence || "-" %></span></td>
               <td><strong><%= activity[:activity_name] %></strong></td>
               <td>
                 <button type="button" class="project-count-badge" data-open-activity-modal="<%= modal_id %>">
                   <%= activity[:project_count] %>
                 </button>
               </td>
-              <td class="money-cell" data-activity-total data-original-amount="<%= number_with_precision(activity[:total_amount], precision: 2, delimiter: "", separator: ".") %>">
-                <span data-summary-amount-value><%= number_to_currency(activity[:total_amount], unit: "₹", precision: 2) %></span>
+              <td class="money-cell" data-activity-total data-original-amount="<%= currency_input_value(activity[:total_amount]) %>">
+                <span data-summary-amount-value><%= currency(activity[:total_amount]) %></span>
               </td>
               <% VerticalPercent::MONTH_COLUMNS.each do |month| %>
-                <td class="money-cell" data-activity-month="<%= month %>" data-original-amount="<%= number_with_precision(activity[:month_totals][month], precision: 2, delimiter: "", separator: ".") %>">
-                  <span data-summary-amount-value><%= number_to_currency(activity[:month_totals][month], unit: "₹", precision: 2) %></span>
+                <td class="money-cell" data-activity-month="<%= month %>" data-original-amount="<%= currency_input_value(activity[:month_totals][month]) %>">
+                  <span data-summary-amount-value><%= currency(activity[:month_totals][month]) %></span>
                   <span class="cell-change-value is-hidden" data-summary-change-value></span>
                 </td>
               <% end %>
@@ -207,16 +210,17 @@
           <% end %>
           <tr class="summary-total-row" data-overall-summary-row>
             <td><span class="code-pill">Total</span></td>
+            <td>-</td>
             <td><strong>All Project Total</strong></td>
             <td>
               <span class="project-count-badge"><%= @overall_summary[:total_projects] %></span>
             </td>
-            <td class="money-cell" data-overall-summary-row-total data-original-amount="<%= number_with_precision(@overall_summary[:total_amount], precision: 2, delimiter: "", separator: ".") %>">
-              <span data-summary-amount-value><%= number_to_currency(@overall_summary[:total_amount], unit: "₹", precision: 2) %></span>
+            <td class="money-cell" data-overall-summary-row-total data-original-amount="<%= currency_input_value(@overall_summary[:total_amount]) %>">
+              <span data-summary-amount-value><%= currency(@overall_summary[:total_amount]) %></span>
             </td>
             <% VerticalPercent::MONTH_COLUMNS.each do |month| %>
-              <td class="money-cell" data-overall-month-total="<%= month %>" data-original-amount="<%= number_with_precision(@overall_summary[:month_totals][month], precision: 2, delimiter: "", separator: ".") %>">
-                <span data-summary-amount-value><%= number_to_currency(@overall_summary[:month_totals][month], unit: "₹", precision: 2) %></span>
+              <td class="money-cell" data-overall-month-total="<%= month %>" data-original-amount="<%= currency_input_value(@overall_summary[:month_totals][month]) %>">
+                <span data-summary-amount-value><%= currency(@overall_summary[:month_totals][month]) %></span>
                 <span class="cell-change-value is-hidden" data-summary-change-value></span>
               </td>
             <% end %>
@@ -252,7 +256,7 @@
                 <tr>
                   <td><span class="code-pill"><%= project_index + 1 %></span></td>
                   <td><strong><%= project[:project_name] %></strong></td>
-                  <td class="money-cell"><%= number_to_currency(project[:total_amount], unit: "₹", precision: 2) %></td>
+                  <td class="money-cell"><%= currency(project[:total_amount]) %></td>
                 </tr>
               <% end %>
             </tbody>
@@ -283,8 +287,8 @@
     const formatter = new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
     });
 
     const form = document.querySelector("[data-bulk-summary-form]");
@@ -357,7 +361,7 @@
         rows.forEach((row) => {
           const originalTotal = Number.parseFloat(row.dataset.originalTotal || "0");
           const changedTotal = rowChangedTotal(row);
-          const matched = Math.abs(changedTotal - originalTotal) < 0.01;
+          const matched = Math.abs(changedTotal - originalTotal) < 1;
           const totalCell = row.querySelector("[data-row-changed-total]");
 
           if (totalCell) totalCell.textContent = formatter.format(changedTotal);
@@ -512,7 +516,7 @@
           }, 0);
           const totalCell = row.querySelector("[data-row-changed-total]");
           if (totalCell) totalCell.textContent = formatter.format(changedTotal);
-          return Math.abs(changedTotal - originalTotal) < 0.01;
+          return Math.abs(changedTotal - originalTotal) < 1;
         });
       });
 

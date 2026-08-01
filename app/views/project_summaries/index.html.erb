@@ -7,7 +7,7 @@
   </div>
   <div class="header-card">
     <span>Total Amount</span>
-    <strong><%= number_to_currency(@grand_total, unit: "₹", precision: 2) %></strong>
+    <strong><%= currency(@grand_total) %></strong>
   </div>
 </section>
 
@@ -78,23 +78,24 @@
       </thead>
       <tbody>
         <% @summary_rows.each_with_index do |row, index| %>
-          <tr data-summary-row data-original-total="<%= row[:total_amount].to_f %>">
+          <% row_match_total = rounded_month_total(row[:month_amounts]) %>
+          <tr data-summary-row data-original-total="<%= row_match_total %>">
             <td><span class="code-pill"><%= index + 1 %></span></td>
             <td><%= row[:project_name] %></td>
             <td><%= row[:activity_name] %></td>
             <td><%= row[:vertical_name] %></td>
-            <td class="money-cell"><%= number_to_currency(row[:total_amount], unit: "₹", precision: 2) %></td>
+            <td class="money-cell"><%= currency(row[:total_amount]) %></td>
             <%= hidden_field_tag "summary[#{index}][project_name]", row[:project_name] %>
             <%= hidden_field_tag "summary[#{index}][activity_name]", row[:activity_name] %>
             <%= hidden_field_tag "summary[#{index}][vertical_name]", row[:vertical_name] %>
-            <%= hidden_field_tag "summary[#{index}][total_amount]", number_with_precision(row[:total_amount], precision: 2, delimiter: "", separator: ".") %>
+            <%= hidden_field_tag "summary[#{index}][total_amount]", currency_input_value(row_match_total) %>
             <% VerticalPercent::MONTH_COLUMNS.each do |month| %>
               <td>
-                <%= number_field_tag "summary[#{index}][#{month}]", number_with_precision(row[:month_amounts][month], precision: 2, delimiter: "", separator: "."), min: 0, step: 0.01, class: "summary-month-input", disabled: @existing_summary_submission&.approved?, aria: { label: "#{month.to_s.titleize} amount for #{row[:activity_name]}" } %>
+                <%= number_field_tag "summary[#{index}][#{month}]", currency_input_value(row[:month_amounts][month]), min: 0, step: 1, class: "summary-month-input", disabled: @existing_summary_submission&.approved?, aria: { label: "#{month.to_s.titleize} amount for #{row[:activity_name]}" } %>
               </td>
             <% end %>
             <td><%= text_field_tag "summary[#{index}][remark]", row[:remark], class: "remark-input", placeholder: "Add remark", disabled: @existing_summary_submission&.approved? %></td>
-            <td class="money-cell" data-row-changed-total><%= number_to_currency(row[:total_amount], unit: "₹", precision: 2) %></td>
+            <td class="money-cell" data-row-changed-total><%= currency(row[:total_amount]) %></td>
             <td><span class="summary-status is-balanced" data-row-status>Matched</span></td>
           </tr>
         <% end %>
@@ -113,7 +114,7 @@
 
   <section class="overall-total-panel">
     <span><%= @all_projects_selected ? "All Project Total" : "Project Total" %></span>
-    <strong><%= number_to_currency(@grand_total, unit: "₹", precision: 2) %></strong>
+    <strong><%= currency(@grand_total) %></strong>
   </section>
 <% else %>
   <section class="empty-state">
@@ -133,8 +134,8 @@
     const formatter = new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
     });
 
     function rowChangedTotal(row) {
@@ -150,7 +151,7 @@
         const originalTotal = Number.parseFloat(row.dataset.originalTotal || "0");
         const changedTotal = rowChangedTotal(row);
         const difference = changedTotal - originalTotal;
-        const matched = Math.abs(difference) < 0.01;
+        const matched = Math.abs(difference) < 1;
         const totalCell = row.querySelector("[data-row-changed-total]");
         const status = row.querySelector("[data-row-status]");
 

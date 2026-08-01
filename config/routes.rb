@@ -24,6 +24,7 @@ Rails.application.routes.draw do
   patch "project_summary_records" => "project_summary_records#bulk_update", as: :bulk_project_summary_records
   patch "project_summary_records/:id" => "project_summary_records#update", as: :project_summary_record
   get "project_summary_approvals" => "project_summary_approvals#index"
+  get "project_summary_approval_records" => "project_summary_approval_records#index"
   patch "project_summary_approvals/approve" => "project_summary_approvals#bulk_approve", as: :bulk_approve_project_summaries
   patch "project_summary_approvals/return" => "project_summary_approvals#bulk_return", as: :bulk_return_project_summaries
   patch "project_summary_approvals/:id/approve" => "project_summary_approvals#approve", as: :approve_project_summary

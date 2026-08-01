@@ -18,7 +18,7 @@
   <article class="metric metric-blue"><span>Activities</span><strong><%= @summary[:activities] %></strong></article>
   <article class="metric metric-gold"><span>Project PNB</span><strong><%= @summary[:verticals] %></strong></article>
   <article class="metric metric-rose"><span>Action Plans</span><strong><%= @summary[:projects] %></strong></article>
-  <article class="metric metric-ink"><span>Utilised</span><strong><%= number_to_currency(@summary[:utilised], unit: "₹", precision: 0) %></strong></article>
+  <article class="metric metric-ink"><span>Utilised</span><strong><%= currency(@summary[:utilised]) %></strong></article>
 </section>
 
 <section class="table-panel" data-searchable-table>

@@ -1,0 +1,78 @@
+<% content_for :title, "Approval Records | LEAP Planner" %>
+
+<section class="page-header">
+  <div>
+    <p class="eyebrow">History</p>
+    <h1>Approval Records</h1>
+  </div>
+  <div class="header-card">
+    <span>Records</span>
+    <strong><%= @total_records %></strong>
+  </div>
+</section>
+
+<section class="toolbar approval-filter-toolbar">
+  <%= form_with url: project_summary_approval_records_path, method: :get, class: "filter-form approval-records-filter" do |form| %>
+    <% vertical_select_options = [["All Verticals", ""]] + @vertical_options.map { |vertical| [vertical, vertical] } %>
+    <%= form.label :vertical, "Vertical", class: "filter-label" %>
+    <%= form.select :vertical, options_for_select(vertical_select_options, @selected_vertical), {}, class: "select", onchange: "this.form.requestSubmit()" %>
+    <%= form.label :status, "Status", class: "filter-label" %>
+    <%= form.select :status, options_for_select(@status_options, @selected_status), {}, class: "select", onchange: "this.form.requestSubmit()" %>
+  <% end %>
+</section>
+
+<% if @total_records.zero? %>
+  <section class="empty-state">
+    <h2>No approval records yet</h2>
+    <p class="muted">Your reviewed summaries will appear here after approve, forward, or return.</p>
+  </section>
+<% elsif @record_entries.any? %>
+  <section class="table-panel approval-records-panel" data-searchable-table>
+    <div class="table-heading">
+      <div>
+        <p class="eyebrow">Records</p>
+        <h2><%= @selected_vertical.presence || "All Verticals" %></h2>
+      </div>
+      <div class="table-actions">
+        <input type="search" class="table-search" placeholder="Search records" data-table-search-input>
+        <span class="table-count" data-filtered-count><%= @filtered_count %> records</span>
+      </div>
+    </div>
+
+    <div class="responsive-table approval-records-table">
+      <table>
+        <thead>
+          <tr>
+            <th>S.No.</th>
+            <th>Vertical</th>
+            <th>Submitted By</th>
+            <th>Projects</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Action Date</th>
+            <th>Remark</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @record_entries.each_with_index do |record, index| %>
+            <tr>
+              <td><span class="code-pill"><%= index + 1 %></span></td>
+              <td><%= record[:vertical_name].presence || "-" %></td>
+              <td><strong><%= record[:employee_name] %></strong></td>
+              <td class="approval-projects-cell" title="<%= record[:project_names] %>"><%= record[:project_names].presence || "-" %></td>
+              <td class="money-cell"><%= currency(record[:total_amount]) %></td>
+              <td><span class="status-badge status-<%= record[:status] %>"><%= record[:status_label] %></span></td>
+              <td><%= record[:action_at].strftime("%d %b %Y") %></td>
+              <td class="approval-remark-cell"><%= record[:remark].presence || "-" %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+<% else %>
+  <section class="empty-state">
+    <h2>No matching records</h2>
+    <p class="muted">Try another vertical or status filter.</p>
+  </section>
+<% end %>

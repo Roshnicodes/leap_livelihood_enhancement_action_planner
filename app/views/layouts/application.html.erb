@@ -55,6 +55,10 @@
                   <span class="nav-alert-badge"><%= pending_project_summary_approval_count %></span>
                 <% end %>
               <% end %>
+              <%= link_to project_summary_approval_records_path, class: controller_name == "project_summary_approval_records" ? "side-link active" : "side-link" do %>
+                <span class="side-icon">H</span>
+                <span>Approval Records</span>
+              <% end %>
             <% else %>
               <%= link_to plan_submissions_path, class: controller_name == "plan_submissions" ? "side-link active" : "side-link" do %>
                 <span class="side-icon">S</span>
@@ -77,6 +81,10 @@
                   <% if pending_project_summary_approval_count.positive? %>
                     <span class="nav-alert-badge"><%= pending_project_summary_approval_count %></span>
                   <% end %>
+                <% end %>
+                <%= link_to project_summary_approval_records_path, class: controller_name == "project_summary_approval_records" ? "side-link active" : "side-link" do %>
+                  <span class="side-icon">H</span>
+                  <span>Approval Records</span>
                 <% end %>
               <% end %>
             <% end %>

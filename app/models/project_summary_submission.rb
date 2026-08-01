@@ -6,6 +6,7 @@ class ProjectSummarySubmission < ApplicationRecord
 
   belongs_to :employee
   belongs_to :approver, class_name: "Employee", optional: true
+  belongs_to :first_approver, class_name: "Employee", optional: true
   has_many :project_summary_submission_items, dependent: :destroy
 
   validates :status, inclusion: { in: STATUSES }

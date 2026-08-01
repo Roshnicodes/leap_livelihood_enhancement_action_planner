@@ -258,6 +258,7 @@ class ProjectSummaryRecordsController < ApplicationController
   def rows_from_submission(submission, project_name = nil)
     items = submission.project_summary_submission_items
     items = items.select { |item| item.project_name == project_name } if project_name.present?
+    bli_code_lookup = bli_code_lookup_for(submission.employee)
 
     items.map do |item|
       planned_month_amounts = planned_month_amounts_for(item.total_amount, item.vertical_name)
@@ -268,6 +269,7 @@ class ProjectSummaryRecordsController < ApplicationController
         project_name: item.project_name,
         activity_name: item.activity_name,
         vertical_name: item.vertical_name,
+        bli_code: bli_code_lookup[[ item.project_name, item.activity_name, item.vertical_name ]],
         total_amount: item.total_amount,
         month_amounts: month_amounts,
         planned_month_amounts: planned_month_amounts,
@@ -282,8 +284,9 @@ class ProjectSummaryRecordsController < ApplicationController
     employee.accessible_bli_activities
       .select { |activity| activity.project_name == project_name }
       .group_by { |activity| [ activity.project_name, activity.activity_name, activity.vertical_name ] }
-      .transform_values { |activities| activities.sum(&:allocated_fund) }
-      .map do |(row_project_name, activity_name, vertical_name), total_amount|
+      .map do |(row_project_name, activity_name, vertical_name), activities|
+        total_amount = activities.sum(&:allocated_fund)
+        bli_codes = activities.map(&:bli_code).compact_blank.uniq
         percent = VerticalPercent.find_by(vertical_name: vertical_name)
         month_amounts = month_amounts_for(total_amount, percent)
 
@@ -292,6 +295,7 @@ class ProjectSummaryRecordsController < ApplicationController
           project_name: row_project_name,
           activity_name: activity_name,
           vertical_name: vertical_name,
+          bli_code: bli_codes.one? ? bli_codes.first : bli_codes.join(", "),
           total_amount: total_amount,
           month_amounts: month_amounts,
           planned_month_amounts: month_amounts,
@@ -402,8 +406,11 @@ class ProjectSummaryRecordsController < ApplicationController
           .select { |project| project[:total_amount].positive? }
           .sort_by { |project| [ -project[:total_amount], project[:project_name].to_s ] }
 
+        bli_codes = activity_rows.flat_map { |row| row[:bli_code].to_s.split(", ") }.compact_blank.uniq
+
         {
           activity_name: activity_name,
+          bli_code: bli_codes.one? ? bli_codes.first : (bli_codes.any? ? bli_codes.join(", ") : "-"),
           project_count: project_breakdown.size,
           total_amount: activity_rows.sum { |row| row[:total_amount].to_d },
           month_totals: month_totals_for(activity_rows),
@@ -412,6 +419,13 @@ class ProjectSummaryRecordsController < ApplicationController
         }
       end
       .sort_by { |activity| [ -activity[:total_amount], activity[:activity_name].to_s ] }
+  end
+
+  def bli_code_lookup_for(employee)
+    employee.accessible_bli_activities.each_with_object({}) do |activity, lookup|
+      key = [ activity.project_name, activity.activity_name, activity.vertical_name ]
+      lookup[key] ||= activity.bli_code
+    end
   end
 
   def editable_submission_for(employee, project_name)
