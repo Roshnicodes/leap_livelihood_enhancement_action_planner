@@ -55,7 +55,7 @@ class PlanSubmissionsController < ApplicationController
   private
 
   def activity_scope
-    return global_unique_activities if current_user.admin?
+    return global_unique_activities if current_user.admin? || ProjectSummarySubmission.summary_access?(current_user.employee)
 
     current_user.employee.accessible_bli_activities
   end
@@ -64,7 +64,7 @@ class PlanSubmissionsController < ApplicationController
     BliActivity
       .order(:project_name, :vertical_name, :activity_name, :bli_code, :id)
       .to_a
-      .uniq { |activity| [activity.project_name, activity.vertical_name, activity.bli_code, activity.name, activity.activity_name, activity.allocated_fund] }
+      .uniq { |activity| [ activity.project_name, activity.vertical_name, activity.bli_code, activity.name, activity.activity_name, activity.allocated_fund ] }
   end
 
   def submission_scope
@@ -76,5 +76,4 @@ class PlanSubmissionsController < ApplicationController
       item.permit(:bli_activity_id, :changed_fund, :remark)
     end
   end
-
 end

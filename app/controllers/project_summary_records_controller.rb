@@ -189,20 +189,21 @@ class ProjectSummaryRecordsController < ApplicationController
 
   def selected_vertical_for_records
     selected = params[:vertical].to_s.presence_in(@vertical_options)
-    return selected if @show_vertical_filter
+    return selected if @show_vertical_filter && selected.present?
 
     nil
   end
 
   def selected_verticals_for_records
-    return [ @selected_vertical ].compact_blank if @show_vertical_filter
+    return [ @selected_vertical ] if @show_vertical_filter && @selected_vertical.present?
+    return @vertical_options if @show_vertical_filter
 
     own_verticals = current_user.employee.verticals & @vertical_options
     own_verticals.presence || @vertical_options
   end
 
   def summary_vertical_label
-    return @selected_vertical if @show_vertical_filter
+    return @selected_vertical.presence || "All Verticals" if @show_vertical_filter
 
     @selected_verticals.join(" + ")
   end
@@ -247,8 +248,7 @@ class ProjectSummaryRecordsController < ApplicationController
   end
 
   def privileged_baseline_employees
-    employee_ids = @submissions.map(&:employee_id).uniq
-    Employee.where(id: employee_ids).order(:name)
+    Employee.where(active: true).joins(:bli_activities).distinct.order(:name)
   end
 
   def privileged_record_view?

@@ -30,9 +30,21 @@ class ApplicationController < ActionController::Base
 
   def pending_project_summary_approval_count
     return 0 unless current_user
-    return ProjectSummarySubmission.where(status: "pending").count if current_user.admin? || ProjectSummarySubmission.summary_viewer?(current_user.employee)
-    return ProjectSummarySubmission.where(status: "pending", approver: current_user.employee).count if ProjectSummarySubmission.summary_approver?(current_user.employee)
 
-    0
+    submissions = if current_user.admin?
+      ProjectSummarySubmission.where(status: "pending")
+    elsif ProjectSummarySubmission.summary_approver?(current_user.employee)
+      ProjectSummarySubmission.where(status: "pending", approver: current_user.employee)
+    else
+      ProjectSummarySubmission.none
+    end
+
+    submissions
+      .joins(:project_summary_submission_items)
+      .distinct
+      .pluck("project_summary_submission_items.vertical_name")
+      .map { |vertical_name| vertical_name.presence || "Unassigned Vertical" }
+      .uniq
+      .size
   end
 end

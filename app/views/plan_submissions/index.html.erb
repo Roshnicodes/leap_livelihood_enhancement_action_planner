@@ -1,7 +1,7 @@
 <% content_for :title, "Allocated PNB | LEAP Planner" %>
 
 <% total_rows = @record_groups.values.sum(&:size) %>
-<% employee = current_user.employee unless current_user.admin? %>
+<% employee = current_user.employee unless current_user.admin? || ProjectSummarySubmission.summary_access?(current_user.employee) %>
 
 <section class="page-header">
   <div>

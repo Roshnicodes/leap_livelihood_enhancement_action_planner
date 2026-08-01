@@ -76,6 +76,91 @@
       <% end %>
     </section>
 
+    <section class="approval-project-records">
+      <div class="approval-section-heading">
+        <div>
+          <p class="eyebrow">Project Records</p>
+          <h3>Project-wise approval detail</h3>
+        </div>
+        <span><%= @project_record_groups.size %> projects</span>
+      </div>
+
+      <% @project_record_groups.each do |project| %>
+        <section class="table-panel submission-panel">
+          <div class="table-heading">
+            <div>
+              <h2><%= project[:project_name] %></h2>
+              <p class="muted">
+                <%= project[:employee_names].join(" • ") %>
+              </p>
+            </div>
+            <div class="approval-project-total">
+              <div>
+                <span>Project Total</span>
+                <strong><%= number_to_currency(project[:total_amount], unit: "₹", precision: 2) %></strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="responsive-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>S.No.</th>
+                  <th>Project</th>
+                  <th>ASA Activity</th>
+                  <th>Project PNB</th>
+                  <th>Total Amount</th>
+                  <% VerticalPercent::MONTH_COLUMNS.each do |month| %>
+                    <th><%= month.to_s.titleize %></th>
+                  <% end %>
+                  <th>Changed Total</th>
+                  <th>Remark</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% project[:rows].each_with_index do |row, index| %>
+                  <% changed_months = row[:month_deltas].select { |_month, delta| delta.abs >= 0.01 } %>
+                  <tr>
+                    <td><span class="code-pill"><%= index + 1 %></span></td>
+                    <td><%= row[:project_name].presence || "-" %></td>
+                    <td><%= row[:activity_name] %></td>
+                    <td><%= row[:vertical_name] %></td>
+                    <td class="money-cell"><%= number_to_currency(row[:total_amount], unit: "₹", precision: 2) %></td>
+                    <% VerticalPercent::MONTH_COLUMNS.each do |month| %>
+                      <% delta = row[:month_deltas][month] %>
+                      <td class="money-cell <%= "is-edited-cell" if changed_months.key?(month) %>">
+                        <%= number_to_currency(row[:month_amounts][month], unit: "₹", precision: 2) %>
+                        <% if delta.abs >= 0.01 %>
+                          <span class="cell-change-value">
+                            Changes <%= delta.positive? ? "+" : "" %><%= number_to_currency(delta, unit: "₹", precision: 2) %>
+                          </span>
+                        <% end %>
+                      </td>
+                    <% end %>
+                    <td class="money-cell"><%= number_to_currency(row[:changed_total], unit: "₹", precision: 2) %></td>
+                    <td><%= row[:remark].presence || "-" %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+              <tfoot>
+                <tr class="summary-total-row">
+                  <td><span class="code-pill">Total</span></td>
+                  <td colspan="3"><strong><%= project[:project_name] %> Total</strong></td>
+                  <td class="money-cell"><%= number_to_currency(project[:total_amount], unit: "₹", precision: 2) %></td>
+                  <% VerticalPercent::MONTH_COLUMNS.each do |month| %>
+                    <td class="money-cell"><%= number_to_currency(project[:month_totals][month], unit: "₹", precision: 2) %></td>
+                  <% end %>
+                  <td class="money-cell"><%= number_to_currency(project[:total_amount], unit: "₹", precision: 2) %></td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </section>
+      <% end %>
+    </section>
+
     <section class="approval-vertical-panel">
       <div class="approval-section-heading">
         <div>

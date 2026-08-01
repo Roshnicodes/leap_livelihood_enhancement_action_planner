@@ -4418,3 +4418,161 @@ tbody tr:hover td {
     border-bottom: 0;
   }
 }
+
+/* Final approval layout guard */
+html,
+body.app-body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.app-frame,
+.app-content,
+.app-frame .app-shell,
+.overall-summary-panel,
+.approval-summary-only,
+.approval-project-records,
+.approval-project-records .table-panel {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.app-content {
+  overflow-x: hidden;
+}
+
+.approval-project-records {
+  display: grid;
+  gap: 12px;
+}
+
+.approval-project-records .table-heading {
+  align-items: flex-start;
+}
+
+.approval-project-records .table-heading > div:first-child {
+  min-width: 0;
+}
+
+.approval-summary-heading > div:first-child {
+  min-width: 0;
+}
+
+.approval-project-records .table-heading h2,
+.approval-project-records .table-heading .muted,
+.approval-summary-heading h2 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.approval-project-total {
+  flex: 0 0 auto;
+  min-width: 220px;
+  max-width: min(340px, 42vw);
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fbfc;
+  text-align: right;
+}
+
+.approval-project-total span {
+  display: block;
+  color: #53627a;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.approval-project-total strong {
+  display: block;
+  margin-top: 6px;
+  color: #102035;
+  font-size: 1.05rem;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.approval-project-records .responsive-table,
+.approval-summary-only .activity-summary-table {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.approval-project-records table {
+  width: max-content;
+  min-width: 1180px;
+}
+
+.approval-summary-only .activity-summary-table table {
+  width: max-content;
+}
+
+.approval-project-records th,
+.approval-project-records td {
+  padding: 10px 12px;
+  font-size: 0.82rem;
+}
+
+.approval-project-records th:nth-child(1),
+.approval-project-records td:nth-child(1) {
+  min-width: 72px;
+}
+
+.approval-project-records th:nth-child(2),
+.approval-project-records td:nth-child(2),
+.approval-project-records th:nth-child(3),
+.approval-project-records td:nth-child(3),
+.approval-project-records th:nth-child(4),
+.approval-project-records td:nth-child(4) {
+  min-width: 180px;
+  max-width: 240px;
+  overflow-wrap: anywhere;
+}
+
+.approval-project-records .money-cell {
+  white-space: nowrap;
+}
+
+.approval-total-hero {
+  flex: 0 1 360px;
+  min-width: 0;
+  max-width: min(360px, 42vw);
+  overflow: hidden;
+}
+
+.approval-total-hero strong {
+  font-size: clamp(1.35rem, 2vw, 2rem);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.approval-action-panel {
+  max-width: 100%;
+}
+
+@media (min-width: 1121px) {
+  .approval-action-panel {
+    width: calc(100vw - 292px);
+  }
+}
+
+@media (max-width: 820px) {
+  .approval-project-records .table-heading {
+    gap: 10px;
+  }
+
+  .approval-project-total,
+  .approval-total-hero {
+    width: 100%;
+    max-width: none;
+    text-align: left;
+  }
+
+  .approval-project-records table {
+    min-width: 1120px;
+  }
+}

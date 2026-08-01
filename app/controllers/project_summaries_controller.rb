@@ -82,7 +82,9 @@ class ProjectSummariesController < ApplicationController
   private
 
   def redirect_admin
-    redirect_to admin_employees_path if current_user.admin?
+    return redirect_to admin_employees_path if current_user.admin?
+
+    redirect_to project_summary_records_path if ProjectSummarySubmission.summary_access?(current_user.employee)
   end
 
   def scoped_activities

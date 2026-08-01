@@ -17,7 +17,7 @@
 <% if @show_vertical_filter %>
   <section class="toolbar vertical-filter-toolbar">
     <%= form_with url: project_summary_records_path, method: :get, class: "filter-form" do |form| %>
-      <% vertical_select_options = [["Select Vertical", ""]] + @vertical_options.map { |vertical| [vertical, vertical] } %>
+      <% vertical_select_options = [["All Verticals", ""]] + @vertical_options.map { |vertical| [vertical, vertical] } %>
       <%= form.label :vertical, "Choose Vertical", class: "filter-label" %>
       <%= form.select :vertical, options_for_select(vertical_select_options, @selected_vertical), {}, class: "select", onchange: "this.form.requestSubmit()" %>
     <% end %>

@@ -1,5 +1,6 @@
 class ProjectSummarySubmission < ApplicationRecord
-  APPROVER_EMPLOYEE_CODE = ENV.fetch("PROJECT_SUMMARY_APPROVER_CODE", "002").freeze
+  FIRST_APPROVER_EMPLOYEE_CODE = ENV.fetch("PROJECT_SUMMARY_FIRST_APPROVER_CODE", "840").freeze
+  FINAL_APPROVER_EMPLOYEE_CODE = ENV.fetch("PROJECT_SUMMARY_FINAL_APPROVER_CODE", "002").freeze
   VIEWER_EMPLOYEE_CODE = ENV.fetch("PROJECT_SUMMARY_VIEWER_CODE", "644").freeze
   STATUSES = %w[pending approved returned].freeze
 
@@ -37,7 +38,15 @@ class ProjectSummarySubmission < ApplicationRecord
   end
 
   def self.approver_employee
-    Employee.find_by(employee_code: APPROVER_EMPLOYEE_CODE)
+    first_approver_employee
+  end
+
+  def self.first_approver_employee
+    Employee.find_by(employee_code: FIRST_APPROVER_EMPLOYEE_CODE)
+  end
+
+  def self.final_approver_employee
+    Employee.find_by(employee_code: FINAL_APPROVER_EMPLOYEE_CODE)
   end
 
   def self.viewer_employee
@@ -45,7 +54,7 @@ class ProjectSummarySubmission < ApplicationRecord
   end
 
   def self.summary_approver?(employee)
-    employee&.employee_code == APPROVER_EMPLOYEE_CODE
+    [ FIRST_APPROVER_EMPLOYEE_CODE, FINAL_APPROVER_EMPLOYEE_CODE ].include?(employee&.employee_code)
   end
 
   def self.summary_viewer?(employee)
@@ -59,6 +68,6 @@ class ProjectSummarySubmission < ApplicationRecord
   private
 
   def assign_default_approver
-    self.approver ||= self.class.approver_employee
+    self.approver ||= self.class.first_approver_employee
   end
 end
