@@ -3,7 +3,7 @@ require "rexml/document"
 require "zip"
 
 class BliActivitySync
-  DEFAULT_CSV_PATH = "/home/asa/Downloads/bli_list (3).csv"
+  DEFAULT_CSV_PATH = "/home/asa/Downloads/bli-roshni.csv"
   DEFAULT_XLSX_PATH = "/home/asa/Downloads/ASA BLI PDO.xlsx"
   DEFAULT_FINANCIAL_YEAR = "2026-2027"
 
@@ -20,9 +20,19 @@ class BliActivitySync
       source_rows.each do |row|
         next unless row_value(row, "Financial Year") == financial_year
 
-        row_vertical = row_value(row, "Parent Activity", "Vertical")
-        employees_mapped_to_vertical(row_vertical).find_each do |employee|
-          create_activity(employee, row, row_vertical)
+        source_parent_activity = row_value(row, "Parent Activity", "Vertical")
+        assignments = assignments_for_parent_activity(source_parent_activity)
+
+        if assignments.exists?
+          assignments.includes(:employee, :vertical_percent).find_each do |assignment|
+            create_activity(assignment.employee, row, assignment.vertical_percent.vertical_name)
+          end
+        elsif (employee = employee_for_responsible_user(row))
+          create_activity(employee, row, vertical_name_for_parent_activity(source_parent_activity))
+        else
+          employees_mapped_to_vertical(source_parent_activity).find_each do |employee|
+            create_activity(employee, row, source_parent_activity)
+          end
         end
       end
     end
@@ -60,6 +70,34 @@ class BliActivitySync
       .distinct
   end
 
+  def assignments_for_parent_activity(source_parent_activity)
+    ParentActivityAssignment.where(
+      "LOWER(TRIM(source_parent_activity)) = ?",
+      source_parent_activity.to_s.squish.downcase
+    )
+  end
+
+  def employee_for_responsible_user(row)
+    responsible_user_name = row_value(row, "Responsible Users", "Responsible User")
+    return if responsible_user_name.blank?
+
+    normalized_name = responsible_user_name.to_s.squish.downcase
+    exact_match = Employee.find_by("LOWER(TRIM(name)) = ?", normalized_name)
+    return exact_match if exact_match
+
+    tokens = normalized_name.split(/\s+/)
+    return if tokens.blank?
+
+    Employee.where(tokens.map { "LOWER(name) LIKE ?" }.join(" AND "), *tokens.map { |token| "%#{token}%" }).first
+  end
+
+  def vertical_name_for_parent_activity(source_parent_activity)
+    source_name = source_parent_activity.to_s.squish
+    return "Com. Trng. Tools & Materials - General" if source_name.start_with?("Com. Trng. Tools & Materials - General")
+
+    VerticalPercent.find_by("LOWER(TRIM(vertical_name)) = ?", source_name.downcase)&.vertical_name || source_name
+  end
+
   def create_activity(employee, row, row_vertical)
     allocated_fund = money(row_value(row, "BLI Allocated Fund", "Project BLI Allocated Fund"))
     remaining_fund = row_value(row, "BLI Remaining Fund").present? ? money(row_value(row, "BLI Remaining Fund")) : allocated_fund
@@ -68,7 +106,7 @@ class BliActivitySync
       employee: employee,
       stakeholder_name: row_value(row, "Stakeholder Name"),
       allocating_date: parsed_date(row_value(row, "Allocating Date")),
-      name: row_value(row, "Name", "Project Name"),
+      name: row_value(row, "Project Bli Name", "Name", "Project Name"),
       bli_code: clean_code(row_value(row, "BLI Code", "Project BLI Code")),
       allocated_fund: allocated_fund,
       remaining_fund: remaining_fund,

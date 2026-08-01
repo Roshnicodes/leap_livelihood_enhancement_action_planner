@@ -3,6 +3,7 @@ class VerticalPercent < ApplicationRecord
 
   has_many :employee_vertical_mappings, dependent: :destroy
   has_many :employees, through: :employee_vertical_mappings
+  has_many :parent_activity_assignments, dependent: :destroy
 
   validates :vertical_name, presence: true, uniqueness: true
   validates :total, *MONTH_COLUMNS, numericality: true

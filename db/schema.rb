@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_31_070000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_01_080000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -84,6 +84,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_31_070000) do
     t.index ["email"], name: "index_employees_on_email"
     t.index ["employee_code"], name: "index_employees_on_employee_code", unique: true
     t.index ["name"], name: "index_employees_on_name"
+  end
+
+  create_table "parent_activity_assignments", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "employee_id", null: false
+    t.string "source_parent_activity", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "vertical_percent_id", null: false
+    t.index ["employee_id", "vertical_percent_id"], name: "index_parent_activity_assignments_on_employee_vertical"
+    t.index ["employee_id"], name: "index_parent_activity_assignments_on_employee_id"
+    t.index ["source_parent_activity"], name: "index_parent_activity_assignments_on_source", unique: true
+    t.index ["vertical_percent_id"], name: "index_parent_activity_assignments_on_vertical_percent_id"
   end
 
   create_table "plan_submission_items", force: :cascade do |t|
@@ -198,6 +210,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_31_070000) do
   add_foreign_key "bli_activities", "employees"
   add_foreign_key "employee_vertical_mappings", "employees"
   add_foreign_key "employee_vertical_mappings", "vertical_percents"
+  add_foreign_key "parent_activity_assignments", "employees"
+  add_foreign_key "parent_activity_assignments", "vertical_percents"
   add_foreign_key "plan_submission_items", "bli_activities"
   add_foreign_key "plan_submission_items", "plan_submissions"
   add_foreign_key "plan_submissions", "employees"

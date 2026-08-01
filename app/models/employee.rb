@@ -6,6 +6,7 @@ class Employee < ApplicationRecord
   has_many :project_summary_approvals, class_name: "ProjectSummarySubmission", foreign_key: :approver_id, dependent: :nullify
   has_many :employee_vertical_mappings, dependent: :destroy
   has_many :mapped_vertical_percents, through: :employee_vertical_mappings, source: :vertical_percent
+  has_many :parent_activity_assignments, dependent: :destroy
 
   validates :employee_code, presence: true, uniqueness: true
   validates :name, presence: true
