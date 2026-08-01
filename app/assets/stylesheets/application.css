@@ -1752,14 +1752,44 @@ tbody tr:hover td {
 .approval-records-filter {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px 18px;
+  gap: 12px 16px;
   align-items: end;
+  min-width: 0;
+  flex: 1 1 420px;
 }
 
-.approval-records-panel .table-heading h2 {
-  font-size: 1.05rem;
-  line-height: 1.35;
-  max-width: 42rem;
+.approval-records-filter-field {
+  min-width: min(280px, 100%);
+  flex: 1 1 220px;
+}
+
+.approval-records-toolbar {
+  margin-bottom: 8px;
+}
+
+.approval-records-table-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.approval-records-table-bar .table-search {
+  max-width: 260px;
+}
+
+.approval-records-panel {
+  margin-top: 0;
+  padding-top: 0;
+}
+
+.approval-records-panel .table-heading {
+  display: none;
+}
+
+.approval-records-panel.table-panel {
+  padding: 12px 14px 14px;
 }
 
 .approval-records-table td,
@@ -1772,23 +1802,8 @@ tbody tr:hover td {
   width: 72px;
 }
 
-.approval-records-table th:nth-child(5),
-.approval-records-table td:nth-child(5) {
-  white-space: nowrap;
-}
-
-.approval-records-table th:nth-child(6),
-.approval-records-table td:nth-child(6) {
-  width: 120px;
-}
-
-.approval-records-table th:nth-child(7),
-.approval-records-table td:nth-child(7) {
-  white-space: nowrap;
-}
-
-.approval-projects-cell {
-  max-width: 220px;
+.approval-vertical-cell {
+  max-width: 260px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1800,6 +1815,10 @@ tbody tr:hover td {
   text-overflow: ellipsis;
   white-space: nowrap;
   color: #667085;
+}
+
+.page-header-compact {
+  margin-bottom: 8px;
 }
 
 .approval-meta-grid,

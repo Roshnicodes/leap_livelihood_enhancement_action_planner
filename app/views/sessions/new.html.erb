@@ -1,43 +1,166 @@
 <% content_for :title, "Login | LEAP Planner" %>
+<% content_for :head do %>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <%= stylesheet_link_tag "login", "data-turbo-track": "reload" %>
+<% end %>
 
-<section class="login-screen">
-  <div class="login-orbit login-orbit-one"></div>
-  <div class="login-orbit login-orbit-two"></div>
-  <div class="login-panel">
-    <div class="login-copy">
-      <div class="login-logo">
-        <span class="brand-mark">L</span>
-        <span>LEAP Planner</span>
+<section class="login-page">
+  <div class="login-page-bg" aria-hidden="true">
+    <svg class="login-page-bg-art" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">
+      <rect width="1440" height="900" fill="#f8fbf9"/>
+      <path fill="#dff4ef" d="M-20 20 H520 C660 20 690 140 600 230 C515 315 585 430 642 500 C720 596 620 732 470 730 H50 C-22 730 -74 674 -74 602 V116 C-74 62 -22 20 -20 20 Z"/>
+      <path fill="#d6f0ea" opacity="0.82" d="M-80 510 C110 390 320 520 470 410 C650 278 760 460 922 360 C1090 256 1238 218 1520 290 L1520 900 H-80 Z"/>
+      <path fill="#eaf6f3" opacity="0.94" d="M1050 190 C1210 140 1370 220 1470 350 C1390 560 1120 560 1012 422 C930 316 936 224 1050 190 Z"/>
+      <path fill="#c8e9e4" opacity="0.54" d="M-50 625 C74 596 178 670 245 768 C292 838 276 884 260 930 H-50 Z"/>
+    </svg>
+    <div class="login-page-dots login-page-dots-tr"></div>
+    <div class="login-page-dots login-page-dots-bl"></div>
+    <div class="login-page-dots login-page-dots-br"></div>
+  </div>
+
+  <div class="login-page-shell">
+    <div class="login-page-brand">
+      <div class="login-page-logo">
+        <%= image_tag "/images/asa-logo.png", alt: "ASA", class: "login-page-logo-img" %>
       </div>
-      <p class="eyebrow">ASA livelihood operations</p>
-      <h1>Employee activity planning, mapped clearly.</h1>
-      <p class="muted">Admins can review employee master data and activity mappings. Users can sign in with their employee code to view assigned projects and action plans.</p>
-      <div class="login-stats">
-        <div><strong>Role</strong><span>Admin / User</span></div>
-        <div><strong>Menu</strong><span>Project PNB / Action Plan</span></div>
-        <div><strong>Data</strong><span>BLI mapped</span></div>
+
+      <div class="login-page-copy">
+        <h1>LEAP</h1>
+        <p class="login-page-subtitle">Livelihood Enhancement Action Planner</p>
+        <p class="login-page-lead">
+          Empowering teams to plan, monitor &amp; enhance livelihoods with
+          <strong>equity and dignity.</strong>
+        </p>
       </div>
+
+      <ul class="login-page-features">
+        <li>
+          <span class="login-page-feature-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M8 4h8v2H8V4Zm-2 4h12v12H6V8Zm2 2v8h8v-8H8Zm2 2h4v4h-4v-4Z" fill="currentColor"/></svg>
+          </span>
+          <div>
+            <strong>Action Planning &amp; Monitoring</strong>
+            <span>Plan and monitor activities effectively</span>
+          </div>
+        </li>
+        <li>
+          <span class="login-page-feature-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M5 18V6h2v12H5Zm6 0V10h2v8h-2Zm6 0V4h2v14h-2Z" fill="currentColor"/></svg>
+          </span>
+          <div>
+            <strong>Project &amp; Livelihood Tracking</strong>
+            <span>Track progress and impact in real-time</span>
+          </div>
+        </li>
+        <li>
+          <span class="login-page-feature-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 2 4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5l-8-3Zm0 2.2 6 2.25V11c0 3.9-2.6 7.6-6 8.8-3.4-1.2-6-4.9-6-8.8V6.45l6-2.25Zm-1 4.3 5.3 5.3-1.4 1.4L11 11.8 9.1 13.7 7.7 12.3 11 9Z" fill="currentColor"/></svg>
+          </span>
+          <div>
+            <strong>Secure Access for Team Members</strong>
+            <span>Role-based access with data security</span>
+          </div>
+        </li>
+        <li>
+          <span class="login-page-feature-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M4 16l4-4 4 4 6-8 2 2v6H4v-4Zm0 4h16v2H4v-2Z" fill="currentColor"/></svg>
+          </span>
+          <div>
+            <strong>Real-time Activity Management</strong>
+            <span>Stay updated with real-time insights</span>
+          </div>
+        </li>
+      </ul>
     </div>
 
-    <div class="login-card">
-      <div class="login-card-head">
-        <span class="lock-badge">ID</span>
-        <div>
-          <h2>Welcome Back</h2>
-          <p>Sign in to continue</p>
+    <div class="login-page-aside">
+      <div class="login-page-card">
+        <div class="login-page-card-head">
+          <span class="login-page-user-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M16 11c1.7 0 3-1.3 3-3s-1.3-3-3-3-3 1.3-3 3 1.3 3 3 3Zm-8 0c1.7 0 3-1.3 3-3S9.7 5 8 5 5 6.3 5 8s1.3 3 3 3Zm0 2c-2.7 0-8 1.3-8 4v2h16v-2c0-2.7-5.3-4-8-4Zm8 0c-.3 0-.7 0-1 .1 1.2.9 2 2.1 2 3.9v2h6v-2c0-2.7-5.3-4-8-4Z" fill="currentColor"/></svg>
+          </span>
+          <div>
+            <h2>Welcome Back!</h2>
+            <p>Sign in to continue to LEAP</p>
+          </div>
         </div>
+
+        <%= form_with url: login_path, class: "login-page-form" do |form| %>
+          <label class="login-page-field">
+            <span>Employee ID or admin email</span>
+            <span class="login-page-input-shell">
+              <span class="login-page-input-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm0 2c-4.4 0-8 2.2-8 5v1h16v-1c0-2.8-3.6-5-8-5Z" fill="currentColor"/></svg>
+              </span>
+              <%= form.text_field :login, autofocus: true, placeholder: "1167", class: "login-page-input", autocomplete: "username" %>
+              <span class="login-page-input-check" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2Z" fill="currentColor"/></svg>
+              </span>
+            </span>
+          </label>
+
+          <label class="login-page-field">
+            <span>Password</span>
+            <span class="login-page-input-shell">
+              <span class="login-page-input-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M17 9h-1V7a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2Zm-3 0h-4V7a2 2 0 1 1 4 0v2Z" fill="currentColor"/></svg>
+              </span>
+              <%= form.password_field :password, placeholder: "Password", class: "login-page-input", autocomplete: "current-password", data: { login_password: true } %>
+              <button type="button" class="login-page-password-toggle" aria-label="Show password" data-password-toggle>
+                <svg viewBox="0 0 24 24"><path d="M12 5C7 5 2.7 8.1 1 12c1.7 3.9 6 7 11 7s9.3-3.1 11-7c-1.7-3.9-6-7-11-7Zm0 12a5 5 0 1 1 5-5 5 5 0 0 1-5 5Zm0-8a3 3 0 1 0 3 3 3 3 0 0 0-3-3Z" fill="currentColor"/></svg>
+              </button>
+            </span>
+          </label>
+
+          <div class="login-page-form-row">
+            <label class="login-page-remember">
+              <input type="checkbox" name="remember_me" checked>
+              <span>Remember me</span>
+            </label>
+          </div>
+
+          <%= form.button type: "submit", class: "login-page-submit" do %>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17v-3H4V8l12-2v3h6v8H10Zm2-5V7.1L6 9.2v1.6h6v1.2Zm8 0V9h2v3h-2Z" fill="currentColor"/></svg>
+            <span>Login</span>
+          <% end %>
+        <% end %>
+
+        <div class="login-page-trust">
+          <article>
+            <span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2 4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5l-8-3Z" fill="currentColor"/></svg></span>
+            <strong>Secure</strong>
+            <p>Your data is safe with us</p>
+          </article>
+          <article>
+            <span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2 9 8l-6 .9 4.5 4.3-1.2 6.8L12 17l5.7 3-1.2-6.8L21 8.9 15 8l-3-6Z" fill="currentColor"/></svg></span>
+            <strong>Reliable</strong>
+            <p>Built for teams that care</p>
+          </article>
+          <article>
+            <span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M16 11c1.7 0 3-1.3 3-3S17.7 5 16 5s-3 1.3-3 3 1.3 3 3 3Zm-8 0c1.7 0 3-1.3 3-3S9.7 5 8 5 5 6.3 5 8s1.3 3 3 3Zm0 2c-2.7 0-8 1.3-8 4v2h16v-2c0-2.7-5.3-4-8-4Zm8 0c-.3 0-.7 0-1 .1 1.2.9 2 2.1 2 3.9v2h6v-2c0-2.7-5.3-4-8-4Z" fill="currentColor"/></svg></span>
+            <strong>Empowering</strong>
+            <p>Empowering livelihoods</p>
+          </article>
+        </div>
+
+        <p class="login-page-card-footer">&copy; <%= Date.current.year %> ASA-LEAP | Livelihood Enhancement Action Planner</p>
       </div>
-      <%= form_with url: login_path, class: "form-stack" do |form| %>
-        <label>
-          <span>Employee ID or admin email</span>
-          <%= form.text_field :login, autofocus: true, placeholder: "1167", class: "input" %>
-        </label>
-        <label>
-          <span>Password</span>
-          <%= form.password_field :password, placeholder: "Password", class: "input" %>
-        </label>
-        <%= form.submit "Login", class: "primary-button" %>
-      <% end %>
     </div>
   </div>
 </section>
+
+<script>
+  (() => {
+    const toggle = document.querySelector("[data-password-toggle]");
+    const password = document.querySelector("[data-login-password]");
+    if (!toggle || !password) return;
+
+    toggle.addEventListener("click", () => {
+      const show = password.type === "password";
+      password.type = show ? "text" : "password";
+      toggle.setAttribute("aria-label", show ? "Hide password" : "Show password");
+    });
+  })();
+</script>

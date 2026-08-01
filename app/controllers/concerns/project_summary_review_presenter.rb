@@ -148,6 +148,40 @@ module ProjectSummaryReviewPresenter
     amounts
   end
 
+  def approval_record_summaries_for(submissions)
+    rows = submissions.uniq.flat_map do |submission|
+      submission.project_summary_submission_items.group_by do |item|
+        item.vertical_name.presence || "Unassigned Vertical"
+      end.map do |vertical_name, items|
+        {
+          vertical_name: vertical_name,
+          employee_name: submission.employee.name,
+          status: submission.status,
+          status_label: approval_record_status_label(submission),
+          total_amount: items.sum { |item| item.total_amount.to_d },
+          action_at: submission.reviewed_at || submission.updated_at,
+          remark: meaningful_approval_remark(submission)
+        }
+      end
+    end
+
+    rows
+      .group_by { |row| [ row[:vertical_name], row[:employee_name], row[:status] ] }
+      .map do |_key, grouped_rows|
+        first = grouped_rows.first
+        {
+          vertical_name: first[:vertical_name],
+          employee_name: first[:employee_name],
+          status: first[:status],
+          status_label: first[:status_label],
+          total_amount: grouped_rows.sum { |row| row[:total_amount].to_d },
+          action_at: grouped_rows.map { |row| row[:action_at] }.max,
+          remark: grouped_rows.map { |row| row[:remark] }.compact.first
+        }
+      end
+      .sort_by { |row| [ -row[:total_amount], row[:vertical_name], row[:employee_name] ] }
+  end
+
   def approval_record_entries_for(submissions)
     submissions.uniq(&:id).map do |submission|
       verticals = submission.project_summary_submission_items.map { |item| item.vertical_name.presence || "Unassigned Vertical" }.uniq.sort

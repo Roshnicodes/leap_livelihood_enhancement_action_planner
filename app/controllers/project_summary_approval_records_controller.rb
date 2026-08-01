@@ -23,7 +23,7 @@ class ProjectSummaryApprovalRecordsController < ApplicationController
     @vertical_options = vertical_options_for(@submissions)
     @selected_vertical = params[:vertical].to_s.presence_in(@vertical_options)
     @filtered_submissions = @selected_vertical.present? ? filter_submissions_by_vertical(@submissions, @selected_vertical) : @submissions
-    @record_entries = approval_record_entries_for(@filtered_submissions)
+    @record_entries = approval_record_summaries_for(@filtered_submissions)
     @total_records = @submissions.size
     @filtered_count = @record_entries.size
   end
