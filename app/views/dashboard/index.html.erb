@@ -15,7 +15,7 @@
 <section class="toolbar">
   <%= form_with url: dashboard_path, method: :get, class: "filter-form" do |form| %>
     <%= form.hidden_field :mode, value: @mode %>
-    <%= form.label :filter, @mode == "project" ? "Choose Project PNB" : "Choose Project", class: "filter-label" %>
+    <%= form.label :filter, @mode == "project" ? "Choose Project P&B" : "Choose Project", class: "filter-label" %>
     <%= form.select :filter, options_for_select(@filter_options, @selected), {}, class: "select", onchange: "this.form.requestSubmit()" %>
   <% end %>
 </section>
@@ -32,8 +32,8 @@
 
   <div class="table-heading">
     <div>
-      <h2><%= @mode == "project" ? "Action Plan by Project PNB" : "Project PNB" %>: <%= @selected || "No mapping" %></h2>
-      <p class="muted"><%= @mode == "project" ? "Action plans grouped by your Project PNB." : "BLI sheet columns C, B, H, D for the selected project." %></p>
+      <h2><%= @mode == "project" ? "Action Plan by Project P&B" : "Project P&B" %>: <%= @selected || "No mapping" %></h2>
+      <p class="muted"><%= @mode == "project" ? "Action plans grouped by your Project P&B." : "BLI sheet columns C, B, H, D for the selected project." %></p>
     </div>
     <div class="table-actions">
       <input type="search" class="table-search" placeholder="Search activities" data-table-search-input>
@@ -55,7 +55,7 @@
           </tr>
         <% else %>
           <tr>
-            <th>Project PNB</th>
+            <th>Project P&B</th>
             <th>Action Plan</th>
             <th>BLI Code</th>
             <th>ASA Activity</th>

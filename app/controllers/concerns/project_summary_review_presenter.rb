@@ -153,11 +153,20 @@ module ProjectSummaryReviewPresenter
       submission.project_summary_submission_items.group_by do |item|
         item.vertical_name.presence || "Unassigned Vertical"
       end.map do |vertical_name, items|
+        coo_status = helpers.approval_record_coo_status(submission)
+        director_status = helpers.approval_record_director_status(submission)
+
         {
           vertical_name: vertical_name,
           employee_name: submission.employee.name,
           status: submission.status,
           status_label: approval_record_status_label(submission),
+          status_badge: helpers.approval_record_status_badge(submission),
+          first_stage_line: helpers.approval_record_first_stage_line(submission),
+          coo_approval_label: coo_status[:label],
+          coo_approval_badge: coo_status[:badge],
+          director_approval_label: director_status[:label],
+          director_approval_badge: director_status[:badge],
           total_amount: items.sum { |item| item.total_amount.to_d },
           action_at: submission.reviewed_at || submission.updated_at,
           remark: meaningful_approval_remark(submission)
@@ -174,6 +183,12 @@ module ProjectSummaryReviewPresenter
           employee_name: first[:employee_name],
           status: first[:status],
           status_label: first[:status_label],
+          status_badge: first[:status_badge],
+          first_stage_line: first[:first_stage_line],
+          coo_approval_label: first[:coo_approval_label],
+          coo_approval_badge: first[:coo_approval_badge],
+          director_approval_label: first[:director_approval_label],
+          director_approval_badge: first[:director_approval_badge],
           total_amount: grouped_rows.sum { |row| row[:total_amount].to_d },
           action_at: grouped_rows.map { |row| row[:action_at] }.max,
           remark: grouped_rows.map { |row| row[:remark] }.compact.first
@@ -212,15 +227,7 @@ module ProjectSummaryReviewPresenter
   end
 
   def approval_record_status_label(submission)
-    if submission.pending? && submission.first_approver_id.present?
-      "Forwarded"
-    elsif submission.approved?
-      "Approved"
-    elsif submission.returned?
-      "Returned"
-    else
-      submission.status_label
-    end
+    helpers.approval_record_status_detail(submission)
   end
 
   def filter_submissions_by_record_status(submissions, status_filter)

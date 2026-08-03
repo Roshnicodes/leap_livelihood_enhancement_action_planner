@@ -129,6 +129,7 @@ class ProjectSummaryApprovalsController < ApplicationController
         status: "pending",
         approver: final_approver,
         first_approver: submission.first_approver || current_user&.employee || submission.approver,
+        first_approved_at: reviewed_at,
         approval_remark: params[:approval_remark].to_s.strip,
         reviewed_at: nil
       }

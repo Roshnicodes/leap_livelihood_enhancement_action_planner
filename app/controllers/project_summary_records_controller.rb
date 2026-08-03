@@ -163,7 +163,7 @@ class ProjectSummaryRecordsController < ApplicationController
           employee: employee,
           submission: submission,
           status: submission&.status || "not_submitted",
-          status_label: submission&.status_label || "Not Submitted",
+          status_label: submission ? helpers.summary_approval_status_label(submission) : "Not Submitted",
           submitted_at: submission&.submitted_at,
           reviewed_at: submission&.reviewed_at,
           approver: submission&.approver || ProjectSummarySubmission.approver_employee,
@@ -226,12 +226,32 @@ class ProjectSummaryRecordsController < ApplicationController
   def status_records_for(record_groups)
     record_groups
       .select { |record| record[:submission].present? }
-      .uniq { |record| status_record_key(record) }
+      .group_by { |record| status_record_key(record) }
+      .map do |_key, grouped|
+        first = grouped.first
+        project_names = grouped.map { |record| record[:project_name] }.compact_blank.uniq.sort
+
+        first.merge(
+          project_names: project_names,
+          project_name: status_record_projects_label(project_names)
+        )
+      end
+      .sort_by { |record| record[:submitted_at] || Time.at(0) }
+      .reverse
+  end
+
+  def status_record_projects_label(project_names)
+    return "No project" if project_names.blank?
+    return project_names.first if project_names.one?
+
+    "#{project_names.size} projects"
   end
 
   def status_record_key(record)
     [
+      record[:employee]&.id,
       record[:status],
+      record[:submission]&.first_approver_id,
       record[:approver]&.id,
       record[:submitted_at]&.strftime("%d %b %Y, %I:%M %p"),
       record[:reviewed_at]&.strftime("%d %b %Y, %I:%M %p"),

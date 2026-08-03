@@ -1817,6 +1817,34 @@ tbody tr:hover td {
   color: #667085;
 }
 
+.approval-status-cell {
+  min-width: 190px;
+  max-width: 240px;
+}
+
+.approval-records-table th:nth-child(5),
+.approval-records-table td:nth-child(5),
+.approval-records-table th:nth-child(6),
+.approval-records-table td:nth-child(6) {
+  min-width: 190px;
+}
+
+.approval-status-cell .status-badge {
+  display: inline-block;
+  max-width: 100%;
+  white-space: normal;
+  line-height: 1.35;
+  text-align: left;
+}
+
+.approval-status-subline {
+  display: block;
+  margin-top: 4px;
+  color: #667085;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
 .page-header-compact {
   margin-bottom: 8px;
 }
@@ -2152,6 +2180,11 @@ tbody tr:hover td {
 .status-pending {
   color: #92400e;
   background: #fff7ed;
+}
+
+.status-forwarded {
+  color: #1d4ed8;
+  background: #eff6ff;
 }
 
 .status-approved {
@@ -4392,6 +4425,11 @@ tbody tr:hover td {
   margin: 0 0 10px;
 }
 
+.status-forwarded {
+  color: #1d4ed8;
+  background: #eff6ff;
+}
+
 .record-status-item {
   display: flex;
   align-items: flex-start;
@@ -4412,6 +4450,22 @@ tbody tr:hover td {
   display: block;
   color: #101828;
   font-size: 0.95rem;
+}
+
+.record-status-context {
+  margin: 0 0 4px;
+  color: #475467;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.record-status-projects {
+  margin: 0 0 6px;
+  color: #667085;
+  font-size: 0.82rem;
+  line-height: 1.45;
 }
 
 .record-status-item p {

@@ -50,7 +50,8 @@
               <th>Submitted By</th>
               <th>Total Amount</th>
               <% if show_status_column %>
-                <th>Status</th>
+                <th>COO Approval</th>
+                <th>Director Approval</th>
               <% end %>
               <% if show_remark_column %>
                 <th>Remark</th>
@@ -65,7 +66,12 @@
                 <td><strong><%= record[:employee_name] %></strong></td>
                 <td class="money-cell"><%= currency(record[:total_amount]) %></td>
                 <% if show_status_column %>
-                  <td><span class="status-badge status-<%= record[:status] %>"><%= record[:status_label] %></span></td>
+                  <td class="approval-status-cell">
+                    <span class="status-badge status-<%= record[:coo_approval_badge] %>"><%= record[:coo_approval_label] %></span>
+                  </td>
+                  <td class="approval-status-cell">
+                    <span class="status-badge status-<%= record[:director_approval_badge] %>"><%= record[:director_approval_label] %></span>
+                  </td>
                 <% end %>
                 <% if show_remark_column %>
                   <td class="approval-remark-cell"><%= record[:remark].presence || "-" %></td>

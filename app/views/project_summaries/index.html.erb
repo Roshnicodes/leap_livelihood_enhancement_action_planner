@@ -35,17 +35,12 @@
 
   <% if @existing_summary_submission %>
     <section class="submission-status-card">
-      <span class="status-badge status-<%= @existing_summary_submission.status %>"><%= @existing_summary_submission.status_label %></span>
+      <span class="status-badge status-<%= @existing_summary_submission.pending? && @existing_summary_submission.first_approver_id.present? ? "forwarded" : @existing_summary_submission.status %>"><%= summary_approval_status_label(@existing_summary_submission) %></span>
       <div>
-        <strong>
-          <% if @existing_summary_submission.pending? %>
-            Sent to <%= approval_actor_label(@existing_summary_submission.approver || ProjectSummarySubmission.approver_employee) %>
-          <% elsif @existing_summary_submission.approved? %>
-            Approved by <%= approval_actor_label(@existing_summary_submission.approver) %>
-          <% else %>
-            Returned by <%= approval_actor_label(@existing_summary_submission.approver) %>
-          <% end %>
-        </strong>
+        <strong><%= summary_approval_headline(@existing_summary_submission) %></strong>
+        <% if summary_approval_subline(@existing_summary_submission).present? %>
+          <p><%= summary_approval_subline(@existing_summary_submission) %></p>
+        <% end %>
         <p>
           Submitted <%= @existing_summary_submission.submitted_at.strftime("%d %b %Y, %I:%M %p") %>
           <% if @existing_summary_submission.reviewed_at.present? %>
@@ -66,7 +61,7 @@
           <th>S.No.</th>
           <th>Project</th>
           <th>ASA Activity</th>
-          <th>Project PNB</th>
+          <th>Project P&B</th>
           <th>Total Amount</th>
           <% VerticalPercent::MONTH_COLUMNS.each do |month| %>
             <th><%= month.to_s.titleize %></th>

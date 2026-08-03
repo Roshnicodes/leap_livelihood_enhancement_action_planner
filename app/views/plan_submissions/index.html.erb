@@ -1,4 +1,4 @@
-<% content_for :title, "Allocated PNB | LEAP Planner" %>
+<% content_for :title, "Allocated P&B | LEAP Planner" %>
 
 <% total_rows = @record_groups.values.sum(&:size) %>
 <% employee = current_user.employee unless current_user.admin? || ProjectSummarySubmission.summary_access?(current_user.employee) %>
@@ -6,7 +6,7 @@
 <section class="page-header">
   <div>
     <p class="eyebrow">Records</p>
-    <h1>Allocated PNB</h1>
+    <h1>Allocated P&B</h1>
   </div>
   <div class="header-card">
     <span>Total Rows</span>
@@ -101,7 +101,7 @@
   <% end %>
 <% else %>
   <section class="empty-state">
-    <h2>No Allocated PNB</h2>
+    <h2>No Allocated P&B</h2>
     <p class="muted">No mapped BLI rows are available for this employee.</p>
   </section>
 <% end %>

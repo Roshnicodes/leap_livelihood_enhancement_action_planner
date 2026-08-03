@@ -37,18 +37,18 @@
   <% if @status_records.any? %>
     <section class="record-status-strip">
       <% @status_records.each do |record| %>
+        <% submission = record[:submission] %>
         <article class="record-status-item">
-          <span class="status-badge status-<%= record[:status] %>"><%= record[:status_label] %></span>
+          <span class="status-badge status-<%= record[:status] == "pending" && submission&.first_approver_id.present? ? "forwarded" : record[:status] %>"><%= record[:status_label] %></span>
           <div>
-            <strong>
-              <% if record[:status] == "pending" %>
-                Sent to <%= approval_actor_label(record[:approver]) %>
-              <% elsif record[:status] == "approved" %>
-                Approved by <%= approval_actor_label(record[:approver]) %>
-              <% else %>
-                Returned by <%= approval_actor_label(record[:approver]) %>
-              <% end %>
-            </strong>
+            <p class="record-status-context"><%= record[:employee].name %> • <%= record[:project_name] %></p>
+            <% if record[:project_names].many? %>
+              <p class="record-status-projects"><%= record[:project_names].join(" • ") %></p>
+            <% end %>
+            <strong><%= summary_approval_headline(submission) %></strong>
+            <% if summary_approval_subline(submission).present? %>
+              <p><%= summary_approval_subline(submission) %></p>
+            <% end %>
             <p>
               Submitted <%= record[:submitted_at].strftime("%d %b %Y, %I:%M %p") %>
               <% if record[:reviewed_at].present? %>
@@ -56,7 +56,7 @@
               <% end %>
             </p>
             <% if record[:approval_remark].present? %>
-              <p><%= record[:status] == "returned" ? "Return" : "Approval" %> remark: <%= record[:approval_remark] %></p>
+              <p><%= summary_approval_remark_label(submission) %>: <%= record[:approval_remark] %></p>
             <% end %>
             <% if record[:submission_remark].present? %>
               <p>Submission remark: <%= record[:submission_remark] %></p>
@@ -99,7 +99,7 @@
               <th>S.No.</th>
               <th>Project</th>
               <th>ASA Activity</th>
-              <th>Project PNB</th>
+              <th>Project P&B</th>
               <th>Total Amount</th>
               <% VerticalPercent::MONTH_COLUMNS.each do |month| %>
                 <th><%= month.to_s.titleize %></th>

@@ -41,7 +41,7 @@
               <% end %>
               <%= link_to plan_submissions_path, class: controller_name == "plan_submissions" ? "side-link active" : "side-link" do %>
                 <span class="side-icon">S</span>
-                <span>Allocated PNB</span>
+                <span>Allocated P&B</span>
               <% end %>
               <%= link_to project_summary_records_path, class: controller_name == "project_summary_records" ? "side-link active" : "side-link" do %>
                 <span class="side-icon">R</span>
@@ -61,7 +61,7 @@
             <% else %>
               <%= link_to plan_submissions_path, class: controller_name == "plan_submissions" ? "side-link active" : "side-link" do %>
                 <span class="side-icon">S</span>
-                <span>Allocated PNB</span>
+                <span>Allocated P&B</span>
               <% end %>
               <% unless ProjectSummarySubmission.summary_access?(current_user.employee) %>
                 <%= link_to project_summary_path, class: controller_name == "project_summaries" ? "side-link active" : "side-link" do %>
