@@ -34,39 +34,6 @@
     <span class="table-count" data-global-record-count><%= total_record_rows %> rows</span>
   </section>
 
-  <% if @status_records.any? %>
-    <section class="record-status-strip">
-      <% @status_records.each do |record| %>
-        <% submission = record[:submission] %>
-        <article class="record-status-item">
-          <span class="status-badge status-<%= record[:status] == "pending" && submission&.first_approver_id.present? ? "forwarded" : record[:status] %>"><%= record[:status_label] %></span>
-          <div>
-            <p class="record-status-context"><%= record[:employee].name %> • <%= record[:project_name] %></p>
-            <% if record[:project_names].many? %>
-              <p class="record-status-projects"><%= record[:project_names].join(" • ") %></p>
-            <% end %>
-            <strong><%= summary_approval_headline(submission) %></strong>
-            <% if summary_approval_subline(submission).present? %>
-              <p><%= summary_approval_subline(submission) %></p>
-            <% end %>
-            <p>
-              Submitted <%= record[:submitted_at].strftime("%d %b %Y, %I:%M %p") %>
-              <% if record[:reviewed_at].present? %>
-                • Reviewed <%= record[:reviewed_at].strftime("%d %b %Y, %I:%M %p") %>
-              <% end %>
-            </p>
-            <% if record[:approval_remark].present? %>
-              <p><%= summary_approval_remark_label(submission) %>: <%= record[:approval_remark] %></p>
-            <% end %>
-            <% if record[:submission_remark].present? %>
-              <p>Submission remark: <%= record[:submission_remark] %></p>
-            <% end %>
-          </div>
-        </article>
-      <% end %>
-    </section>
-  <% end %>
-
   <% if editable_records.any? %>
     <form action="<%= bulk_project_summary_records_path %>" method="post" data-bulk-summary-form>
       <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
@@ -97,6 +64,7 @@
           <thead>
             <tr>
               <th>S.No.</th>
+              <th>Project BLI Code</th>
               <th>Project</th>
               <th>ASA Activity</th>
               <th>Project P&B</th>
@@ -120,6 +88,7 @@
                   <%= hidden_field_tag "records[#{record[:form_key]}][rows][#{index}][total_amount]", currency_input_value(row_match_total) %>
                 <% end %>
                 <td><span class="code-pill"><%= index + 1 %></span></td>
+                <td><span class="code-pill"><%= row[:bli_code].presence || "-" %></span></td>
                 <td><%= row[:project_name].presence || "-" %></td>
                 <td><%= row[:activity_name] %></td>
                 <td><%= row[:vertical_name] %></td>
@@ -176,7 +145,7 @@
         <thead>
           <tr>
             <th>S.No.</th>
-            <th>Project BLI code</th>
+            <th>Project BLI Code</th>
             <th>ASA Activity</th>
             <th>Project Count</th>
             <th>Total Amount</th>

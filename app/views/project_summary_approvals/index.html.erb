@@ -68,6 +68,7 @@
             <thead>
               <tr>
                 <th>S.No.</th>
+                <th>Project BLI Code</th>
                 <th>Project</th>
                 <th>ASA Activity</th>
                 <th>Project P&B</th>
@@ -84,6 +85,7 @@
                 <% changed_months = row[:month_deltas].select { |_month, delta| delta.abs >= 0.01 } %>
                 <tr>
                   <td><span class="code-pill"><%= index + 1 %></span></td>
+                  <td><span class="code-pill"><%= row[:bli_code].presence || "-" %></span></td>
                   <td><%= row[:project_name].presence || "-" %></td>
                   <td><%= row[:activity_name] %></td>
                   <td><%= row[:vertical_name] %></td>
@@ -107,7 +109,7 @@
             <tfoot>
               <tr class="summary-total-row">
                 <td><span class="code-pill">Total</span></td>
-                <td colspan="3"><strong><%= project[:project_name] %> Total</strong></td>
+                <td colspan="4"><strong><%= project[:project_name] %> Total</strong></td>
                 <td class="money-cell"><%= currency(project[:total_amount]) %></td>
                 <% VerticalPercent::MONTH_COLUMNS.each do |month| %>
                   <td class="money-cell"><%= currency(project[:month_totals][month]) %></td>
@@ -136,7 +138,7 @@
         <thead>
           <tr>
             <th>S.No.</th>
-            <th>Project BLI code</th>
+            <th>Project BLI Code</th>
             <th>ASA Activity</th>
             <th>Project Count</th>
             <th>Total Amount</th>

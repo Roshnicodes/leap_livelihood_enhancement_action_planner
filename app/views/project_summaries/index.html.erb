@@ -59,6 +59,7 @@
       <thead>
         <tr>
           <th>S.No.</th>
+          <th>Project BLI Code</th>
           <th>Project</th>
           <th>ASA Activity</th>
           <th>Project P&B</th>
@@ -76,6 +77,7 @@
           <% row_match_total = rounded_month_total(row[:month_amounts]) %>
           <tr data-summary-row data-original-total="<%= row_match_total %>">
             <td><span class="code-pill"><%= index + 1 %></span></td>
+            <td><span class="code-pill"><%= row[:bli_code].presence || "-" %></span></td>
             <td><%= row[:project_name] %></td>
             <td><%= row[:activity_name] %></td>
             <td><%= row[:vertical_name] %></td>

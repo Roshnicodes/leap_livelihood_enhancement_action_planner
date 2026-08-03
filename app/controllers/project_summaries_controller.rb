@@ -150,8 +150,9 @@ class ProjectSummariesController < ApplicationController
 
     @activities
       .group_by { |activity| [ activity.project_name, activity.activity_name, activity.vertical_name ] }
-      .transform_values { |activities| activities.sum(&:allocated_fund) }
-      .map do |(project_name, activity_name, vertical_name), total_amount|
+      .map do |(project_name, activity_name, vertical_name), activities|
+        total_amount = activities.sum(&:allocated_fund)
+        bli_codes = activities.map(&:bli_code).compact_blank.uniq
         percent = VerticalPercent.find_by(vertical_name: vertical_name)
         saved_item = saved_items_by_key[[ project_name, activity_name, vertical_name ]]
         month_amounts = if saved_item
@@ -164,6 +165,7 @@ class ProjectSummariesController < ApplicationController
           project_name: project_name,
           activity_name: activity_name,
           vertical_name: vertical_name,
+          bli_code: bli_codes.one? ? bli_codes.first : bli_codes.join(", "),
           total_amount: total_amount,
           percent: percent,
           month_amounts: month_amounts,
