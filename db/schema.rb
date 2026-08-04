@@ -10,9 +10,111 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_03_101500) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_04_110000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+
+  create_table "action_plan_rows", force: :cascade do |t|
+    t.text "a_remark"
+    t.text "activity"
+    t.string "activity_id"
+    t.integer "apr", default: 0, null: false
+    t.integer "apr_t", default: 0, null: false
+    t.string "asa_activity_id"
+    t.text "asa_activity_name"
+    t.text "asa_theme"
+    t.string "asa_theme_id"
+    t.integer "aug", default: 0, null: false
+    t.integer "aug_t", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.integer "dec", default: 0, null: false
+    t.integer "dec_t", default: 0, null: false
+    t.integer "feb", default: 0, null: false
+    t.integer "feb_t", default: 0, null: false
+    t.string "id_new"
+    t.integer "import_flag", default: 0, null: false
+    t.datetime "imported_at"
+    t.integer "jan", default: 0, null: false
+    t.integer "jan_t", default: 0, null: false
+    t.integer "jul", default: 0, null: false
+    t.integer "jul_t", default: 0, null: false
+    t.integer "jun", default: 0, null: false
+    t.integer "jun_t", default: 0, null: false
+    t.integer "mar", default: 0, null: false
+    t.integer "mar_t", default: 0, null: false
+    t.integer "may", default: 0, null: false
+    t.integer "may_t", default: 0, null: false
+    t.integer "nov", default: 0, null: false
+    t.integer "nov_t", default: 0, null: false
+    t.integer "oct", default: 0, null: false
+    t.integer "oct_t", default: 0, null: false
+    t.string "po_id", null: false
+    t.string "project_id"
+    t.string "project_name", null: false
+    t.string "project_owner"
+    t.string "responsibel"
+    t.integer "sep", default: 0, null: false
+    t.integer "sep_t", default: 0, null: false
+    t.string "statte"
+    t.text "theme"
+    t.string "theme_id"
+    t.string "to_id"
+    t.string "to_name"
+    t.string "unit_type"
+    t.datetime "updated_at", null: false
+    t.string "user_id"
+    t.string "user_name"
+    t.index ["id_new"], name: "index_action_plan_rows_on_id_new"
+    t.index ["import_flag"], name: "index_action_plan_rows_on_import_flag"
+    t.index ["imported_at"], name: "index_action_plan_rows_on_imported_at"
+    t.index ["po_id", "project_name"], name: "index_action_plan_rows_on_po_id_and_project_name"
+    t.index ["project_name"], name: "index_action_plan_rows_on_project_name"
+    t.index ["to_id"], name: "index_action_plan_rows_on_to_id"
+  end
+
+  create_table "action_plan_submissions", force: :cascade do |t|
+    t.bigint "coo_approver_id"
+    t.text "coo_remark"
+    t.datetime "coo_reviewed_at"
+    t.datetime "created_at", null: false
+    t.string "current_stage", default: "po", null: false
+    t.bigint "director_approver_id"
+    t.text "director_remark"
+    t.datetime "director_reviewed_at"
+    t.bigint "employee_id", null: false
+    t.bigint "po_approver_id"
+    t.string "po_id", null: false
+    t.text "po_remark"
+    t.datetime "po_reviewed_at"
+    t.string "project_name", null: false
+    t.bigint "project_ownership_id"
+    t.string "status", default: "pending", null: false
+    t.text "submission_remark"
+    t.datetime "submitted_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["coo_approver_id", "status", "current_stage"], name: "idx_action_plan_coo_pending"
+    t.index ["coo_approver_id"], name: "index_action_plan_submissions_on_coo_approver_id"
+    t.index ["director_approver_id", "status", "current_stage"], name: "idx_action_plan_director_pending"
+    t.index ["director_approver_id"], name: "index_action_plan_submissions_on_director_approver_id"
+    t.index ["employee_id"], name: "index_action_plan_submissions_on_employee_id"
+    t.index ["po_approver_id", "status", "current_stage"], name: "idx_action_plan_po_pending"
+    t.index ["po_approver_id"], name: "index_action_plan_submissions_on_po_approver_id"
+    t.index ["project_ownership_id"], name: "index_action_plan_submissions_on_project_ownership_id"
+    t.index ["status", "current_stage", "submitted_at"], name: "idx_on_status_current_stage_submitted_at_6caf8268b6"
+  end
+
+  create_table "action_plan_vertical_mappings", force: :cascade do |t|
+    t.text "asa_theme"
+    t.string "asa_theme_id", null: false
+    t.datetime "created_at", null: false
+    t.string "employee_code", null: false
+    t.bigint "employee_id"
+    t.string "state_code", null: false
+    t.datetime "updated_at", null: false
+    t.index ["employee_code", "state_code", "asa_theme_id"], name: "idx_action_plan_vertical_mappings_unique", unique: true
+    t.index ["employee_id", "state_code", "asa_theme_id"], name: "idx_action_plan_vertical_mappings_employee_lookup"
+    t.index ["employee_id"], name: "index_action_plan_vertical_mappings_on_employee_id"
+  end
 
   create_table "bli_activities", force: :cascade do |t|
     t.string "activity_name"
@@ -126,6 +228,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_03_101500) do
     t.index ["submitted_at"], name: "index_plan_submissions_on_submitted_at"
   end
 
+  create_table "project_ownerships", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "email_id"
+    t.string "po_id", null: false
+    t.string "po_name"
+    t.string "project_name", null: false
+    t.string "project_owner_id"
+    t.datetime "updated_at", null: false
+    t.index ["email_id"], name: "index_project_ownerships_on_email_id"
+    t.index ["po_id", "project_name"], name: "index_project_ownerships_on_po_id_and_project_name", unique: true
+    t.index ["project_name"], name: "index_project_ownerships_on_project_name"
+    t.index ["project_owner_id"], name: "index_project_ownerships_on_project_owner_id"
+  end
+
   create_table "project_summary_submission_items", force: :cascade do |t|
     t.string "activity_name", null: false
     t.decimal "apr", precision: 15, scale: 2, default: "0.0", null: false
@@ -210,6 +326,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_03_101500) do
     t.index ["vertical_name"], name: "index_vertical_percents_on_vertical_name", unique: true
   end
 
+  add_foreign_key "action_plan_submissions", "employees"
+  add_foreign_key "action_plan_submissions", "employees", column: "coo_approver_id"
+  add_foreign_key "action_plan_submissions", "employees", column: "director_approver_id"
+  add_foreign_key "action_plan_submissions", "employees", column: "po_approver_id"
+  add_foreign_key "action_plan_submissions", "project_ownerships"
+  add_foreign_key "action_plan_vertical_mappings", "employees"
   add_foreign_key "bli_activities", "employees"
   add_foreign_key "employee_vertical_mappings", "employees"
   add_foreign_key "employee_vertical_mappings", "vertical_percents"

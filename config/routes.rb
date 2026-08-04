@@ -18,6 +18,11 @@ Rails.application.routes.draw do
 
   get "dashboard" => "dashboard#index"
   resources :plan_submissions, only: %i[index create]
+  resources :action_plans, only: %i[index create]
+  resources :vertical_action_plans, only: %i[index update]
+  get "action_plan_approvals/:stage" => "action_plan_approvals#index", as: :action_plan_approvals
+  patch "action_plan_approvals/:stage/:id/approve" => "action_plan_approvals#approve", as: :approve_action_plan
+  patch "action_plan_approvals/:stage/:id/return" => "action_plan_approvals#return_plan", as: :return_action_plan
   get "project_summary" => "project_summaries#index"
   post "project_summary" => "project_summaries#create"
   get "project_summary_records" => "project_summary_records#index"
@@ -32,5 +37,8 @@ Rails.application.routes.draw do
 
   namespace :admin do
     resources :employees, only: :index
+    resources :action_plan_imports, only: %i[index create] do
+      get :download, on: :collection
+    end
   end
 end

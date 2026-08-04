@@ -1,0 +1,77 @@
+<% stage_title = { "po" => "PO Approval", "coo" => "COO Approval", "director" => "Director Approval" }.fetch(@stage) %>
+<% content_for :title, "#{stage_title} | LEAP Planner" %>
+
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Action Plan</p>
+    <h1><%= stage_title %></h1>
+  </div>
+  <div class="header-card">
+    <span>Pending</span>
+    <strong><%= @pending_submissions.size %></strong>
+  </div>
+</section>
+
+<% if @submissions.any? %>
+  <section class="table-panel approval-records-panel" data-searchable-table>
+    <div class="table-heading">
+      <div>
+        <h2>Submitted action plans</h2>
+        <p class="muted">Approve to move the plan to the next stage, or return it with a remark.</p>
+      </div>
+      <div class="table-actions">
+        <input type="search" class="table-search" placeholder="Search submissions" data-table-search-input>
+        <span class="table-count" data-filtered-count><%= @submissions.size %> rows</span>
+      </div>
+    </div>
+
+    <div class="responsive-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Status</th>
+            <th>Project</th>
+            <th>Submitted By</th>
+            <th>Project Owner</th>
+            <th>Submitted At</th>
+            <th>Remark</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @submissions.each do |submission| %>
+            <tr>
+              <td><span class="status-badge status-<%= submission.status %>"><%= submission.status_label %></span></td>
+              <td><%= submission.project_name %></td>
+              <td><%= [submission.employee.employee_code, submission.employee.name].compact_blank.join(" - ") %></td>
+              <td><%= [submission.project_ownership&.po_name, submission.project_ownership&.project_owner_id].compact_blank.join(" / ") %></td>
+              <td><%= submission.submitted_at&.strftime("%d %b %Y %I:%M %p") %></td>
+              <td><%= submission.submission_remark %></td>
+              <td>
+                <% if submission.pending? %>
+                  <div class="approval-button-row">
+                    <%= form_with url: approve_action_plan_path(stage: @stage, id: submission), method: :patch, class: "approval-return-form" do |form| %>
+                      <%= form.text_field :approval_remark, class: "remark-input", placeholder: "Approval remark" %>
+                      <%= form.submit "Approve", class: "submit-plan-button" %>
+                    <% end %>
+                    <%= form_with url: return_action_plan_path(stage: @stage, id: submission), method: :patch, class: "approval-return-form" do |form| %>
+                      <%= form.text_field :approval_remark, class: "remark-input", placeholder: "Return remark" %>
+                      <%= form.submit "Return", class: "return-button" %>
+                    <% end %>
+                  </div>
+                <% else %>
+                  <span class="muted">Reviewed</span>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+<% else %>
+  <section class="empty-state">
+    <h2>No action plans</h2>
+    <p class="muted">There are no action plans waiting in this stage.</p>
+  </section>
+<% end %>

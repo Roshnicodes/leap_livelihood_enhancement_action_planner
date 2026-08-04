@@ -1,0 +1,132 @@
+<% content_for :title, "Action Plan Import | LEAP Planner" %>
+
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Admin workspace</p>
+    <h1>Action Plan Import</h1>
+    <p class="muted">Upload project ownership and action plan files. Action plan uploads keep old imports archived and show the latest active file.</p>
+  </div>
+  <div class="header-card">
+    <span>Projects</span>
+    <strong><%= @summary[:projects] %></strong>
+  </div>
+</section>
+
+<section class="metric-grid admin-grid">
+  <article class="metric metric-teal"><span>Project Owners</span><strong><%= @summary[:project_ownerships] %></strong></article>
+  <article class="metric metric-blue"><span>Active Action Rows</span><strong><%= @summary[:action_plan_rows] %></strong></article>
+  <article class="metric metric-gold"><span>User Verticals</span><strong><%= @summary[:vertical_mappings] %></strong></article>
+  <article class="metric metric-rose"><span>Archived Rows</span><strong><%= @summary[:archived_action_plan_rows] %></strong></article>
+</section>
+
+<section class="table-panel import-panel">
+  <div class="table-heading">
+    <div>
+      <h2>Upload files</h2>
+      <p class="muted">Project file can be XLSX/CSV. Project BLI mapping uses only Sheet 1. User vertical mapping filters by State and ASA Theme ID.</p>
+    </div>
+    <div class="table-actions">
+      <%= link_to "Download Action Plan", download_admin_action_plan_imports_path, class: "submit-plan-button" %>
+    </div>
+  </div>
+
+  <%= form_with url: admin_action_plan_imports_path, method: :post, multipart: true, class: "import-form" do |form| %>
+    <div class="import-grid">
+      <label>
+        <span>Project owner file</span>
+        <%= form.file_field :project_file, accept: ".xlsx,.csv", class: "input" %>
+      </label>
+      <label>
+        <span>Project BLI mapping file</span>
+        <%= form.file_field :action_plan_file, accept: ".csv,.xlsx", class: "input" %>
+      </label>
+      <label>
+        <span>User vertical mapping file</span>
+        <%= form.file_field :vertical_mapping_file, accept: ".csv,.xlsx", class: "input" %>
+      </label>
+    </div>
+    <div class="submit-panel">
+      <p>
+        Latest action plan import:
+        <strong><%= @latest_action_plan_imported_at&.strftime("%d %b %Y %I:%M %p") || "Not imported yet" %></strong>
+      </p>
+      <%= form.submit "Import Action Plan", class: "submit-plan-button" %>
+    </div>
+  <% end %>
+</section>
+
+<section class="table-panel" data-searchable-table>
+  <div class="table-heading">
+    <div>
+      <h2>User vertical mapping table</h2>
+      <p class="muted">Fixed database mapping used by Vertical Action Plan.</p>
+    </div>
+    <div class="table-actions">
+      <input type="search" class="table-search" placeholder="Search user verticals" data-table-search-input>
+      <span class="table-count" data-filtered-count><%= @vertical_mappings.size %> rows</span>
+    </div>
+  </div>
+
+  <div class="responsive-table">
+    <table>
+      <thead>
+        <tr>
+          <th>Employee ID</th>
+          <th>Employee Name</th>
+          <th>State</th>
+          <th>ASA Theme ID</th>
+          <th>ASA Theme</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @vertical_mappings.each do |mapping| %>
+          <tr>
+            <td><span class="code-pill"><%= mapping.employee_code %></span></td>
+            <td><%= mapping.employee&.name || "Not found" %></td>
+            <td><span class="code-pill"><%= mapping.state_code %></span></td>
+            <td><span class="code-pill"><%= mapping.asa_theme_id %></span></td>
+            <td><%= mapping.asa_theme %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="table-panel" data-searchable-table>
+  <div class="table-heading">
+    <div>
+      <h2>Project owner table</h2>
+      <p class="muted">Imported from the project file.</p>
+    </div>
+    <div class="table-actions">
+      <input type="search" class="table-search" placeholder="Search project owners" data-table-search-input>
+      <span class="table-count" data-filtered-count><%= @project_ownerships.size %> rows</span>
+    </div>
+  </div>
+
+  <div class="responsive-table">
+    <table>
+      <thead>
+        <tr>
+          <th>PO ID</th>
+          <th>Project</th>
+          <th>Project Owner ID</th>
+          <th>Project Owner</th>
+          <th>Email</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @project_ownerships.each do |ownership| %>
+          <tr>
+            <td><span class="code-pill"><%= ownership.po_id %></span></td>
+            <td><%= ownership.project_name %></td>
+            <td><%= ownership.project_owner_id %></td>
+            <td><%= ownership.po_name %></td>
+            <td><%= ownership.email_id %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>

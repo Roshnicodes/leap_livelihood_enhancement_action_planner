@@ -1,0 +1,32 @@
+<% content_for :title, "Vertical Action Plan | LEAP Planner" %>
+
+<% if @vertical_labels.blank? %>
+  <section class="page-header">
+    <div>
+      <p class="eyebrow">Workspace</p>
+      <h1>Vertical Action Plan</h1>
+    </div>
+  </section>
+
+  <section class="empty-state">
+    <h2>No mapped vertical</h2>
+    <p class="muted">Upload the user vertical mapping file to show rows by employee, state, and ASA theme.</p>
+  </section>
+<% else %>
+  <%= render "action_plans/workspace",
+    page_title: "Vertical Action Plan",
+    form_path: vertical_action_plans_path,
+    update_form_path: vertical_action_plans_path,
+    project_options: @project_options,
+    selected_project: @selected_project,
+    rows: @rows,
+    theme_count: @theme_count,
+    project_ownership: nil,
+    vertical_labels: @vertical_labels,
+    show_achievement: @show_achievement,
+    show_submission: @show_submission,
+    editable_targets: @editable_targets,
+    show_admin_columns: current_user.admin?,
+    existing_submission: nil,
+    empty_message: "No projects found for your mapped state and ASA theme in the imported Project BLI file." %>
+<% end %>

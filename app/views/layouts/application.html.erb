@@ -43,6 +43,18 @@
                 <span class="side-icon">S</span>
                 <span>Allocated P&B</span>
               <% end %>
+              <%= link_to admin_action_plan_imports_path, class: controller_path == "admin/action_plan_imports" ? "side-link active" : "side-link" do %>
+                <span class="side-icon">I</span>
+                <span>Action Plan Import</span>
+              <% end %>
+              <%= link_to action_plans_path, class: controller_name == "action_plans" ? "side-link active" : "side-link" do %>
+                <span class="side-icon">P</span>
+                <span>Project Action Plan</span>
+              <% end %>
+              <%= link_to vertical_action_plans_path, class: controller_name == "vertical_action_plans" ? "side-link active" : "side-link" do %>
+                <span class="side-icon">V</span>
+                <span>Vertical Action Plan</span>
+              <% end %>
               <%= link_to project_summary_records_path, class: controller_name == "project_summary_records" ? "side-link active" : "side-link" do %>
                 <span class="side-icon">R</span>
                 <span>Project Summary Record</span>
@@ -62,6 +74,41 @@
               <%= link_to plan_submissions_path, class: controller_name == "plan_submissions" ? "side-link active" : "side-link" do %>
                 <span class="side-icon">S</span>
                 <span>Allocated P&B</span>
+              <% end %>
+              <%= link_to action_plans_path, class: controller_name == "action_plans" ? "side-link active" : "side-link" do %>
+                <span class="side-icon">P</span>
+                <span>Project Action Plan</span>
+              <% end %>
+              <%= link_to vertical_action_plans_path, class: controller_name == "vertical_action_plans" ? "side-link active" : "side-link" do %>
+                <span class="side-icon">V</span>
+                <span>Vertical Action Plan</span>
+              <% end %>
+              <% if action_plan_stage_access?("po") %>
+                <%= link_to action_plan_approvals_path(stage: "po"), class: controller_name == "action_plan_approvals" && params[:stage] == "po" ? "side-link active" : "side-link" do %>
+                  <span class="side-icon">O</span>
+                  <span>PO Approval</span>
+                  <% if pending_action_plan_approval_count("po").positive? %>
+                    <span class="nav-alert-badge"><%= pending_action_plan_approval_count("po") %></span>
+                  <% end %>
+                <% end %>
+              <% end %>
+              <% if action_plan_stage_access?("coo") %>
+                <%= link_to action_plan_approvals_path(stage: "coo"), class: controller_name == "action_plan_approvals" && params[:stage] == "coo" ? "side-link active" : "side-link" do %>
+                  <span class="side-icon">C</span>
+                  <span>COO Approval</span>
+                  <% if pending_action_plan_approval_count("coo").positive? %>
+                    <span class="nav-alert-badge"><%= pending_action_plan_approval_count("coo") %></span>
+                  <% end %>
+                <% end %>
+              <% end %>
+              <% if action_plan_stage_access?("director") %>
+                <%= link_to action_plan_approvals_path(stage: "director"), class: controller_name == "action_plan_approvals" && params[:stage] == "director" ? "side-link active" : "side-link" do %>
+                  <span class="side-icon">D</span>
+                  <span>Director Approval</span>
+                  <% if pending_action_plan_approval_count("director").positive? %>
+                    <span class="nav-alert-badge"><%= pending_action_plan_approval_count("director") %></span>
+                  <% end %>
+                <% end %>
               <% end %>
               <% unless ProjectSummarySubmission.summary_access?(current_user.employee) %>
                 <%= link_to project_summary_path, class: controller_name == "project_summaries" ? "side-link active" : "side-link" do %>

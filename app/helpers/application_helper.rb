@@ -11,6 +11,16 @@ module ApplicationHelper
     number_with_precision(amount, precision: 0, delimiter: "", separator: ".")
   end
 
+  def action_plan_cell(value, pill: false, decimal: false)
+    text = value
+    text = ActionPlanRow.format_decimal_string(text) if decimal && text.present?
+    text = ActionPlanRow.format_decimal_string(text) if !decimal && text.to_s.match?(/\A-?\d+\.\d+[0-9]{6,}\z/)
+    text = text.presence || "-"
+    return content_tag(:span, text, class: "code-pill") if pill
+
+    text
+  end
+
   def rounded_month_total(month_amounts)
     VerticalPercent::MONTH_COLUMNS.sum { |month| month_amounts[month].to_d.round }
   end

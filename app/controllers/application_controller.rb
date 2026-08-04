@@ -1,5 +1,5 @@
 class ApplicationController < ActionController::Base
-  helper_method :current_user, :pending_project_summary_approval_count
+  helper_method :current_user, :pending_project_summary_approval_count, :pending_action_plan_approval_count, :action_plan_stage_access?
 
   # Changes to the importmap will invalidate the etag for HTML responses
   stale_when_importmap_changes
@@ -46,5 +46,19 @@ class ApplicationController < ActionController::Base
       .map { |vertical_name| vertical_name.presence || "Unassigned Vertical" }
       .uniq
       .size
+  end
+
+  def pending_action_plan_approval_count(stage)
+    return 0 unless current_user
+    return ActionPlanSubmission.pending_for_stage(stage).count if current_user.admin?
+
+    ActionPlanSubmission.stage_pending_count(current_user.employee, stage)
+  end
+
+  def action_plan_stage_access?(stage)
+    return false unless current_user
+    return true if current_user.admin? && ActionPlanSubmission.pending_for_stage(stage).exists?
+
+    ActionPlanSubmission.stage_approver?(current_user.employee, stage)
   end
 end

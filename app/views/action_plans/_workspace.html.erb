@@ -1,0 +1,97 @@
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Workspace</p>
+    <h1><%= page_title %></h1>
+  </div>
+  <div class="header-card">
+    <span>Rows</span>
+    <strong><%= rows.size %></strong>
+  </div>
+</section>
+
+<section class="toolbar">
+  <%= form_with url: form_path, method: :get, class: "filter-form" do |form| %>
+    <%= form.label :project, "Choose Project", class: "filter-label" %>
+    <%= form.select :project, options_for_select([["Select Project", ""]] + project_options.map { |project| [project, project] }, selected_project), {}, class: "select", onchange: "this.form.requestSubmit()" %>
+  <% end %>
+</section>
+
+<% if selected_project.present? %>
+  <section class="metric-grid metric-grid-compact">
+    <% if show_admin_columns %>
+      <article class="metric metric-teal"><span>PO ID</span><strong><%= rows.first&.po_id %></strong></article>
+    <% else %>
+      <article class="metric metric-teal"><span>Project ID</span><strong><%= rows.first&.project_id %></strong></article>
+    <% end %>
+    <article class="metric metric-blue"><span>Activities</span><strong><%= rows.size %></strong></article>
+    <article class="metric"><span>Themes</span><strong><%= theme_count %></strong></article>
+    <article class="metric metric-gold"><span>Plan Total</span><strong><%= rows.sum(&:monthly_total) %></strong></article>
+    <% if show_achievement %>
+      <article class="metric metric-rose"><span>Achievement Total</span><strong><%= rows.sum(&:target_total) %></strong></article>
+    <% end %>
+  </section>
+
+  <section class="table-panel submission-panel" data-searchable-table>
+    <div class="table-heading">
+      <div>
+        <h2><%= selected_project %></h2>
+        <% if show_admin_columns && project_ownership.present? %>
+          <p class="muted">
+            Project Owner:
+            <%= [project_ownership.po_name, project_ownership.project_owner_id].compact_blank.join(" / ") %>
+          </p>
+        <% end %>
+      </div>
+      <div class="table-actions">
+        <input type="search" class="table-search" placeholder="Search action rows" data-table-search-input>
+        <span class="table-count" data-filtered-count><%= rows.size %> rows</span>
+      </div>
+    </div>
+
+    <% if editable_targets %>
+      <%= form_with url: update_form_path, method: :patch, class: "action-plan-target-form" do |form| %>
+        <%= hidden_field_tag :project, selected_project %>
+        <div class="responsive-table action-plan-table-wrap">
+          <%= render "action_plans/table",
+            rows: rows,
+            show_admin_columns: show_admin_columns,
+            editable_targets: true,
+            show_achievement: show_achievement %>
+        </div>
+        <div class="submit-panel">
+          <p class="muted">Update target values for your vertical rows and save.</p>
+          <%= form.submit "Save Targets", class: "submit-plan-button" %>
+        </div>
+      <% end %>
+    <% else %>
+      <div class="responsive-table action-plan-table-wrap">
+        <%= render "action_plans/table",
+          rows: rows,
+          show_admin_columns: show_admin_columns,
+          editable_targets: false,
+          show_achievement: show_achievement %>
+      </div>
+    <% end %>
+
+    <% if show_submission %>
+      <%= form_with url: action_plans_path, method: :post do |form| %>
+        <%= form.hidden_field :project_name, value: selected_project %>
+        <div class="submit-panel">
+          <div>
+            <p class="<%= existing_submission&.pending? ? "is-submitted" : "" %>">
+              Current status:
+              <strong><%= existing_submission&.status_label || "Not submitted" %></strong>
+            </p>
+            <%= form.text_area :submission_remark, value: existing_submission&.submission_remark, class: "approval-remark", placeholder: "Remark", rows: 3 %>
+          </div>
+          <%= form.submit "Submit Action Plan", class: "submit-plan-button", disabled: existing_submission&.approved? %>
+        </div>
+      <% end %>
+    <% end %>
+  </section>
+<% else %>
+  <section class="empty-state">
+    <h2>Select a project</h2>
+    <p class="muted"><%= empty_message %></p>
+  </section>
+<% end %>

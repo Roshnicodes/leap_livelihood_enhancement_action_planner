@@ -1,0 +1,66 @@
+<% display_columns = ActionPlanRow.display_columns(admin: show_admin_columns) %>
+
+<table class="action-plan-table">
+  <thead>
+    <tr>
+      <% display_columns.each do |column| %>
+        <th><%= column[:header] %></th>
+      <% end %>
+      <% if editable_targets %>
+        <% ActionPlanRow::MONTH_DISPLAY_PAIRS.each do |pair| %>
+          <th class="month-col"><%= pair[:target_label] %></th>
+          <th class="month-col"><%= pair[:achievement_label] %></th>
+        <% end %>
+      <% elsif show_achievement %>
+        <% ActionPlanRow::MONTH_DISPLAY_PAIRS.each do |pair| %>
+          <th class="month-col"><%= pair[:target_label] %></th>
+          <th class="month-col"><%= pair[:achievement_label] %></th>
+        <% end %>
+      <% else %>
+        <% ActionPlanRow::MONTH_DISPLAY_PAIRS.each do |pair| %>
+          <th class="month-col"><%= pair[:target_label] %></th>
+        <% end %>
+      <% end %>
+      <th class="month-col total-col">Total Target</th>
+      <% if editable_targets || show_achievement %>
+        <th class="month-col total-col">Total Achievement</th>
+      <% end %>
+    </tr>
+  </thead>
+  <tbody>
+    <% rows.each do |row| %>
+      <tr>
+        <% display_columns.each do |column| %>
+          <td>
+            <%= action_plan_cell(
+              row.public_send(column[:attribute]),
+              pill: ActionPlanRow::PILL_ATTRIBUTES.include?(column[:attribute]),
+              decimal: ActionPlanRow::DECIMAL_ATTRIBUTES.include?(column[:attribute])
+            ) %>
+          </td>
+        <% end %>
+        <% if editable_targets %>
+          <% ActionPlanRow::MONTH_DISPLAY_PAIRS.each do |pair| %>
+            <td class="month-col">
+              <%= number_field_tag "rows[#{row.id}][#{pair[:target_column]}]", row.public_send(pair[:target_column]), min: 0, step: 1, class: "action-plan-month-input", aria: { label: "#{pair[:target_label]} for #{row.activity}" } %>
+            </td>
+            <td class="month-col"><%= row.public_send(pair[:achievement_column]) %></td>
+          <% end %>
+        <% elsif show_achievement %>
+          <% ActionPlanRow::MONTH_DISPLAY_PAIRS.each do |pair| %>
+            <td class="month-col"><%= row.public_send(pair[:target_column]) %></td>
+            <td class="month-col"><%= row.public_send(pair[:achievement_column]) %></td>
+          <% end %>
+        <% else %>
+          <% ActionPlanRow::MONTH_DISPLAY_PAIRS.each do |pair| %>
+            <td class="month-col"><%= row.public_send(pair[:target_column]) %></td>
+          <% end %>
+        <% end %>
+        <td class="month-col total-col"><strong><%= row.monthly_total %></strong></td>
+        <% if editable_targets || show_achievement %>
+          <td class="month-col total-col"><strong><%= row.target_total %></strong></td>
+        <% end %>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
