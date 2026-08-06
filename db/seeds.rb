@@ -148,9 +148,9 @@ ActiveRecord::Base.transaction do
   User.delete_all
   Employee.delete_all
 
-  admin = User.new(login: "admin@leap.local", role: "admin")
-  admin.password = "admin123"
-  admin.save!
+  pmc = User.new(login: "PMC", role: "admin")
+  pmc.password = "pmc@123"
+  pmc.save!
 
   vertical_percent_rows(vertical_percent_xlsx_path).each do |row|
     VerticalPercent.create!(

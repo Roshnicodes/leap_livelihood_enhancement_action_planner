@@ -1,5 +1,5 @@
-<% stage_title = { "po" => "PO Approval", "coo" => "COO Approval", "director" => "Director Approval" }.fetch(@stage) %>
-<% content_for :title, "#{stage_title} | LEAP Planner" %>
+<% stage_title = { "po" => "Action Plan PO Approval", "coo" => "Action Plan COO Approval", "director" => "Action Plan Director Approval" }.fetch(@stage) %>
+<% content_for :title, "#{stage_title} | LEAP" %>
 
 <section class="page-header">
   <div>
@@ -17,7 +17,15 @@
     <div class="table-heading">
       <div>
         <h2>Submitted action plans</h2>
-        <p class="muted">Approve to move the plan to the next stage, or return it with a remark.</p>
+        <p class="muted">
+          <% if @stage == "po" %>
+            Project records are routed to the mapped Project Owner first.
+          <% elsif @stage == "coo" %>
+            Records approved by Project Owners are forwarded here for COO review.
+          <% else %>
+            Records approved by COO are forwarded here for final Director approval.
+          <% end %>
+        </p>
       </div>
       <div class="table-actions">
         <input type="search" class="table-search" placeholder="Search submissions" data-table-search-input>
@@ -29,39 +37,58 @@
       <table>
         <thead>
           <tr>
-            <th>Status</th>
             <th>Project</th>
-            <th>Submitted By</th>
+            <th>Plan Type</th>
             <th>Project Owner</th>
+            <th>Submitted By</th>
             <th>Submitted At</th>
+            <th>Rows</th>
+            <th>Total Target</th>
+            <th>Month Changes</th>
+            <th>Current Stage</th>
+            <th>PO Approval</th>
+            <th>COO Approval</th>
+            <th>Director Approval</th>
             <th>Remark</th>
             <th>Action</th>
           </tr>
         </thead>
         <tbody>
           <% @submissions.each do |submission| %>
+            <% plan_summary = submission_action_plan_summary(submission) %>
             <tr>
-              <td><span class="status-badge status-<%= submission.status %>"><%= submission.status_label %></span></td>
               <td><%= submission.project_name %></td>
+              <td><span class="code-pill"><%= submission.plan_type_label %></span></td>
+              <td>
+                <strong><%= submission.project_ownership&.po_name.presence || action_plan_stage_actor(submission, "po") %></strong>
+                <% if submission.project_ownership&.project_owner_id.present? %>
+                  <span class="muted">(<%= submission.project_ownership.project_owner_id %>)</span>
+                <% end %>
+              </td>
               <td><%= [submission.employee.employee_code, submission.employee.name].compact_blank.join(" - ") %></td>
-              <td><%= [submission.project_ownership&.po_name, submission.project_ownership&.project_owner_id].compact_blank.join(" / ") %></td>
               <td><%= submission.submitted_at&.strftime("%d %b %Y %I:%M %p") %></td>
+              <td><span class="code-pill"><%= plan_summary[:row_count] %></span></td>
+              <td class="money-cell"><%= plan_summary[:target_total] %></td>
+              <td>
+                <span class="summary-status <%= plan_summary[:changed_month_count].positive? ? "is-warning" : "is-balanced" %>">
+                  <%= plan_summary[:changed_month_count] %>
+                </span>
+              </td>
+              <td><span class="status-badge status-<%= action_plan_status_state(submission) %>"><%= submission.status_label %></span></td>
+              <% ActionPlanSubmission::STAGES.excluding("complete").each do |stage| %>
+                <% stage_status = action_plan_stage_status(submission, stage) %>
+                <td class="approval-status-cell">
+                  <span class="status-badge status-<%= stage_status[:badge] %>"><%= stage_status[:label] %></span>
+                </td>
+              <% end %>
               <td><%= submission.submission_remark %></td>
               <td>
-                <% if submission.pending? %>
-                  <div class="approval-button-row">
-                    <%= form_with url: approve_action_plan_path(stage: @stage, id: submission), method: :patch, class: "approval-return-form" do |form| %>
-                      <%= form.text_field :approval_remark, class: "remark-input", placeholder: "Approval remark" %>
-                      <%= form.submit "Approve", class: "submit-plan-button" %>
-                    <% end %>
-                    <%= form_with url: return_action_plan_path(stage: @stage, id: submission), method: :patch, class: "approval-return-form" do |form| %>
-                      <%= form.text_field :approval_remark, class: "remark-input", placeholder: "Return remark" %>
-                      <%= form.submit "Return", class: "return-button" %>
-                    <% end %>
-                  </div>
-                <% else %>
-                  <span class="muted">Reviewed</span>
-                <% end %>
+                <% modal_id = "action-plan-review-#{submission.id}" %>
+                <div class="approval-action-cell">
+                  <button type="button" class="approval-review-button" data-open-action-plan-modal="<%= modal_id %>">
+                    <%= can_act_on_submission?(submission) ? "Review & Decide" : "View Changes" %>
+                  </button>
+                </div>
               </td>
             </tr>
           <% end %>
@@ -69,9 +96,151 @@
       </table>
     </div>
   </section>
+
+  <% @submissions.each do |submission| %>
+    <% modal_id = "action-plan-review-#{submission.id}" %>
+    <% plan_summary = submission_action_plan_summary(submission) %>
+    <% rows = submission_action_plan_rows(submission) %>
+    <section id="<%= modal_id %>" class="activity-modal is-hidden action-plan-review-modal" data-action-plan-modal aria-hidden="true">
+      <div class="activity-modal-backdrop" data-close-action-plan-modal></div>
+      <div class="activity-modal-panel action-plan-review-panel" role="dialog" aria-modal="true" aria-labelledby="<%= modal_id %>-title">
+        <div class="activity-modal-heading">
+          <div>
+            <p class="eyebrow"><%= submission.plan_type_label %></p>
+            <h2 id="<%= modal_id %>-title"><%= submission.project_name %></h2>
+            <p class="muted">
+              Project Owner:
+              <strong><%= submission.project_ownership&.po_name.presence || action_plan_stage_actor(submission, "po") %></strong>
+              • Current stage: <%= submission.status_label %>
+            </p>
+          </div>
+          <button type="button" class="modal-close-button" data-close-action-plan-modal aria-label="Close review">×</button>
+        </div>
+
+        <div class="approval-change-overview <%= plan_summary[:changed_month_count].positive? ? "has-changes" : "no-changes" %>">
+          <div>
+            <span>Rows</span>
+            <strong><%= plan_summary[:row_count] %></strong>
+          </div>
+          <div>
+            <span>Total Target</span>
+            <strong><%= plan_summary[:target_total] %></strong>
+          </div>
+          <div>
+            <span>Month Changes</span>
+            <strong><%= plan_summary[:changed_month_count] %></strong>
+          </div>
+          <p>
+            <%= plan_summary[:changed_month_count].positive? ? "Changed month cells are highlighted below." : "No month changes in this record." %>
+          </p>
+        </div>
+
+        <div class="responsive-table modal-table action-plan-review-table">
+          <table>
+            <thead>
+              <tr>
+                <th>S.No.</th>
+                <th>ASA Activity ID</th>
+                <th>ASA Activity</th>
+                <th>Project Theme</th>
+                <th>Unit Type</th>
+                <th>Planned Total</th>
+                <% ActionPlanRow::MONTH_COLUMNS.each do |month| %>
+                  <th><%= month.upcase %></th>
+                <% end %>
+                <th>Changed Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% rows.each_with_index do |row, index| %>
+                <tr>
+                  <td><span class="code-pill"><%= index + 1 %></span></td>
+                  <td><span class="code-pill"><%= action_plan_cell(row[:asa_activity_id], decimal: true) %></span></td>
+                  <td><strong><%= row[:asa_activity_name] %></strong></td>
+                  <td><%= row[:theme] %></td>
+                  <td><%= row[:unit_type] %></td>
+                  <td class="money-cell"><%= row[:planned_total] %></td>
+                  <% ActionPlanRow::MONTH_COLUMNS.each do |month| %>
+                    <% delta = row[:month_deltas][month].to_i %>
+                    <td class="money-cell <%= "is-edited-cell" if delta != 0 %>">
+                      <span><%= row[:month_amounts][month] %></span>
+                      <% if delta != 0 %>
+                        <span class="cell-change-value">Changes <%= signed_number(delta) %></span>
+                      <% end %>
+                    </td>
+                  <% end %>
+                  <td class="money-cell"><strong><%= row[:changed_total] %></strong></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="approval-modal-footer">
+          <% if can_act_on_submission?(submission) %>
+            <div class="approval-decision-actions">
+              <input type="text" class="remark-input approval-decision-remark" placeholder="Add remark" data-shared-approval-remark="<%= submission.id %>">
+              <div class="approval-decision-buttons">
+                <%= form_with url: return_action_plan_path(stage: @stage, id: submission), method: :patch, class: "approval-decision-form" do |form| %>
+                  <%= form.hidden_field :approval_remark, data: { approval_remark_target: submission.id } %>
+                  <%= form.submit "Return", class: "return-button" %>
+                <% end %>
+                <%= form_with url: approve_action_plan_path(stage: @stage, id: submission), method: :patch, class: "approval-decision-form" do |form| %>
+                  <%= form.hidden_field :approval_remark, data: { approval_remark_target: submission.id } %>
+                  <%= form.submit "Approve", class: "submit-plan-button" %>
+                <% end %>
+              </div>
+            </div>
+          <% else %>
+            <p class="muted">View only. Approval is available only to the assigned approver for this stage.</p>
+          <% end %>
+        </div>
+      </div>
+    </section>
+  <% end %>
 <% else %>
   <section class="empty-state">
     <h2>No action plans</h2>
     <p class="muted">There are no action plans waiting in this stage.</p>
   </section>
 <% end %>
+
+<script>
+  (() => {
+    function closeReviewModals() {
+      document.querySelectorAll("[data-action-plan-modal]").forEach((modal) => {
+        modal.classList.add("is-hidden");
+        modal.setAttribute("aria-hidden", "true");
+      });
+    }
+
+    function syncSharedRemark(input) {
+      document.querySelectorAll(`[data-approval-remark-target="${input.dataset.sharedApprovalRemark}"]`).forEach((target) => {
+        target.value = input.value;
+      });
+    }
+
+    document.querySelectorAll("[data-shared-approval-remark]").forEach((input) => {
+      input.addEventListener("input", () => syncSharedRemark(input));
+      input.addEventListener("change", () => syncSharedRemark(input));
+    });
+
+    document.querySelectorAll("[data-open-action-plan-modal]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const modal = document.getElementById(button.dataset.openActionPlanModal);
+        if (!modal) return;
+
+        modal.classList.remove("is-hidden");
+        modal.setAttribute("aria-hidden", "false");
+      });
+    });
+
+    document.querySelectorAll("[data-close-action-plan-modal]").forEach((button) => {
+      button.addEventListener("click", closeReviewModals);
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeReviewModals();
+    });
+  })();
+</script>

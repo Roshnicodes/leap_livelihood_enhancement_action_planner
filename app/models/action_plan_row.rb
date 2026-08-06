@@ -1,11 +1,13 @@
 class ActionPlanRow < ApplicationRecord
   MONTH_COLUMNS = %w[apr may jun jul aug sep oct nov dec jan feb mar].freeze
+  ORIGINAL_MONTH_COLUMNS = MONTH_COLUMNS.map { |month| "original_#{month}" }.freeze
   TARGET_MONTH_COLUMNS = MONTH_COLUMNS.map { |month| "#{month}_t" }.freeze
   MONTH_DISPLAY_PAIRS = MONTH_COLUMNS.zip(TARGET_MONTH_COLUMNS).map do |month, achievement_month|
     label = month.capitalize
     {
       target_column: month,
       achievement_column: achievement_month,
+      month_label: label,
       target_label: "#{label} Target",
       achievement_label: "#{label} Achievement"
     }
@@ -36,7 +38,9 @@ class ActionPlanRow < ApplicationRecord
     { header: "Project Theme", attribute: :theme },
     { header: "Project Activity ID", attribute: :activity_id },
     { header: "Project Activity", attribute: :activity },
-    { header: "Unit_Type", attribute: :unit_type },
+    { header: "Unit_Type", attribute: :unit_type }
+  ].freeze
+  ADMIN_DETAIL_COLUMNS = [
     { header: "A_remark", attribute: :a_remark },
     { header: "Responsible", attribute: :responsibel }
   ].freeze
@@ -49,9 +53,9 @@ class ActionPlanRow < ApplicationRecord
 
   def self.display_columns(admin: false)
     if admin
-      [PROJECT_ID_COLUMN, *ADMIN_ONLY_COLUMNS, *ADMIN_PROJECT_COLUMNS, *SHARED_DETAIL_COLUMNS]
+      [ PROJECT_ID_COLUMN, *ADMIN_ONLY_COLUMNS, *ADMIN_PROJECT_COLUMNS, *SHARED_DETAIL_COLUMNS, *ADMIN_DETAIL_COLUMNS ]
     else
-      [PROJECT_ID_COLUMN, *USER_PROJECT_COLUMNS, *SHARED_DETAIL_COLUMNS]
+      [ PROJECT_ID_COLUMN, *USER_PROJECT_COLUMNS, *SHARED_DETAIL_COLUMNS ]
     end
   end
 
@@ -66,11 +70,10 @@ class ActionPlanRow < ApplicationRecord
     *MONTH_TOTAL_COLUMNS.map { |column| { header: column[:header], total_method: column[:total_method] } }
   ].freeze
 
-  # Legacy constants kept for any old references
-  LEADING_DISPLAY_COLUMNS = display_columns(admin: true).freeze
-  TRAILING_DISPLAY_COLUMNS = [].freeze
+  MONTH_SUM_SQL = MONTH_COLUMNS.map { |month| "COALESCE(#{month}, 0)" }.join(" + ").freeze
 
   scope :active_import, -> { where(import_flag: 0) }
+  scope :unbalanced, -> { where("(#{MONTH_SUM_SQL}) <> planned_total") }
   scope :matching_verticals, lambda { |vertical_names|
     names = Array(vertical_names).flat_map { |name| vertical_match_tokens(name) }.uniq.compact_blank
     return all if names.empty?
@@ -104,7 +107,7 @@ class ActionPlanRow < ApplicationRecord
 
   def self.vertical_match_tokens(vertical_name)
     name = vertical_name.to_s.squish
-    tokens = [name]
+    tokens = [ name ]
     suffix = name.split(/\s*-\s*/).last
     tokens << suffix if suffix.present? && suffix != name
 
@@ -126,11 +129,11 @@ class ActionPlanRow < ApplicationRecord
     end
 
     if name.match?(/agriculture|agro|sustainable agriculture/i)
-      tokens += ["Agriculture", "Agro", "Agri", "Horti", "Farming"]
+      tokens += [ "Agriculture", "Agro", "Agri", "Horti", "Farming" ]
     end
 
     if name.match?(/financial inclusion/i)
-      tokens += ["Financial Inclusion", "Financial"]
+      tokens += [ "Financial Inclusion", "Financial" ]
     end
 
     tokens.map(&:squish).uniq.compact_blank
@@ -158,5 +161,15 @@ class ActionPlanRow < ApplicationRecord
 
   def target_total
     TARGET_MONTH_COLUMNS.sum { |month| public_send(month).to_i }
+  end
+
+  # Month-wise targets may be redistributed, but they must always add up to the
+  # planned annual total captured at import time.
+  def target_variance
+    monthly_total - planned_total.to_i
+  end
+
+  def balanced?
+    target_variance.zero?
   end
 end

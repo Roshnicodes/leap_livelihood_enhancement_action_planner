@@ -31,6 +31,14 @@ class User < ApplicationRecord
     OpenSSL::Digest::SHA256.hexdigest("#{salt}--#{raw_password}")
   end
 
+  def self.ensure_login_for(employee)
+    user = find_or_initialize_by(login: employee.employee_code)
+    user.employee = employee
+    user.password = employee.employee_code.downcase if user.new_record?
+    user.save! if user.changed?
+    user
+  end
+
   private
 
   def ensure_password_salt

@@ -7,13 +7,15 @@ class ProjectOwnership < ApplicationRecord
     if employee.blank?
       none
     else
-      code = employee.employee_code.to_s
+      code = normalize_employee_code(employee.employee_code)
+      code_candidates = [ code, employee.employee_code.to_s.squish, ("#{code}.0" if code.match?(/\A\d+\z/)) ].compact.uniq
       email = employee.email.to_s.squish.downcase
       name = employee.name.to_s.squish.downcase
 
-      where(project_owner_id: code)
-        .or(where("LOWER(email_id) = ?", email))
-        .or(where("LOWER(po_name) = ?", name))
+      scope = where(project_owner_id: code_candidates)
+      scope = scope.or(where("LOWER(email_id) = ?", email)) if email.present?
+      scope = scope.or(where("LOWER(po_name) = ?", name)) if name.present?
+      scope
     end
   }
 
@@ -53,9 +55,20 @@ class ProjectOwnership < ApplicationRecord
     name.to_s.downcase.gsub(/[^a-z0-9]+/, "")
   end
 
+  def self.normalize_employee_code(value)
+    text = value.to_s.squish
+    return text if text.match?(/\A0\d+\z/)
+
+    ActionPlanRow.format_decimal_string(text)
+  end
+
   def owner_employee
-    Employee.find_by(employee_code: project_owner_id.presence) ||
-      Employee.find_by(email: email_id.to_s.squish.presence) ||
+    normalized_code = self.class.normalize_employee_code(project_owner_id)
+    normalized_email = email_id.to_s.squish.downcase
+
+    Employee.find_by(employee_code: normalized_code.presence) ||
+      Employee.find_by(employee_code: project_owner_id.to_s.squish.presence) ||
+      Employee.where("LOWER(email) = ?", normalized_email).first ||
       Employee.where("LOWER(name) = ?", po_name.to_s.squish.downcase).first
   end
 end

@@ -1,4 +1,4 @@
-<% content_for :title, "Login | LEAP Planner" %>
+<% content_for :title, "Login | LEAP" %>
 <% content_for :head do %>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -30,7 +30,7 @@
         <h1>LEAP</h1>
         <p class="login-page-subtitle">Livelihood Enhancement Action Planner</p>
         <p class="login-page-lead">
-          Empowering teams to plan, monitor &amp; enhance livelihoods with
+          Empowering teams to plan, monitor &amp; enhance rural livelihoods with
           <strong>equity and dignity.</strong>
         </p>
       </div>
@@ -89,12 +89,12 @@
 
         <%= form_with url: login_path, class: "login-page-form" do |form| %>
           <label class="login-page-field">
-            <span>Employee ID or admin email</span>
+            <span>Employee ID or PMC login</span>
             <span class="login-page-input-shell">
               <span class="login-page-input-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm0 2c-4.4 0-8 2.2-8 5v1h16v-1c0-2.8-3.6-5-8-5Z" fill="currentColor"/></svg>
               </span>
-              <%= form.text_field :login, autofocus: true, placeholder: "1167", class: "login-page-input", autocomplete: "username" %>
+              <%= form.text_field :login, autofocus: true, placeholder: "PMC", class: "login-page-input", autocomplete: "username" %>
               <span class="login-page-input-check" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2Z" fill="currentColor"/></svg>
               </span>

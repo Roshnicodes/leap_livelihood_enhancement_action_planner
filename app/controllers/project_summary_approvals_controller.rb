@@ -29,6 +29,7 @@ class ProjectSummaryApprovalsController < ApplicationController
     @summary_departments = @summary_submissions.map { |submission| submission.employee.department.presence || "Unassigned Department" }.uniq.sort
     @summary_submission_remarks = @summary_submissions.map(&:submission_remark).compact_blank.uniq
     @pending_group_count = pending_vertical_count_for(@base_submissions)
+    @pending_approver_summaries = pending_approver_summaries_for(@base_submissions)
   end
 
   def approve
@@ -64,13 +65,13 @@ class ProjectSummaryApprovalsController < ApplicationController
   private
 
   def require_summary_access
-    return if current_user.admin? || summary_approver? || summary_viewer?
+    return if current_user.admin? || summary_approver?
 
     redirect_to dashboard_path, alert: "Approval access required."
   end
 
   def require_summary_approver
-    return if current_user.admin? || current_stage_approver?
+    return if current_stage_approver?
 
     redirect_to dashboard_path, alert: "Approval access required."
   end
@@ -99,7 +100,7 @@ class ProjectSummaryApprovalsController < ApplicationController
   end
 
   def approval_scope
-    if current_user.admin? || summary_viewer?
+    if current_user.admin?
       ProjectSummarySubmission.all
     else
       ProjectSummarySubmission.where(approver: current_user.employee)
@@ -108,10 +109,6 @@ class ProjectSummaryApprovalsController < ApplicationController
 
   def summary_approver?
     ProjectSummarySubmission.summary_approver?(current_user.employee)
-  end
-
-  def summary_viewer?
-    ProjectSummarySubmission.summary_viewer?(current_user.employee)
   end
 
   def current_stage_approver?
@@ -158,5 +155,23 @@ class ProjectSummaryApprovalsController < ApplicationController
       end
       .uniq
       .size
+  end
+
+  def pending_approver_summaries_for(submissions)
+    submissions
+      .select(&:pending?)
+      .group_by { |submission| submission.approver || ProjectSummarySubmission.approver_employee }
+      .map do |approver, approver_submissions|
+        rows = approver_submissions.flat_map(&:project_summary_submission_items)
+        {
+          name: approver&.name.presence || "Unassigned Approver",
+          code: approver&.employee_code,
+          pending_count: approver_submissions.size,
+          vertical_count: rows.map { |item| item.vertical_name.presence || "Unassigned Vertical" }.uniq.size,
+          project_count: rows.map(&:project_name).compact_blank.uniq.size,
+          total_amount: approver_submissions.sum { |submission| submission.total_amount.to_d }
+        }
+      end
+      .sort_by { |summary| [ -summary[:pending_count], summary[:name] ] }
   end
 end

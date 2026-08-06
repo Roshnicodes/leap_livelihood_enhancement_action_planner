@@ -1,9 +1,9 @@
-<% content_for :title, "Approval Records | LEAP Planner" %>
+<% content_for :title, "Approval Records | LEAP" %>
 
 <section class="page-header page-header-compact">
   <div>
-    <p class="eyebrow">History</p>
-    <h1>Approval Records</h1>
+    <p class="eyebrow">Approval History</p>
+    <h1><%= @selected_record_type == "action_plan" ? "Approval Records" : "P&B Approval Records" %></h1>
   </div>
   <div class="header-card">
     <span>Records</span>
@@ -14,16 +14,36 @@
 <% if @total_records.zero? %>
   <section class="empty-state">
     <h2>No approval records yet</h2>
-    <p class="muted">Your reviewed summaries will appear here after approve, forward, or return.</p>
+    <p class="muted">Reviewed P&B summaries and action plans will appear here after approve, forward, or return.</p>
   </section>
 <% else %>
+  <nav class="approval-record-tabs" aria-label="Approval record type">
+    <%= link_to project_summary_approval_records_path(record_type: "pnb", status: @selected_status), class: "approval-record-tab #{'active' if @selected_record_type == 'pnb'}" do %>
+      <span>P&B</span>
+      <strong><%= @pnb_record_count %></strong>
+      <% if @pnb_pending_count.to_i.positive? %>
+        <em><%= @pnb_pending_count %></em>
+      <% end %>
+    <% end %>
+    <%= link_to project_summary_approval_records_path(record_type: "action_plan", status: @selected_status), class: "approval-record-tab #{'active' if @selected_record_type == 'action_plan'}" do %>
+      <span>Action Plan</span>
+      <strong><%= @action_plan_record_count %></strong>
+      <% if @action_plan_pending_count.to_i.positive? %>
+        <em><%= @action_plan_pending_count %></em>
+      <% end %>
+    <% end %>
+  </nav>
+
   <section class="toolbar approval-records-toolbar">
     <%= form_with url: project_summary_approval_records_path, method: :get, class: "filter-form approval-records-filter" do |form| %>
+      <%= form.hidden_field :record_type, value: @selected_record_type %>
       <% vertical_select_options = [["All Verticals", ""]] + @vertical_options.map { |vertical| [vertical, vertical] } %>
-      <div class="approval-records-filter-field">
-        <%= form.label :vertical, "Vertical", class: "filter-label" %>
-        <%= form.select :vertical, options_for_select(vertical_select_options, @selected_vertical), {}, class: "select", onchange: "this.form.requestSubmit()" %>
-      </div>
+      <% if @selected_record_type == "pnb" %>
+        <div class="approval-records-filter-field">
+          <%= form.label :vertical, "P&B Vertical", class: "filter-label" %>
+          <%= form.select :vertical, options_for_select(vertical_select_options, @selected_vertical), {}, class: "select", onchange: "this.form.requestSubmit()" %>
+        </div>
+      <% end %>
       <div class="approval-records-filter-field">
         <%= form.label :status, "Status", class: "filter-label" %>
         <%= form.select :status, options_for_select(@status_options, @selected_status), {}, class: "select", onchange: "this.form.requestSubmit()" %>
@@ -32,7 +52,6 @@
   </section>
 
   <% if @record_entries.any? %>
-    <% show_status_column = @selected_status.blank? %>
     <% show_remark_column = @record_entries.any? { |record| record[:remark].present? } %>
 
     <section class="table-panel approval-records-panel" data-searchable-table>
@@ -44,37 +63,54 @@
       <div class="responsive-table approval-records-table">
         <table>
           <thead>
-            <tr>
-              <th>S.No.</th>
-              <th>Vertical</th>
-              <th>Submitted By</th>
-              <th>Total Amount</th>
-              <% if show_status_column %>
+              <tr>
+                <th>S.No.</th>
+                <th>Record Type</th>
+                <th><%= @selected_record_type == "action_plan" ? "Project" : "Vertical" %></th>
+                <th>Submitted By</th>
+                <th><%= @selected_record_type == "action_plan" ? "Total Target" : "Total Budget" %></th>
+                <% if @selected_record_type == "action_plan" %>
+                  <th>PO Approval</th>
+                <% end %>
                 <th>COO Approval</th>
                 <th>Director Approval</th>
-              <% end %>
-              <% if show_remark_column %>
-                <th>Remark</th>
-              <% end %>
+                <% if show_remark_column %>
+                  <th>Remark</th>
+                <% end %>
+                <% if @selected_record_type == "action_plan" %>
+                  <th>Action</th>
+                <% end %>
             </tr>
           </thead>
           <tbody>
             <% @record_entries.each_with_index do |record, index| %>
               <tr>
                 <td><span class="code-pill"><%= index + 1 %></span></td>
-                <td class="approval-vertical-cell" title="<%= record[:vertical_name] %>"><%= record[:vertical_name] %></td>
-                <td><strong><%= record[:employee_name] %></strong></td>
-                <td class="money-cell"><%= currency(record[:total_amount]) %></td>
-                <% if show_status_column %>
+                <td><span class="code-pill approval-type-pill approval-type-<%= record[:record_type_key] %>"><%= record[:record_type] %></span></td>
+                <td class="approval-vertical-cell" title="<%= record[:scope_label] %>"><%= record[:scope_label] %></td>
+                <td><strong><%= record[:submitted_by] %></strong></td>
+                <td class="money-cell"><%= @selected_record_type == "action_plan" ? whole_number(record[:total_amount]) : currency(record[:total_amount]) %></td>
+                <% if @selected_record_type == "action_plan" %>
                   <td class="approval-status-cell">
-                    <span class="status-badge status-<%= record[:coo_approval_badge] %>"><%= record[:coo_approval_label] %></span>
-                  </td>
-                  <td class="approval-status-cell">
-                    <span class="status-badge status-<%= record[:director_approval_badge] %>"><%= record[:director_approval_label] %></span>
+                    <span class="status-badge status-<%= record[:po_approval_badge] %>"><%= record[:po_approval_label] %></span>
                   </td>
                 <% end %>
+                <td class="approval-status-cell">
+                  <span class="status-badge status-<%= record[:coo_approval_badge] %>"><%= record[:coo_approval_label] %></span>
+                </td>
+                <td class="approval-status-cell">
+                  <span class="status-badge status-<%= record[:director_approval_badge] %>"><%= record[:director_approval_label] %></span>
+                </td>
                 <% if show_remark_column %>
                   <td class="approval-remark-cell"><%= record[:remark].presence || "-" %></td>
+                <% end %>
+                <% if @selected_record_type == "action_plan" %>
+                  <td>
+                    <% modal_id = "approval-record-action-plan-#{record[:id]}" %>
+                    <button type="button" class="approval-review-button" data-open-action-plan-record-modal="<%= modal_id %>">
+                      View Changes
+                    </button>
+                  </td>
                 <% end %>
               </tr>
             <% end %>
@@ -82,6 +118,82 @@
         </table>
       </div>
     </section>
+
+    <% if @selected_record_type == "action_plan" %>
+      <% @record_entries.each do |record| %>
+        <% modal_id = "approval-record-action-plan-#{record[:id]}" %>
+        <section id="<%= modal_id %>" class="activity-modal is-hidden action-plan-review-modal" data-action-plan-record-modal aria-hidden="true">
+          <div class="activity-modal-backdrop" data-close-action-plan-record-modal></div>
+          <div class="activity-modal-panel action-plan-review-panel" role="dialog" aria-modal="true" aria-labelledby="<%= modal_id %>-title">
+            <div class="activity-modal-heading">
+              <div>
+                <p class="eyebrow"><%= record[:record_type] %></p>
+                <h2 id="<%= modal_id %>-title"><%= record[:scope_label] %></h2>
+                <p class="muted"><%= record[:row_count] %> rows • <%= record[:changed_month_count] %> month changes • <%= whole_number(record[:total_amount]) %> total target</p>
+              </div>
+              <button type="button" class="modal-close-button" data-close-action-plan-record-modal aria-label="Close review">×</button>
+            </div>
+
+            <div class="approval-change-overview <%= record[:changed_month_count].positive? ? "has-changes" : "no-changes" %>">
+              <div>
+                <span>Rows</span>
+                <strong><%= record[:row_count] %></strong>
+              </div>
+              <div>
+                <span>Total Target</span>
+                <strong><%= whole_number(record[:total_amount]) %></strong>
+              </div>
+              <div>
+                <span>Month Changes</span>
+                <strong><%= record[:changed_month_count] %></strong>
+              </div>
+              <p><%= record[:changed_month_count].positive? ? "Changed month cells are highlighted below." : "No month changes in this record." %></p>
+            </div>
+
+            <div class="responsive-table modal-table action-plan-review-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>S.No.</th>
+                    <th>ASA Activity ID</th>
+                    <th>ASA Activity</th>
+                    <th>Project Theme</th>
+                    <th>Unit Type</th>
+                    <th>Planned Total</th>
+                    <% ActionPlanRow::MONTH_COLUMNS.each do |month| %>
+                      <th><%= month.upcase %></th>
+                    <% end %>
+                    <th>Changed Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% record[:rows].each_with_index do |row, row_index| %>
+                    <tr>
+                      <td><span class="code-pill"><%= row_index + 1 %></span></td>
+                      <td><span class="code-pill"><%= action_plan_cell(row[:asa_activity_id], decimal: true) %></span></td>
+                      <td><strong><%= row[:asa_activity_name] %></strong></td>
+                      <td><%= row[:theme] %></td>
+                      <td><%= row[:unit_type] %></td>
+                      <td class="money-cell"><%= row[:planned_total] %></td>
+                      <% ActionPlanRow::MONTH_COLUMNS.each do |month| %>
+                        <% delta = row[:month_deltas][month].to_i %>
+                        <td class="money-cell <%= "is-edited-cell" if delta != 0 %>">
+                          <span><%= row[:month_amounts][month] %></span>
+                          <% if delta != 0 %>
+                            <span class="cell-change-value">Changes <%= signed_number(delta) %></span>
+                          <% end %>
+                        </td>
+                      <% end %>
+                      <td class="money-cell"><strong><%= row[:changed_total] %></strong></td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      <% end %>
+    <% end %>
   <% else %>
     <section class="empty-state">
       <h2>No matching records</h2>
@@ -89,3 +201,33 @@
     </section>
   <% end %>
 <% end %>
+
+<script>
+  (() => {
+    function closeRecordModals() {
+      document.querySelectorAll("[data-action-plan-record-modal]").forEach((modal) => {
+        modal.classList.add("is-hidden");
+        modal.setAttribute("aria-hidden", "true");
+      });
+    }
+
+    document.querySelectorAll("[data-open-action-plan-record-modal]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const modal = document.getElementById(button.dataset.openActionPlanRecordModal);
+        if (!modal) return;
+
+        closeRecordModals();
+        modal.classList.remove("is-hidden");
+        modal.setAttribute("aria-hidden", "false");
+      });
+    });
+
+    document.querySelectorAll("[data-close-action-plan-record-modal]").forEach((button) => {
+      button.addEventListener("click", closeRecordModals);
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeRecordModals();
+    });
+  })();
+</script>

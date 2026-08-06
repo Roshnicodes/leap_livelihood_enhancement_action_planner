@@ -1,9 +1,10 @@
-<% content_for :title, "Project Action Plan | LEAP Planner" %>
+<% content_for :title, "Project Action Plan | LEAP" %>
 
 <%= render "action_plans/workspace",
   page_title: "Project Action Plan",
   form_path: action_plans_path,
   update_form_path: nil,
+  submit_path: action_plans_path,
   project_options: @project_options,
   selected_project: @selected_project,
   rows: @rows,
@@ -15,4 +16,6 @@
   editable_targets: @editable_targets,
   show_admin_columns: current_user.admin?,
   existing_submission: @existing_submission,
-  empty_message: "Choose a project to review the full action plan and submit it for approval." %>
+  balance_warning: @balance_warning,
+  empty_message: "Choose a project to review the full action plan and submit it for approval.",
+  fco_view: @fco_view %>

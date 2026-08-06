@@ -1,4 +1,4 @@
-<% content_for :title, "Allocated P&B | LEAP Planner" %>
+<% content_for :title, "Allocated P&B | LEAP" %>
 
 <% total_rows = @record_groups.values.sum(&:size) %>
 <% employee = current_user.employee unless current_user.admin? || ProjectSummarySubmission.summary_access?(current_user.employee) %>

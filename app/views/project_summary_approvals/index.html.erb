@@ -1,9 +1,9 @@
-<% content_for :title, "Project Summary Approval | LEAP Planner" %>
+<% content_for :title, "P&B Summary Approval | LEAP" %>
 
 <section class="page-header">
   <div>
     <p class="eyebrow">Approval</p>
-    <h1>Project Summary Approval</h1>
+    <h1>P&B Summary Approval</h1>
   </div>
   <div class="header-card">
     <span>Pending</span>
@@ -11,7 +11,34 @@
   </div>
 </section>
 
-<% can_approve = current_user.admin? || ProjectSummarySubmission.summary_approver?(current_user.employee) %>
+<% can_approve = !current_user.admin? && ProjectSummarySubmission.summary_approver?(current_user.employee) %>
+
+<% if current_user.admin? && @pending_approver_summaries.any? %>
+  <section class="pmc-pending-board">
+    <% @pending_approver_summaries.each do |summary| %>
+      <article>
+        <span>Pending With</span>
+        <strong><%= summary[:name] %></strong>
+        <% if summary[:code].present? %>
+          <small><%= summary[:code] %></small>
+        <% end %>
+        <div>
+          <b><%= summary[:pending_count] %></b>
+          <em>requests</em>
+        </div>
+        <p><%= summary[:project_count] %> projects • <%= summary[:vertical_count] %> verticals • <%= currency(summary[:total_amount]) %></p>
+      </article>
+    <% end %>
+  </section>
+<% elsif current_user.admin? %>
+  <section class="pmc-pending-board is-empty">
+    <article>
+      <span>Pending With</span>
+      <strong>No pending approvals</strong>
+      <p>All project summary approvals are clear.</p>
+    </article>
+  </section>
+<% end %>
 
 <section class="toolbar approval-filter-toolbar">
   <%= form_with url: project_summary_approvals_path, method: :get, class: "filter-form" do |form| %>
@@ -257,10 +284,10 @@
         <% end %>
       </div>
     </div>
-  <% elsif @pending_submissions.any? %>
+  <% elsif @pending_submissions.any? || current_user.admin? %>
     <section class="approval-note">
       <span>View Only</span>
-      <p>You can review the summary, but approval actions are restricted to the approver.</p>
+      <p>PMC can review pending details only. Approval and return actions are available only to the assigned approver.</p>
     </section>
   <% end %>
 <% else %>

@@ -7,11 +7,27 @@ class ActionPlanVerticalMapping < ApplicationRecord
   validates :asa_theme_id, uniqueness: { scope: [ :employee_code, :state_code ] }
 
   scope :for_employee, lambda { |employee|
-    where(employee: employee).or(where(employee_code: employee.employee_code))
+    if employee.blank?
+      none
+    else
+      where(employee: employee).or(where(employee_code: employee.employee_code))
+    end
   }
 
   def label
     [ state_code, asa_theme.presence || asa_theme_id ].compact_blank.join(" / ")
+  end
+
+  # Mapped employees must be able to sign in to reach their Vertical Action Plan.
+  def self.enable_employee_logins!
+    employees = Employee.where(employee_code: distinct.pluck(:employee_code))
+
+    employees.find_each do |employee|
+      employee.update!(active: true) unless employee.active?
+      User.ensure_login_for(employee)
+    end
+
+    employees.count
   end
 
   private

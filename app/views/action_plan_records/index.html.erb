@@ -1,0 +1,216 @@
+<% content_for :title, "Vertical Action Plan Record | LEAP" %>
+
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Records</p>
+    <h1>Vertical Action Plan Records</h1>
+  </div>
+  <div class="header-card">
+    <span>Total Projects</span>
+    <strong><%= @overall_summary[:total_projects] %></strong>
+  </div>
+</section>
+
+<section class="toolbar vertical-filter-toolbar">
+  <%= form_with url: action_plan_records_path, method: :get, class: "filter-form" do |form| %>
+    <%= form.label :project, "Choose Project", class: "filter-label" %>
+    <%= form.select :project, options_for_select([["All Projects", ""]] + @project_options.map { |project| [project, project] }, @selected_project), {}, class: "select", onchange: "this.form.requestSubmit()" %>
+  <% end %>
+</section>
+
+<% total_record_rows = @filtered_record_groups.sum { |record| record[:rows].size } %>
+<% submittable_records = @filtered_record_groups.select { |record| record[:can_submit_for_approval] && !record[:submission]&.approved? } %>
+
+<% if @filtered_record_groups.any? %>
+  <section class="toolbar records-search-toolbar">
+    <input type="search" class="table-search records-global-search" placeholder="Search records" data-global-record-search>
+    <span class="table-count" data-global-record-count><%= total_record_rows %> rows</span>
+  </section>
+
+  <% @filtered_record_groups.each do |record| %>
+    <section class="table-panel submission-panel action-plan-record-card" data-record-table-panel>
+      <div class="table-heading">
+        <div>
+          <h2><%= record[:project_name] %></h2>
+          <p class="muted">
+            <%= record[:plan_type_label] %> •
+            PO ID: <%= record[:po_id].presence || "-" %>
+            <% if record[:submitted_at].present? %> • Submitted <%= format_record_datetime(record[:submitted_at]) %><% end %>
+          </p>
+        </div>
+        <div class="table-actions">
+          <span class="status-badge status-<%= record[:submission] ? action_plan_status_state(record[:submission]) : "not_submitted" %>"><%= record[:status_label] %></span>
+        </div>
+      </div>
+
+      <% if record[:submission].present? %>
+        <%= render "action_plans/status_trail", submission: record[:submission] %>
+      <% end %>
+
+      <div class="responsive-table">
+        <table class="action-plan-record-table">
+          <thead>
+            <tr>
+              <th>S.No.</th>
+              <th>ASA Activity ID</th>
+              <th>Project</th>
+              <th>ASA Activity</th>
+              <th>Project Theme</th>
+              <th>Unit Type</th>
+              <th>Planned Total</th>
+              <% ActionPlanRow::MONTH_COLUMNS.each do |month| %>
+                <th><%= month.upcase %></th>
+              <% end %>
+              <th>Changed Total</th>
+              <th>Remark</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% record[:rows].each_with_index do |row, index| %>
+              <tr data-summary-row>
+                <td><span class="code-pill"><%= index + 1 %></span></td>
+                <td><span class="code-pill"><%= action_plan_cell(row[:asa_activity_id], decimal: true) %></span></td>
+                <td><%= row[:project_name] %></td>
+                <td><strong><%= row[:asa_activity_name].presence || row[:activity] %></strong></td>
+                <td><%= row[:theme] %></td>
+                <td><%= row[:unit_type] %></td>
+                <td class="money-cell"><%= row[:planned_total] %></td>
+                <% ActionPlanRow::MONTH_COLUMNS.each do |month| %>
+                  <% delta = row[:month_deltas][month] %>
+                  <td class="month-col <%= "is-edited-cell" if delta != 0 %>">
+                    <strong><%= row[:month_amounts][month] %></strong>
+                    <% if delta != 0 %>
+                      <span class="cell-change-value">Changes <%= signed_number(delta) %></span>
+                    <% end %>
+                  </td>
+                <% end %>
+                <td class="month-col total-col"><strong><%= row[:changed_total] %></strong></td>
+                <td><span class="muted">-</span></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+
+    </section>
+  <% end %>
+
+  <section class="overall-summary-panel action-plan-record-summary">
+    <div class="overall-summary-heading">
+      <div>
+        <p class="eyebrow">Overall Summary</p>
+        <h2><%= @selected_project.presence || "All Projects" %> Summary</h2>
+      </div>
+      <strong><%= @overall_summary[:target_total] %></strong>
+    </div>
+
+    <div class="responsive-table activity-summary-table">
+      <table>
+        <thead>
+          <tr>
+            <th>S.No.</th>
+            <th>ASA Activity ID</th>
+            <th>ASA Activity</th>
+            <th>ASA Theme</th>
+            <th>Project Count</th>
+            <th>Total Target</th>
+            <% ActionPlanRow::MONTH_COLUMNS.each do |month| %>
+              <th><%= month.upcase %></th>
+            <% end %>
+          </tr>
+        </thead>
+        <tbody>
+          <% @activity_summaries.each_with_index do |activity, index| %>
+            <tr>
+              <td><span class="code-pill"><%= index + 1 %></span></td>
+              <td><span class="code-pill"><%= action_plan_cell(activity[:asa_activity_id], decimal: true) %></span></td>
+              <td><strong><%= activity[:activity] %></strong></td>
+              <td><%= activity[:asa_theme].presence || "-" %></td>
+              <td><span class="project-count-badge"><%= activity[:project_count] %></span></td>
+              <td class="money-cell"><%= activity[:target_total] %></td>
+              <% ActionPlanRow::MONTH_COLUMNS.each do |month| %>
+                <% delta = activity[:month_deltas][month].to_i %>
+                <td class="money-cell <%= "is-edited-cell" if delta != 0 %>">
+                  <span><%= activity[:month_totals][month] %></span>
+                  <% if delta != 0 %>
+                    <span class="cell-change-value">Changes <%= signed_number(delta) %></span>
+                  <% end %>
+                </td>
+              <% end %>
+            </tr>
+          <% end %>
+          <tr class="summary-total-row">
+            <td><span class="code-pill">Total</span></td>
+            <td>-</td>
+            <td><strong>All Project Total</strong></td>
+            <td>-</td>
+            <td><span class="project-count-badge"><%= @overall_summary[:total_projects] %></span></td>
+            <td class="money-cell"><%= @overall_summary[:target_total] %></td>
+            <% ActionPlanRow::MONTH_COLUMNS.each do |month| %>
+              <% delta = @overall_summary[:month_deltas][month].to_i %>
+              <td class="money-cell <%= "is-edited-cell" if delta != 0 %>">
+                <span><%= @overall_summary[:month_totals][month] %></span>
+                <% if delta != 0 %>
+                  <span class="cell-change-value">Changes <%= signed_number(delta) %></span>
+                <% end %>
+              </td>
+            <% end %>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <% if submittable_records.any? %>
+    <% approval_locked = submittable_records.any? { |record| !record[:balanced] } %>
+    <%= form_with url: action_plan_records_path, method: :post, class: "submit-panel bulk-submit-panel" do |form| %>
+      <% submittable_records.each do |record| %>
+        <%= hidden_field_tag "project_names[]", record[:project_name] %>
+      <% end %>
+      <%= hidden_field_tag :project, @selected_project %>
+      <div>
+        <p><%= approval_locked ? "Every record total must match its planned total before submit." : "All rows are matched. Submit vertical action plan records for approval." %></p>
+        <%= text_field_tag :submission_remark, nil, class: "remark-input approval-remark", placeholder: "Add approval remark" %>
+      </div>
+      <%= form.submit "Submit for Approval", class: "submit-plan-button", disabled: approval_locked %>
+    <% end %>
+  <% end %>
+<% else %>
+  <section class="empty-state">
+    <h2>No vertical action plan records</h2>
+    <p class="muted">Select another project or submit vertical changes to create a record.</p>
+  </section>
+<% end %>
+
+<script>
+  (() => {
+    const input = document.querySelector("[data-global-record-search]");
+    const count = document.querySelector("[data-global-record-count]");
+    if (!input) return;
+
+    const panels = [...document.querySelectorAll("[data-record-table-panel]")];
+    const rows = panels.flatMap((panel) => {
+      return [...panel.querySelectorAll("tbody tr[data-summary-row]")].map((row) => [panel, row]);
+    });
+
+    input.addEventListener("input", () => {
+      const term = input.value.trim().toLowerCase();
+      let visibleRows = 0;
+
+      panels.forEach((panel) => {
+        let panelRows = 0;
+        rows.filter(([rowPanel]) => rowPanel === panel).forEach(([, row]) => {
+          const visible = row.textContent.toLowerCase().includes(term);
+          row.hidden = !visible;
+          if (visible) {
+            visibleRows += 1;
+            panelRows += 1;
+          }
+        });
+        panel.hidden = panelRows === 0;
+      });
+
+      if (count) count.textContent = `${visibleRows} rows`;
+    });
+  })();
+</script>

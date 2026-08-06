@@ -4,11 +4,14 @@ class ActionPlanApprovalsController < ApplicationController
   before_action :require_stage_access
   before_action :set_submission, only: %i[approve return_plan]
 
+  helper_method :awaiting_this_stage?, :can_act_on_submission?, :submission_action_plan_summary, :submission_action_plan_rows
+
   def index
-    @submissions = approval_scope
+    @submissions = stage_history_scope
       .includes(:employee, :project_ownership, :po_approver, :coo_approver, :director_approver)
       .order(submitted_at: :desc)
-    @pending_submissions = @submissions.where(status: "pending")
+      .to_a
+    @pending_submissions = @submissions.select { |submission| awaiting_this_stage?(submission) }
   end
 
   def approve
@@ -39,22 +42,35 @@ class ActionPlanApprovalsController < ApplicationController
     redirect_to dashboard_path, alert: "Approval access required."
   end
 
+  # Only plans sitting in this stage can be acted on.
   def approval_scope
-    scope = ActionPlanSubmission.where(current_stage: @stage)
-    return scope if current_user.admin?
+    stage_history_scope.where(current_stage: @stage)
+  end
+
+  # Everything this approver is responsible for, including already-forwarded
+  # plans, so each stage page doubles as a status history.
+  def stage_history_scope
+    return ActionPlanSubmission.all if current_user.admin?
 
     case @stage
     when "po"
-      scope.where(po_approver: current_user.employee)
+      ActionPlanSubmission.where(po_approver: current_user.employee)
     when "coo"
-      scope.where(coo_approver: current_user.employee)
+      ActionPlanSubmission.where(coo_approver: current_user.employee)
     when "director"
-      scope.where(director_approver: current_user.employee)
+      ActionPlanSubmission.where(director_approver: current_user.employee)
     end
+  end
+
+  def awaiting_this_stage?(submission)
+    submission.pending? && submission.current_stage == @stage
   end
 
   def set_submission
     @submission = approval_scope.where(status: "pending").find(params[:id])
+    return if can_act_on_submission?(@submission)
+
+    redirect_to action_plan_approvals_path(stage: @stage), alert: "You can view this record, but approval is restricted to the assigned approver."
   end
 
   def approval_attributes
@@ -78,4 +94,70 @@ class ActionPlanApprovalsController < ApplicationController
       "#{@stage}_remark": params[:approval_remark].to_s.strip
     }
   end
+
+  def submission_action_plan_summary(submission)
+    @submission_action_plan_summaries ||= {}
+    @submission_action_plan_summaries[submission.id] ||= begin
+      rows = submission.scoped_action_plan_rows
+      month_pairs = ActionPlanRow::MONTH_DISPLAY_PAIRS
+      row_list = rows.to_a
+
+      {
+        row_count: row_list.size,
+        planned_total: rows.sum(:planned_total),
+        target_total: row_list.sum(&:monthly_total),
+        achievement_total: row_list.sum(&:target_total),
+        changed_month_count: row_list.sum do |row|
+          month_pairs.count do |pair|
+            target_column = pair[:target_column]
+            original_column = "original_#{target_column}"
+            original_value = row.respond_to?(original_column) ? row.public_send(original_column).to_i : row.public_send(target_column).to_i
+
+            row.public_send(target_column).to_i != original_value
+          end
+        end
+      }
+    end
+  end
+
+  def submission_action_plan_rows(submission)
+    @submission_action_plan_rows ||= {}
+    @submission_action_plan_rows[submission.id] ||= submission.scoped_action_plan_rows.to_a.map do |row|
+      month_amounts = ActionPlanRow::MONTH_COLUMNS.index_with { |month| row.public_send(month).to_i }
+      original_month_amounts = ActionPlanRow::MONTH_COLUMNS.index_with do |month|
+        original_column = "original_#{month}"
+        row.respond_to?(original_column) ? row.public_send(original_column).to_i : row.public_send(month).to_i
+      end
+      month_deltas = ActionPlanRow::MONTH_COLUMNS.index_with { |month| month_amounts[month] - original_month_amounts[month] }
+
+      {
+        project_name: row.project_name,
+        asa_activity_id: row.asa_activity_id,
+        asa_activity_name: row.asa_activity_name.presence || row.activity,
+        theme: row.theme,
+        unit_type: row.unit_type,
+        planned_total: row.planned_total.to_i,
+        changed_total: row.monthly_total,
+        month_amounts: month_amounts,
+        month_deltas: month_deltas
+      }
+    end
+  end
+
+  def can_act_on_submission?(submission)
+    return false unless awaiting_this_stage?(submission)
+    return false if current_user.admin?
+
+    case @stage
+    when "po"
+      submission.po_approver_id == current_user.employee&.id
+    when "coo"
+      submission.coo_approver_id == current_user.employee&.id
+    when "director"
+      submission.director_approver_id == current_user.employee&.id
+    else
+      false
+    end
+  end
+
 end

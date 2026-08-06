@@ -6,6 +6,7 @@ class Employee < ApplicationRecord
   has_many :project_summary_approvals, class_name: "ProjectSummarySubmission", foreign_key: :approver_id, dependent: :nullify
   has_many :action_plan_submissions, dependent: :destroy
   has_many :action_plan_vertical_mappings, dependent: :nullify
+  has_many :action_plan_fco_mappings, dependent: :destroy
   has_many :po_action_plan_approvals, class_name: "ActionPlanSubmission", foreign_key: :po_approver_id, dependent: :nullify
   has_many :coo_action_plan_approvals, class_name: "ActionPlanSubmission", foreign_key: :coo_approver_id, dependent: :nullify
   has_many :director_action_plan_approvals, class_name: "ActionPlanSubmission", foreign_key: :director_approver_id, dependent: :nullify
@@ -40,5 +41,9 @@ class Employee < ApplicationRecord
 
     parent_activity_assignments.order(:source_parent_activity).pluck(:source_parent_activity).presence ||
       mapped_vertical_names
+  end
+
+  def action_plan_fco?
+    action_plan_fco_mappings.exists? || ActionPlanFcoMapping.fco_staff?(self)
   end
 end

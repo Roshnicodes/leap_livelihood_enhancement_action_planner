@@ -128,8 +128,6 @@ class ProjectSummaryRecordsController < ApplicationController
       ProjectSummarySubmission.all
     elsif ProjectSummarySubmission.summary_approver?(current_user.employee)
       ProjectSummarySubmission.where("employee_id = :employee_id OR approver_id = :employee_id", employee_id: current_user.employee.id)
-    elsif ProjectSummarySubmission.summary_viewer?(current_user.employee)
-      ProjectSummarySubmission.all
     else
       current_user.employee.project_summary_submissions
     end

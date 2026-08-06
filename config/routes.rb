@@ -19,7 +19,16 @@ Rails.application.routes.draw do
   get "dashboard" => "dashboard#index"
   resources :plan_submissions, only: %i[index create]
   resources :action_plans, only: %i[index create]
-  resources :vertical_action_plans, only: %i[index update]
+  resource :achievement_entry, only: %i[show update] do
+    post :submit
+  end
+  get "achievement_approvals/:stage" => "achievement_approvals#index", as: :achievement_approvals
+  patch "achievement_approvals/:stage/:id/approve" => "achievement_approvals#approve", as: :approve_achievement
+  patch "achievement_approvals/:stage/:id/return" => "achievement_approvals#return_submission", as: :return_achievement
+  resources :vertical_action_plans, only: %i[index create]
+  patch "vertical_action_plans" => "vertical_action_plans#update"
+  get "action_plan_records" => "action_plan_records#index"
+  post "action_plan_records" => "action_plan_records#create"
   get "action_plan_approvals/:stage" => "action_plan_approvals#index", as: :action_plan_approvals
   patch "action_plan_approvals/:stage/:id/approve" => "action_plan_approvals#approve", as: :approve_action_plan
   patch "action_plan_approvals/:stage/:id/return" => "action_plan_approvals#return_plan", as: :return_action_plan
@@ -39,6 +48,7 @@ Rails.application.routes.draw do
     resources :employees, only: :index
     resources :action_plan_imports, only: %i[index create] do
       get :download, on: :collection
+      get :download_file, on: :member
     end
   end
 end

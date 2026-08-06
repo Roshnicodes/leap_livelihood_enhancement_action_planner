@@ -10,9 +10,97 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_04_110000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_06_073000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+
+  create_table "achievement_submission_rows", force: :cascade do |t|
+    t.bigint "achievement_submission_id", null: false
+    t.integer "achievement_value", default: 0, null: false
+    t.bigint "action_plan_row_id", null: false
+    t.datetime "created_at", null: false
+    t.string "month", null: false
+    t.integer "target_value", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["achievement_submission_id"], name: "index_achievement_submission_rows_on_achievement_submission_id"
+    t.index ["action_plan_row_id", "month", "achievement_submission_id"], name: "idx_achievement_submission_rows_unique", unique: true
+    t.index ["action_plan_row_id"], name: "index_achievement_submission_rows_on_action_plan_row_id"
+  end
+
+  create_table "achievement_submissions", force: :cascade do |t|
+    t.string "asa_theme_id", null: false
+    t.bigint "coo_approver_id"
+    t.text "coo_remark"
+    t.datetime "coo_reviewed_at"
+    t.datetime "created_at", null: false
+    t.string "current_stage", default: "vertical", null: false
+    t.bigint "director_approver_id"
+    t.text "director_remark"
+    t.datetime "director_reviewed_at"
+    t.bigint "employee_id", null: false
+    t.string "fco_id", null: false
+    t.string "fco_name", null: false
+    t.string "month", null: false
+    t.bigint "po_approver_id"
+    t.string "po_id", null: false
+    t.text "po_remark"
+    t.datetime "po_reviewed_at"
+    t.string "project_name", null: false
+    t.string "state_code"
+    t.string "status", default: "pending", null: false
+    t.text "submission_remark"
+    t.datetime "submitted_at", null: false
+    t.string "to_id", null: false
+    t.string "to_name"
+    t.datetime "updated_at", null: false
+    t.bigint "vertical_approver_id"
+    t.text "vertical_remark"
+    t.datetime "vertical_reviewed_at"
+    t.index ["coo_approver_id", "status", "current_stage"], name: "idx_achievement_coo_pending"
+    t.index ["coo_approver_id"], name: "index_achievement_submissions_on_coo_approver_id"
+    t.index ["director_approver_id", "status", "current_stage"], name: "idx_achievement_director_pending"
+    t.index ["director_approver_id"], name: "index_achievement_submissions_on_director_approver_id"
+    t.index ["employee_id", "project_name", "to_id", "month"], name: "idx_achievement_submission_employee_scope"
+    t.index ["employee_id"], name: "index_achievement_submissions_on_employee_id"
+    t.index ["po_approver_id", "status", "current_stage"], name: "idx_achievement_po_pending"
+    t.index ["po_approver_id"], name: "index_achievement_submissions_on_po_approver_id"
+    t.index ["status", "current_stage", "submitted_at"], name: "idx_on_status_current_stage_submitted_at_bd6c858085"
+    t.index ["vertical_approver_id", "status", "current_stage"], name: "idx_achievement_vertical_pending"
+    t.index ["vertical_approver_id"], name: "index_achievement_submissions_on_vertical_approver_id"
+  end
+
+  create_table "action_plan_fco_mappings", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "employee_code", null: false
+    t.bigint "employee_id", null: false
+    t.string "fco_id", null: false
+    t.string "fco_name", null: false
+    t.datetime "updated_at", null: false
+    t.index ["employee_code"], name: "index_action_plan_fco_mappings_on_employee_code"
+    t.index ["employee_id", "fco_id"], name: "idx_action_plan_fco_employee_fco", unique: true
+    t.index ["employee_id"], name: "index_action_plan_fco_mappings_on_employee_id"
+    t.index ["fco_id"], name: "index_action_plan_fco_mappings_on_fco_id"
+  end
+
+  create_table "action_plan_import_files", force: :cascade do |t|
+    t.integer "byte_size", default: 0, null: false
+    t.string "content_type"
+    t.datetime "created_at", null: false
+    t.text "error_message"
+    t.string "import_type", null: false
+    t.datetime "imported_at", null: false
+    t.string "original_filename", null: false
+    t.integer "row_count"
+    t.string "status", default: "saved", null: false
+    t.string "storage_path", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "uploaded_by_id"
+    t.index ["import_type"], name: "index_action_plan_import_files_on_import_type"
+    t.index ["imported_at"], name: "index_action_plan_import_files_on_imported_at"
+    t.index ["status"], name: "index_action_plan_import_files_on_status"
+    t.index ["storage_path"], name: "index_action_plan_import_files_on_storage_path", unique: true
+    t.index ["uploaded_by_id"], name: "index_action_plan_import_files_on_uploaded_by_id"
+  end
 
   create_table "action_plan_rows", force: :cascade do |t|
     t.text "a_remark"
@@ -48,6 +136,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_04_110000) do
     t.integer "nov_t", default: 0, null: false
     t.integer "oct", default: 0, null: false
     t.integer "oct_t", default: 0, null: false
+    t.integer "original_apr", default: 0, null: false
+    t.integer "original_aug", default: 0, null: false
+    t.integer "original_dec", default: 0, null: false
+    t.integer "original_feb", default: 0, null: false
+    t.integer "original_jan", default: 0, null: false
+    t.integer "original_jul", default: 0, null: false
+    t.integer "original_jun", default: 0, null: false
+    t.integer "original_mar", default: 0, null: false
+    t.integer "original_may", default: 0, null: false
+    t.integer "original_nov", default: 0, null: false
+    t.integer "original_oct", default: 0, null: false
+    t.integer "original_sep", default: 0, null: false
+    t.integer "planned_total", default: 0, null: false
     t.string "po_id", null: false
     t.string "project_id"
     t.string "project_name", null: false
@@ -82,6 +183,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_04_110000) do
     t.text "director_remark"
     t.datetime "director_reviewed_at"
     t.bigint "employee_id", null: false
+    t.string "plan_type", default: "project", null: false
     t.bigint "po_approver_id"
     t.string "po_id", null: false
     t.text "po_remark"
@@ -96,7 +198,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_04_110000) do
     t.index ["coo_approver_id"], name: "index_action_plan_submissions_on_coo_approver_id"
     t.index ["director_approver_id", "status", "current_stage"], name: "idx_action_plan_director_pending"
     t.index ["director_approver_id"], name: "index_action_plan_submissions_on_director_approver_id"
+    t.index ["employee_id", "plan_type", "project_name", "submitted_at"], name: "idx_action_plan_submissions_employee_type_project"
     t.index ["employee_id"], name: "index_action_plan_submissions_on_employee_id"
+    t.index ["plan_type", "status", "current_stage"], name: "idx_action_plan_submissions_type_stage"
     t.index ["po_approver_id", "status", "current_stage"], name: "idx_action_plan_po_pending"
     t.index ["po_approver_id"], name: "index_action_plan_submissions_on_po_approver_id"
     t.index ["project_ownership_id"], name: "index_action_plan_submissions_on_project_ownership_id"
@@ -326,6 +430,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_04_110000) do
     t.index ["vertical_name"], name: "index_vertical_percents_on_vertical_name", unique: true
   end
 
+  add_foreign_key "achievement_submission_rows", "achievement_submissions"
+  add_foreign_key "achievement_submission_rows", "action_plan_rows"
+  add_foreign_key "achievement_submissions", "employees"
+  add_foreign_key "achievement_submissions", "employees", column: "coo_approver_id"
+  add_foreign_key "achievement_submissions", "employees", column: "director_approver_id"
+  add_foreign_key "achievement_submissions", "employees", column: "po_approver_id"
+  add_foreign_key "achievement_submissions", "employees", column: "vertical_approver_id"
+  add_foreign_key "action_plan_fco_mappings", "employees"
+  add_foreign_key "action_plan_import_files", "users", column: "uploaded_by_id"
   add_foreign_key "action_plan_submissions", "employees"
   add_foreign_key "action_plan_submissions", "employees", column: "coo_approver_id"
   add_foreign_key "action_plan_submissions", "employees", column: "director_approver_id"

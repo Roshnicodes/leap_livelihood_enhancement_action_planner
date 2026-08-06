@@ -1,0 +1,176 @@
+<% content_for :title, "Achievement Entry | LEAP" %>
+<% achievement_column = "#{@selected_month}_t" %>
+
+<section class="page-header achievement-header">
+  <div>
+    <p class="eyebrow">FCO Workspace</p>
+    <h1>Achievement Entry</h1>
+    <p class="muted">Select TO, project and month to update field achievements against action plan targets.</p>
+  </div>
+  <div class="header-card">
+    <span>FCO</span>
+    <strong><%= @fco_mappings.size %></strong>
+  </div>
+</section>
+
+<section class="achievement-context">
+  <% @fco_mappings.each do |mapping| %>
+    <article>
+      <span>Mapped FCO</span>
+      <strong><%= mapping.fco_name %></strong>
+      <small>ID <%= mapping.fco_id %></small>
+    </article>
+  <% end %>
+</section>
+
+<section class="toolbar achievement-toolbar">
+  <%= form_with url: achievement_entry_path, method: :get, class: "achievement-filter-form" do |form| %>
+    <label>
+      <span class="filter-label">Choose TO</span>
+      <%= form.select :to_id,
+        options_for_select([["Select TO", ""]] + @to_options, @selected_to_id),
+        {},
+        class: "select",
+        onchange: "this.form.requestSubmit()" %>
+    </label>
+
+    <label>
+      <span class="filter-label">Choose Project</span>
+      <%= form.select :project,
+        options_for_select([["Select Project", ""]] + @project_options.map { |project| [project, project] }, @selected_project),
+        {},
+        class: "select",
+        onchange: "this.form.requestSubmit()",
+        disabled: @selected_to_id.blank? %>
+    </label>
+
+    <label>
+      <span class="filter-label">Choose Month</span>
+      <%= form.select :month,
+        options_for_select([["Select Month", ""]] + @month_options, @selected_month),
+        {},
+        class: "select",
+        onchange: "this.form.requestSubmit()",
+        disabled: @selected_project.blank? %>
+    </label>
+  <% end %>
+</section>
+
+<% if @rows.present? %>
+  <section class="metric-grid metric-grid-compact achievement-metrics">
+    <article class="metric metric-teal"><span>Rows</span><strong><%= @rows.size %></strong></article>
+    <article class="metric metric-gold"><span><%= @selected_month.capitalize %> Target</span><strong><%= whole_number(@target_total) %></strong></article>
+    <article class="metric metric-blue"><span><%= @selected_month.capitalize %> Achievement</span><strong><%= whole_number(@achievement_total) %></strong></article>
+    <article class="metric"><span>Project</span><strong><%= @selected_project %></strong></article>
+  </section>
+
+  <%= form_with url: achievement_entry_path, method: :patch, class: "table-panel achievement-entry-panel" do %>
+    <%= hidden_field_tag :to_id, @selected_to_id %>
+    <%= hidden_field_tag :project, @selected_project %>
+    <%= hidden_field_tag :month, @selected_month %>
+
+    <div class="table-heading">
+      <div>
+        <p class="eyebrow">Achievement Rows</p>
+        <h2><%= @selected_project %></h2>
+        <p class="muted">
+          <%= @to_options.assoc(@selected_to_id)&.first %> • <%= @selected_month.capitalize %>
+          <% if @locked_submission_count.to_i.positive? %>
+            • Locked after vertical approval
+          <% elsif @active_submission_count.to_i.positive? %>
+            • Submitted for approval
+          <% end %>
+        </p>
+      </div>
+      <div class="table-actions">
+        <input type="search" class="table-search" placeholder="Search activities" data-table-search-input>
+        <span class="table-count" data-filtered-count><%= @rows.size %> rows</span>
+      </div>
+    </div>
+
+    <div class="responsive-table achievement-table-wrap" data-searchable-table>
+      <table class="action-plan-table achievement-entry-table">
+        <thead>
+          <tr>
+            <th>S.No.</th>
+            <th>Project</th>
+            <th>TO</th>
+            <th>ASA Theme ID / ASA Theme</th>
+            <th>ASA Activity ID / ASA Activity</th>
+            <th>Project Activity</th>
+            <th>Unit</th>
+            <th><%= @selected_month.capitalize %> Target</th>
+            <th><%= @selected_month.capitalize %> Achievement</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @rows.each_with_index do |row, index| %>
+            <tr>
+              <td><span class="code-pill"><%= index + 1 %></span></td>
+              <td><strong><%= row.project_name %></strong></td>
+              <td>
+                <span class="code-pill"><%= row.to_id %></span>
+                <div><%= row.to_name %></div>
+              </td>
+              <td>
+                <span class="code-pill"><%= action_plan_cell(row.asa_theme_id, decimal: true) %></span>
+                <div><%= row.asa_theme %></div>
+              </td>
+              <td>
+                <span class="code-pill"><%= action_plan_cell(row.asa_activity_id, decimal: true) %></span>
+                <div><%= row.asa_activity_name %></div>
+              </td>
+              <td><%= row.activity.presence || row.activity_id.presence || "-" %></td>
+              <td><%= row.unit_type.presence || "-" %></td>
+              <td class="achievement-target-cell"><%= whole_number(row.public_send(@selected_month)) %></td>
+              <td>
+                <%= number_field_tag "achievements[#{row.id}]",
+                  row.public_send(achievement_column),
+                  min: 0,
+                  step: 1,
+                  class: "achievement-input",
+                  disabled: @locked_submission_count.to_i.positive?,
+                  aria: { label: "#{@selected_month.capitalize} achievement for #{row.asa_activity_name.presence || row.activity}" } %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="submit-panel achievement-submit-panel">
+      <p class="muted">
+        <% if @locked_submission_count.to_i.positive? %>
+          Vertical approval is done. Achievements are locked for this month.
+        <% elsif @active_submission_count.to_i.positive? %>
+          Already submitted for approval. Changes are allowed only until vertical approval.
+        <% else %>
+          Save as draft, or submit for approval when ready.
+        <% end %>
+      </p>
+      <div class="achievement-submit-actions">
+        <%= text_field_tag :submission_remark, nil, class: "remark-input achievement-submit-remark", placeholder: "Remark for approvers (optional)", disabled: @locked_submission_count.to_i.positive? %>
+        <%= submit_tag "Save Draft", class: "secondary-button", disabled: @locked_submission_count.to_i.positive? %>
+        <%= submit_tag "Submit for Approval",
+          class: "submit-plan-button",
+          disabled: @locked_submission_count.to_i.positive? || @active_submission_count.to_i.positive? %>
+      </div>
+    </div>
+  <% end %>
+<% else %>
+  <section class="empty-state">
+    <% if @selected_to_id.blank? %>
+      <h2>Select TO</h2>
+      <p class="muted">Choose a TO first, then project and month to enter achievements.</p>
+    <% elsif @selected_project.blank? %>
+      <h2>Select Project</h2>
+      <p class="muted">Choose a project for the selected TO.</p>
+    <% elsif @selected_month.blank? %>
+      <h2>Select Month</h2>
+      <p class="muted">Choose a month to view targets and enter achievements.</p>
+    <% else %>
+      <h2>No action rows found</h2>
+      <p class="muted">No rows found for this TO, project and month.</p>
+    <% end %>
+  </section>
+<% end %>

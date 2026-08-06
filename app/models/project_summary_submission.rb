@@ -1,7 +1,6 @@
 class ProjectSummarySubmission < ApplicationRecord
   FIRST_APPROVER_EMPLOYEE_CODE = ENV.fetch("PROJECT_SUMMARY_FIRST_APPROVER_CODE", "840").freeze
   FINAL_APPROVER_EMPLOYEE_CODE = ENV.fetch("PROJECT_SUMMARY_FINAL_APPROVER_CODE", "002").freeze
-  VIEWER_EMPLOYEE_CODE = ENV.fetch("PROJECT_SUMMARY_VIEWER_CODE", "644").freeze
   STATUSES = %w[pending approved returned].freeze
 
   belongs_to :employee
@@ -13,6 +12,7 @@ class ProjectSummarySubmission < ApplicationRecord
   validates :total_amount, numericality: true
 
   before_validation :assign_default_approver, on: :create
+  before_validation :assign_final_approver_after_first_approval
 
   def pending?
     status == "pending"
@@ -50,25 +50,24 @@ class ProjectSummarySubmission < ApplicationRecord
     Employee.find_by(employee_code: FINAL_APPROVER_EMPLOYEE_CODE)
   end
 
-  def self.viewer_employee
-    Employee.find_by(employee_code: VIEWER_EMPLOYEE_CODE)
-  end
-
   def self.summary_approver?(employee)
     [ FIRST_APPROVER_EMPLOYEE_CODE, FINAL_APPROVER_EMPLOYEE_CODE ].include?(employee&.employee_code)
   end
 
-  def self.summary_viewer?(employee)
-    employee&.employee_code == VIEWER_EMPLOYEE_CODE
-  end
-
   def self.summary_access?(employee)
-    summary_approver?(employee) || summary_viewer?(employee)
+    summary_approver?(employee)
   end
 
   private
 
   def assign_default_approver
     self.approver ||= self.class.first_approver_employee
+  end
+
+  def assign_final_approver_after_first_approval
+    return unless pending? && first_approver_id.present?
+
+    self.approver ||= self.class.final_approver_employee
+    self.approver = self.class.final_approver_employee if approver_id == first_approver_id
   end
 end

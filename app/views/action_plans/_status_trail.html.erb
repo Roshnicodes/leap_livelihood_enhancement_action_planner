@@ -1,0 +1,27 @@
+<section class="submission-status-card">
+  <span class="status-badge status-<%= action_plan_status_state(submission) %>">
+    <%= action_plan_status_badge_label(submission) %>
+  </span>
+  <div>
+    <strong><%= action_plan_approval_headline(submission) %></strong>
+
+    <% if action_plan_approval_subline(submission).present? %>
+      <p><%= action_plan_approval_subline(submission) %></p>
+    <% end %>
+
+    <p>
+      Submitted <%= submission.submitted_at.strftime("%d %b %Y, %I:%M %p") %>
+      <% if action_plan_last_reviewed_at(submission).present? %>
+        • Reviewed <%= action_plan_last_reviewed_at(submission).strftime("%d %b %Y, %I:%M %p") %>
+      <% end %>
+    </p>
+
+    <% if submission.submission_remark.present? %>
+      <p>Remark: <%= submission.submission_remark %></p>
+    <% end %>
+
+    <% if action_plan_last_review_remark(submission).present? %>
+      <p>Approver remark: <%= action_plan_last_review_remark(submission) %></p>
+    <% end %>
+  </div>
+</section>

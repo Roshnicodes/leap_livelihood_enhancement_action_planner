@@ -11,6 +11,12 @@ module ApplicationHelper
     number_with_precision(amount, precision: 0, delimiter: "", separator: ".")
   end
 
+  def whole_number(amount)
+    value = amount.to_d.round
+    sign = value.negative? ? "-" : ""
+    "#{sign}#{indian_number_delimiter(value.abs.to_i)}"
+  end
+
   def action_plan_cell(value, pill: false, decimal: false)
     text = value
     text = ActionPlanRow.format_decimal_string(text) if decimal && text.present?
@@ -19,6 +25,122 @@ module ApplicationHelper
     return content_tag(:span, text, class: "code-pill") if pill
 
     text
+  end
+
+  def month_column_header(name, metric)
+    content_tag(:span, class: "month-head") do
+      content_tag(:span, name) + content_tag(:span, metric)
+    end
+  end
+
+  ACTION_PLAN_STAGE_TITLES = { "po" => "Project Owner", "coo" => "COO", "director" => "Director" }.freeze
+
+  def signed_number(value)
+    value.positive? ? "+#{value}" : value.to_s
+  end
+
+  # Stage whose approver the status headline talks about. Once a plan clears the
+  # last stage its current_stage becomes "complete", which has no approver of
+  # its own, so fall back to the final stage.
+  def action_plan_headline_stage(submission)
+    stages = ACTION_PLAN_STAGE_TITLES.keys
+    return stages.last unless stages.include?(submission.current_stage)
+
+    submission.current_stage
+  end
+
+  def action_plan_status_state(submission)
+    return "not_submitted" if submission.blank?
+    return submission.status unless submission.pending?
+
+    submission.current_stage == "po" ? "pending" : "forwarded"
+  end
+
+  def action_plan_status_badge_label(submission)
+    {
+      "not_submitted" => "Not Submitted",
+      "pending" => "Pending Approval",
+      "forwarded" => "Forwarded",
+      "approved" => "Approved",
+      "returned" => "Returned"
+    }.fetch(action_plan_status_state(submission), "Pending Approval")
+  end
+
+  def action_plan_approval_headline(submission)
+    return "Not submitted" if submission.blank?
+
+    stage = action_plan_headline_stage(submission)
+    actor = action_plan_stage_actor(submission, stage)
+
+    return "Approved by #{actor}" if submission.approved?
+    return "Returned by #{actor}" if submission.returned?
+    return "Sent to #{actor}" if stage == "po"
+
+    "Forwarded to #{actor}"
+  end
+
+  def action_plan_approval_subline(submission)
+    return if submission.blank?
+
+    stages = ACTION_PLAN_STAGE_TITLES.keys
+    headline_index = stages.index(action_plan_headline_stage(submission)) || stages.size
+    previous = stages.first(headline_index).reverse.find do |stage|
+      submission.public_send("#{stage}_reviewed_at").present?
+    end
+    return if previous.blank?
+
+    "Forwarded by #{action_plan_stage_actor(submission, previous)}"
+  end
+
+  def action_plan_last_reviewed_at(submission)
+    return if submission.blank?
+
+    ACTION_PLAN_STAGE_TITLES.keys.filter_map { |stage| submission.public_send("#{stage}_reviewed_at") }.max
+  end
+
+  def action_plan_last_review_remark(submission)
+    return if submission.blank?
+
+    stage = ACTION_PLAN_STAGE_TITLES.keys.reverse.find do |candidate|
+      submission.public_send("#{candidate}_reviewed_at").present?
+    end
+    return if stage.blank?
+
+    submission.public_send("#{stage}_remark").presence
+  end
+
+  # Per-stage badge for the approval table: who acted, or who it is waiting on.
+  def action_plan_stage_status(submission, stage)
+    stages = ACTION_PLAN_STAGE_TITLES.keys
+    reviewed_at = submission.public_send("#{stage}_reviewed_at")
+
+    if reviewed_at.present?
+      returned = submission.returned? && submission.current_stage == stage
+      verb = returned ? "Returned" : "Approved"
+
+      {
+        label: "#{verb} by #{action_plan_stage_actor(submission, stage)} • #{format_record_datetime(reviewed_at)}",
+        badge: returned ? "returned" : "approved"
+      }
+    elsif submission.current_stage == stage
+      {
+        label: "Pending with #{action_plan_stage_actor(submission, stage)}",
+        badge: stage == stages.first ? "pending" : "forwarded"
+      }
+    else
+      index = stages.index(stage).to_i
+      previous = stages[index - 1] if index.positive?
+
+      {
+        label: previous ? "Awaiting #{ACTION_PLAN_STAGE_TITLES.fetch(previous)}" : "-",
+        badge: "not_submitted"
+      }
+    end
+  end
+
+  def action_plan_stage_actor(submission, stage)
+    title = ACTION_PLAN_STAGE_TITLES.fetch(stage, "Approver")
+    approval_actor_label(submission.public_send("#{stage}_approver"), title)
   end
 
   def rounded_month_total(month_amounts)
@@ -151,7 +273,7 @@ module ApplicationHelper
       )
     elsif submission.pending? && submission.first_approver_id.present?
       approval_status_result(
-        "Pending with #{approval_actor_label(submission.approver || director)}",
+        "Pending with #{approval_actor_label(director)}",
         "forwarded"
       )
     else

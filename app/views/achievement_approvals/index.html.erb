@@ -1,0 +1,233 @@
+<% stage_title = {
+  "vertical" => "Achievement Vertical Approval",
+  "po" => "Achievement PO Approval",
+  "coo" => "Achievement COO Approval",
+  "director" => "Achievement Director Approval"
+}.fetch(@stage) %>
+<% content_for :title, "#{stage_title} | LEAP" %>
+
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Achievement Approval</p>
+    <h1><%= stage_title %></h1>
+  </div>
+  <div class="header-card">
+    <span>Pending</span>
+    <strong><%= @pending_submissions.size %></strong>
+  </div>
+</section>
+
+<section class="approval-tabs">
+  <% %w[vertical po coo director].each do |stage| %>
+    <% next unless current_user.admin? || achievement_stage_access?(stage) %>
+    <%= link_to achievement_approvals_path(stage: stage), class: @stage == stage ? "approval-tab active" : "approval-tab" do %>
+      <span><%= stage == "po" ? "PO" : stage.titleize %></span>
+      <% count = pending_achievement_approval_count(stage) %>
+      <% if count.positive? %>
+        <strong><%= count %></strong>
+      <% end %>
+    <% end %>
+  <% end %>
+</section>
+
+<% if @submissions.any? %>
+  <section class="table-panel approval-records-panel" data-searchable-table>
+    <div class="table-heading">
+      <div>
+        <h2>Submitted achievements</h2>
+        <p class="muted">Flow: Vertical approval, Project Owner, COO, then Director. Rows are locked after vertical approval.</p>
+      </div>
+      <div class="table-actions">
+        <input type="search" class="table-search" placeholder="Search achievements" data-table-search-input>
+        <span class="table-count" data-filtered-count><%= @submissions.size %> rows</span>
+      </div>
+    </div>
+
+    <div class="responsive-table achievement-approval-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Project</th>
+            <th>FCO / TO</th>
+            <th>Vertical</th>
+            <th>Month</th>
+            <th>Rows</th>
+            <th>Target</th>
+            <th>Achievement</th>
+            <th>Current Stage</th>
+            <th>Vertical Approval</th>
+            <th>PO Approval</th>
+            <th>COO Approval</th>
+            <th>Director Approval</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @submissions.each do |submission| %>
+            <% rows = achievement_submission_rows(submission) %>
+            <% modal_id = "achievement-review-#{submission.id}" %>
+            <tr>
+              <td class="achievement-sticky-col achievement-sticky-project">
+                <strong><%= submission.project_name %></strong>
+                <div class="muted">PO ID: <%= submission.po_id %></div>
+              </td>
+              <td class="achievement-sticky-col achievement-sticky-fco">
+                <strong><%= submission.fco_name %></strong>
+                <div class="muted">FCO ID: <%= submission.fco_id %></div>
+                <div class="muted"><%= submission.to_name %></div>
+              </td>
+              <td>
+                <span class="code-pill"><%= submission.state_code %> / <%= submission.theme_label %></span>
+                <div><%= submission.vertical_approver&.name || "Not mapped" %></div>
+              </td>
+              <td><span class="code-pill"><%= submission.month.capitalize %></span></td>
+              <td><span class="code-pill"><%= rows.size %></span></td>
+              <td><strong><%= whole_number(rows.sum { |item| item[:target_value] }) %></strong></td>
+              <td><strong><%= whole_number(rows.sum { |item| item[:achievement_value] }) %></strong></td>
+              <td><span class="status-badge status-<%= action_plan_status_state(submission) %>"><%= submission.status_label %></span></td>
+              <% %w[vertical po coo director].each do |stage| %>
+                <% stage_status = achievement_stage_status(submission, stage) %>
+                <td class="approval-status-cell"><span class="status-badge status-<%= stage_status[:badge] %>"><%= stage_status[:label] %></span></td>
+              <% end %>
+              <td>
+                <button type="button" class="approval-review-button <%= "approval-review-primary" if can_act_on_submission?(submission) %>" data-open-achievement-modal="<%= modal_id %>">
+                  <%= can_act_on_submission?(submission) ? "Review & Decide" : "View" %>
+                </button>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <% @submissions.each do |submission| %>
+    <% rows = achievement_submission_rows(submission) %>
+    <% modal_id = "achievement-review-#{submission.id}" %>
+    <section id="<%= modal_id %>" class="activity-modal is-hidden action-plan-review-modal" data-achievement-modal aria-hidden="true">
+      <div class="activity-modal-backdrop" data-close-achievement-modal></div>
+      <div class="activity-modal-panel action-plan-review-panel" role="dialog" aria-modal="true" aria-labelledby="<%= modal_id %>-title">
+        <div class="activity-modal-heading">
+          <div>
+            <p class="eyebrow"><%= submission.month.capitalize %> Achievement</p>
+            <h2 id="<%= modal_id %>-title"><%= submission.project_name %></h2>
+            <p class="muted"><%= submission.fco_name %> • <%= submission.to_name %> • <%= submission.status_label %></p>
+          </div>
+          <button type="button" class="modal-close-button" data-close-achievement-modal aria-label="Close review">×</button>
+        </div>
+
+        <div class="approval-change-overview has-changes">
+          <div><span>Rows</span><strong><%= rows.size %></strong></div>
+          <div><span>Target</span><strong><%= whole_number(rows.sum { |item| item[:target_value] }) %></strong></div>
+          <div><span>Achievement</span><strong><%= whole_number(rows.sum { |item| item[:achievement_value] }) %></strong></div>
+          <p>Approval route: Vertical, Project Owner, COO, Director.</p>
+        </div>
+
+        <div class="responsive-table modal-table achievement-review-table">
+          <table>
+            <thead>
+              <tr>
+                <th class="col-sno">S.No.</th>
+                <th class="col-theme">ASA Theme ID / ASA Theme</th>
+                <th class="col-activity">ASA Activity ID / ASA Activity</th>
+                <th class="col-project-activity">Project Activity</th>
+                <th class="col-unit">Unit</th>
+                <th class="col-num">Target</th>
+                <th class="col-num">Achievement</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% rows.each_with_index do |item, index| %>
+                <% row = item[:row] %>
+                <tr>
+                  <td class="col-sno"><span class="code-pill"><%= index + 1 %></span></td>
+                  <td class="col-theme">
+                    <span class="code-pill"><%= action_plan_cell(row.asa_theme_id, decimal: true) %></span>
+                    <div><%= row.asa_theme %></div>
+                  </td>
+                  <td class="col-activity">
+                    <span class="code-pill"><%= action_plan_cell(row.asa_activity_id, decimal: true) %></span>
+                    <div><%= row.asa_activity_name %></div>
+                  </td>
+                  <td class="col-project-activity"><%= row.activity.presence || "-" %></td>
+                  <td class="col-unit"><%= row.unit_type.presence || "-" %></td>
+                  <td class="col-num"><strong><%= whole_number(item[:target_value]) %></strong></td>
+                  <td class="col-num"><strong><%= whole_number(item[:achievement_value]) %></strong></td>
+                </tr>
+              <% end %>
+            </tbody>
+            <tfoot>
+              <tr class="achievement-review-total-row">
+                <td colspan="5"><strong>Total</strong></td>
+                <td class="col-num"><strong><%= whole_number(rows.sum { |item| item[:target_value] }) %></strong></td>
+                <td class="col-num"><strong><%= whole_number(rows.sum { |item| item[:achievement_value] }) %></strong></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <div class="approval-modal-footer">
+          <% if can_act_on_submission?(submission) %>
+            <div class="approval-decision-actions">
+              <input type="text" class="remark-input approval-decision-remark" placeholder="Remark" data-shared-achievement-remark="<%= submission.id %>">
+              <div class="approval-decision-buttons">
+                <%= form_with url: return_achievement_path(stage: @stage, id: submission), method: :patch, class: "approval-decision-form" do |form| %>
+                  <%= form.hidden_field :approval_remark, data: { achievement_remark_target: submission.id } %>
+                  <%= form.submit "Return", class: "return-button" %>
+                <% end %>
+                <%= form_with url: approve_achievement_path(stage: @stage, id: submission), method: :patch, class: "approval-decision-form" do |form| %>
+                  <%= form.hidden_field :approval_remark, data: { achievement_remark_target: submission.id } %>
+                  <%= form.submit "Approve", class: "submit-plan-button" %>
+                <% end %>
+              </div>
+            </div>
+          <% else %>
+            <p class="muted">View only. Approval is available only to the assigned approver for this stage.</p>
+          <% end %>
+        </div>
+      </div>
+    </section>
+  <% end %>
+<% else %>
+  <section class="empty-state">
+    <h2>No achievement requests</h2>
+    <p class="muted">There are no achievement requests for this stage.</p>
+  </section>
+<% end %>
+
+<script>
+  (() => {
+    function closeAchievementModals() {
+      document.querySelectorAll("[data-achievement-modal]").forEach((modal) => {
+        modal.classList.add("is-hidden");
+        modal.setAttribute("aria-hidden", "true");
+      });
+    }
+
+    document.querySelectorAll("[data-shared-achievement-remark]").forEach((input) => {
+      input.addEventListener("input", () => {
+        document.querySelectorAll(`[data-achievement-remark-target="${input.dataset.sharedAchievementRemark}"]`).forEach((target) => {
+          target.value = input.value;
+        });
+      });
+    });
+
+    document.querySelectorAll("[data-open-achievement-modal]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const modal = document.getElementById(button.dataset.openAchievementModal);
+        if (!modal) return;
+
+        modal.classList.remove("is-hidden");
+        modal.setAttribute("aria-hidden", "false");
+      });
+    });
+
+    document.querySelectorAll("[data-close-achievement-modal]").forEach((button) => {
+      button.addEventListener("click", closeAchievementModals);
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeAchievementModals();
+    });
+  })();
+</script>

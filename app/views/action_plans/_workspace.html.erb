@@ -1,3 +1,5 @@
+<% submit_with_targets = local_assigns.fetch(:submit_with_targets, false) %>
+
 <section class="page-header">
   <div>
     <p class="eyebrow">Workspace</p>
@@ -17,6 +19,9 @@
 </section>
 
 <% if selected_project.present? %>
+  <% planned_total = rows.sum(&:planned_total) %>
+  <% current_total = rows.sum(&:monthly_total) %>
+
   <section class="metric-grid metric-grid-compact">
     <% if show_admin_columns %>
       <article class="metric metric-teal"><span>PO ID</span><strong><%= rows.first&.po_id %></strong></article>
@@ -25,13 +30,13 @@
     <% end %>
     <article class="metric metric-blue"><span>Activities</span><strong><%= rows.size %></strong></article>
     <article class="metric"><span>Themes</span><strong><%= theme_count %></strong></article>
-    <article class="metric metric-gold"><span>Plan Total</span><strong><%= rows.sum(&:monthly_total) %></strong></article>
+    <article class="metric metric-gold"><span>Plan Total</span><strong><%= current_total %></strong></article>
     <% if show_achievement %>
       <article class="metric metric-rose"><span>Achievement Total</span><strong><%= rows.sum(&:target_total) %></strong></article>
     <% end %>
   </section>
 
-  <section class="table-panel submission-panel" data-searchable-table>
+  <section class="table-panel submission-panel" data-searchable-table data-balance-panel>
     <div class="table-heading">
       <div>
         <h2><%= selected_project %></h2>
@@ -40,6 +45,8 @@
             Project Owner:
             <%= [project_ownership.po_name, project_ownership.project_owner_id].compact_blank.join(" / ") %>
           </p>
+        <% elsif local_assigns[:fco_view] %>
+          <p class="muted">Your FCO targets for this project (view only).</p>
         <% end %>
       </div>
       <div class="table-actions">
@@ -48,7 +55,32 @@
       </div>
     </div>
 
+    <% if show_submission && existing_submission.present? %>
+      <%= render "action_plans/status_trail", submission: existing_submission %>
+    <% end %>
+
     <% if editable_targets %>
+      <div class="balance-bar <%= "is-unbalanced" if current_total != planned_total %>" data-balance-bar>
+        <div class="balance-item">
+          <span>Planned Total</span>
+          <strong data-planned-total><%= planned_total %></strong>
+        </div>
+        <div class="balance-item">
+          <span>Current Total</span>
+          <strong data-current-total><%= current_total %></strong>
+        </div>
+        <div class="balance-item">
+          <span>Difference</span>
+          <strong data-difference-total><%= current_total - planned_total %></strong>
+        </div>
+        <p class="balance-note" data-balance-note>
+          <%= current_total == planned_total ? "All activities match their planned total. Submit to record when ready." : "Monthly targets must add up to each activity's planned total before you can submit." %>
+        </p>
+      </div>
+    <% end %>
+
+    <% if editable_targets %>
+      <% submit_locked = existing_submission&.approved? %>
       <%= form_with url: update_form_path, method: :patch, class: "action-plan-target-form" do |form| %>
         <%= hidden_field_tag :project, selected_project %>
         <div class="responsive-table action-plan-table-wrap">
@@ -59,8 +91,23 @@
             show_achievement: show_achievement %>
         </div>
         <div class="submit-panel">
-          <p class="muted">Update target values for your vertical rows and save.</p>
-          <%= form.submit "Save Targets", class: "submit-plan-button" %>
+          <% if submit_with_targets && show_submission %>
+            <div class="action-plan-submit-copy">
+              <% if existing_submission&.approved? %>
+                <p class="muted">This action plan is fully approved.</p>
+              <% else %>
+                <p class="muted">Targets will be saved and reflected in the record.</p>
+              <% end %>
+            </div>
+            <%= form.submit "Submit to Record",
+              name: "submit_to_record",
+              class: "submit-plan-button",
+              data: { submit_guard: true, locked_by_server: submit_locked.presence },
+              disabled: submit_locked %>
+          <% else %>
+            <p class="muted">Redistribute the monthly targets for your vertical rows, then save.</p>
+            <%= form.submit "Save Targets", class: "submit-plan-button" %>
+          <% end %>
         </div>
       <% end %>
     <% else %>
@@ -72,23 +119,36 @@
           show_achievement: show_achievement %>
       </div>
     <% end %>
-
-    <% if show_submission %>
-      <%= form_with url: action_plans_path, method: :post do |form| %>
-        <%= form.hidden_field :project_name, value: selected_project %>
-        <div class="submit-panel">
-          <div>
-            <p class="<%= existing_submission&.pending? ? "is-submitted" : "" %>">
-              Current status:
-              <strong><%= existing_submission&.status_label || "Not submitted" %></strong>
-            </p>
-            <%= form.text_area :submission_remark, value: existing_submission&.submission_remark, class: "approval-remark", placeholder: "Remark", rows: 3 %>
-          </div>
-          <%= form.submit "Submit Action Plan", class: "submit-plan-button", disabled: existing_submission&.approved? %>
-        </div>
-      <% end %>
-    <% end %>
   </section>
+
+  <% if show_submission && !submit_with_targets %>
+    <% submit_locked = balance_warning.present? || existing_submission&.approved? %>
+    <%= form_with url: submit_path, method: :post, class: "table-panel action-plan-submit-form" do |form| %>
+      <%= form.hidden_field :project_name, value: selected_project %>
+      <div class="submit-panel">
+        <div class="action-plan-submit-copy">
+          <label class="filter-label" for="submission_remark">Remark</label>
+          <%= form.text_area :submission_remark,
+            id: "submission_remark",
+            value: existing_submission&.submission_remark,
+            class: "approval-remark",
+            placeholder: "Add a note for the approvers (optional)",
+            rows: 2 %>
+
+          <% if balance_warning.present? %>
+            <p class="balance-alert" data-submit-blocker><%= balance_warning %></p>
+          <% elsif existing_submission&.approved? %>
+            <p class="muted">This action plan is fully approved.</p>
+          <% end %>
+        </div>
+
+        <%= form.submit existing_submission&.pending? ? "Resubmit for Approval" : "Submit for Approval",
+          class: "submit-plan-button",
+          data: { submit_guard: true, locked_by_server: submit_locked.presence },
+          disabled: submit_locked %>
+      </div>
+    <% end %>
+  <% end %>
 <% else %>
   <section class="empty-state">
     <h2>Select a project</h2>
