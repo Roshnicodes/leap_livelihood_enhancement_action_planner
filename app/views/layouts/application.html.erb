@@ -123,107 +123,124 @@
               <% ap_controllers = %w[action_plans achievement_entries achievement_approvals vertical_action_plans action_plan_records action_plan_approvals] %>
               <% pb_open = pb_controllers.include?(controller_name) %>
               <% ap_open = ap_controllers.include?(controller_name) %>
-              <% pb_open = true unless pb_open || ap_open %>
+              <% pb_open = true if menu_show_pb_section? && !pb_open && !ap_open %>
+              <% ap_open = true if !menu_show_pb_section? && menu_show_action_plan_section? && !ap_open %>
 
-              <div class="sidebar-section<%= " is-open" if pb_open %>" data-sidebar-section>
-                <button type="button" class="sidebar-section-toggle" data-sidebar-toggle aria-expanded="<%= pb_open %>">
-                  <span>P&amp;B</span>
-                  <span class="sidebar-section-caret" aria-hidden="true"></span>
-                </button>
-                <div class="sidebar-section-menu">
-                  <%= link_to plan_submissions_path, class: controller_name == "plan_submissions" ? "side-link active" : "side-link" do %>
-                    <span class="side-icon">S</span>
-                    <span>Allocated P&amp;B</span>
-                  <% end %>
-                  <% unless ProjectSummarySubmission.summary_access?(current_user.employee) %>
-                    <%= link_to project_summary_path, class: controller_name == "project_summaries" ? "side-link active" : "side-link" do %>
-                      <span class="side-icon">T</span>
-                      <span>Project Summary</span>
-                    <% end %>
-                  <% end %>
-                  <%= link_to project_summary_records_path, class: controller_name == "project_summary_records" ? "side-link active" : "side-link" do %>
-                    <span class="side-icon">R</span>
-                    <span>Project Summary Record</span>
-                  <% end %>
-                  <% if ProjectSummarySubmission.summary_access?(current_user.employee) %>
-                    <%= link_to project_summary_approvals_path, class: controller_name == "project_summary_approvals" ? "side-link active" : "side-link" do %>
-                      <span class="side-icon">A</span>
-                      <span><%= ProjectSummarySubmission.summary_approver?(current_user.employee) ? "P&amp;B Summary Approval" : "P&amp;B Summary View" %></span>
-                      <% if pending_project_summary_approval_count.positive? %>
-                        <span class="nav-alert-badge"><%= pending_project_summary_approval_count %></span>
+              <% if menu_show_pb_section? %>
+                <div class="sidebar-section<%= " is-open" if pb_open %>" data-sidebar-section>
+                  <button type="button" class="sidebar-section-toggle" data-sidebar-toggle aria-expanded="<%= pb_open %>">
+                    <span>P&amp;B</span>
+                    <span class="sidebar-section-caret" aria-hidden="true"></span>
+                  </button>
+                  <div class="sidebar-section-menu">
+                    <% if menu_show_allocated_pb? %>
+                      <%= link_to plan_submissions_path, class: controller_name == "plan_submissions" ? "side-link active" : "side-link" do %>
+                        <span class="side-icon">S</span>
+                        <span>Allocated P&amp;B</span>
                       <% end %>
                     <% end %>
-                    <%= link_to project_summary_approval_records_path, class: controller_name == "project_summary_approval_records" ? "side-link active" : "side-link" do %>
-                      <span class="side-icon">H</span>
-                      <span>Approval Records</span>
+                    <% if menu_show_project_summary? %>
+                      <%= link_to project_summary_path, class: controller_name == "project_summaries" ? "side-link active" : "side-link" do %>
+                        <span class="side-icon">T</span>
+                        <span>Project Summary</span>
+                      <% end %>
                     <% end %>
-                  <% end %>
+                    <% if menu_show_project_summary_record? %>
+                      <%= link_to project_summary_records_path, class: controller_name == "project_summary_records" ? "side-link active" : "side-link" do %>
+                        <span class="side-icon">R</span>
+                        <span>Project Summary Record</span>
+                      <% end %>
+                    <% end %>
+                    <% if menu_show_pb_summary_approval? %>
+                      <%= link_to project_summary_approvals_path, class: controller_name == "project_summary_approvals" ? "side-link active" : "side-link" do %>
+                        <span class="side-icon">A</span>
+                        <span><%= ProjectSummarySubmission.summary_approver?(current_user.employee) ? "P&amp;B Summary Approval" : "P&amp;B Summary View" %></span>
+                        <% if pending_project_summary_approval_count.positive? %>
+                          <span class="nav-alert-badge"><%= pending_project_summary_approval_count %></span>
+                        <% end %>
+                      <% end %>
+                    <% end %>
+                    <% if menu_show_pb_approval_records? %>
+                      <%= link_to project_summary_approval_records_path, class: controller_name == "project_summary_approval_records" ? "side-link active" : "side-link" do %>
+                        <span class="side-icon">H</span>
+                        <span>Approval Records</span>
+                      <% end %>
+                    <% end %>
+                  </div>
                 </div>
-              </div>
+              <% end %>
 
-              <div class="sidebar-section<%= " is-open" if ap_open %>" data-sidebar-section>
-                <button type="button" class="sidebar-section-toggle" data-sidebar-toggle aria-expanded="<%= ap_open %>">
-                  <span>Action Plan</span>
-                  <span class="sidebar-section-caret" aria-hidden="true"></span>
-                </button>
-                <div class="sidebar-section-menu">
-                  <%= link_to action_plans_path, class: controller_name == "action_plans" ? "side-link active" : "side-link" do %>
-                    <span class="side-icon">P</span>
-                    <span>Project Action Plan</span>
-                  <% end %>
-                  <% if current_user.employee&.action_plan_fco? %>
-                    <%= link_to achievement_entry_path, class: controller_name == "achievement_entries" ? "side-link active" : "side-link" do %>
-                      <span class="side-icon">E</span>
-                      <span>Achievement Entry</span>
-                    <% end %>
-                  <% end %>
-                  <% if %w[vertical po coo director].any? { |stage| achievement_stage_access?(stage) } %>
-                    <% achievement_pending = %w[vertical po coo director].sum { |stage| pending_achievement_approval_count(stage) } %>
-                    <%= link_to achievement_approvals_path(stage: default_achievement_approval_stage), class: controller_name == "achievement_approvals" ? "side-link active" : "side-link" do %>
-                      <span class="side-icon">A</span>
-                      <span>Achievement Approvals</span>
-                      <% if achievement_pending.positive? %>
-                        <span class="nav-alert-badge"><%= achievement_pending %></span>
+              <% if menu_show_action_plan_section? %>
+                <div class="sidebar-section<%= " is-open" if ap_open %>" data-sidebar-section>
+                  <button type="button" class="sidebar-section-toggle" data-sidebar-toggle aria-expanded="<%= ap_open %>">
+                    <span>Action Plan</span>
+                    <span class="sidebar-section-caret" aria-hidden="true"></span>
+                  </button>
+                  <div class="sidebar-section-menu">
+                    <% if menu_show_project_action_plan? %>
+                      <%= link_to action_plans_path, class: controller_name == "action_plans" ? "side-link active" : "side-link" do %>
+                        <span class="side-icon">P</span>
+                        <span>Project Action Plan</span>
                       <% end %>
                     <% end %>
-                  <% end %>
-                  <%= link_to vertical_action_plans_path, class: controller_name == "vertical_action_plans" ? "side-link active" : "side-link" do %>
-                    <span class="side-icon">V</span>
-                    <span>Vertical Action Plan</span>
-                  <% end %>
-                  <%= link_to action_plan_records_path, class: controller_name == "action_plan_records" ? "side-link active" : "side-link" do %>
-                    <span class="side-icon">R</span>
-                    <span>Vertical Action Plan Record</span>
-                  <% end %>
-                  <% if action_plan_stage_access?("po") %>
-                    <%= link_to action_plan_approvals_path(stage: "po"), class: controller_name == "action_plan_approvals" && params[:stage] == "po" ? "side-link active" : "side-link" do %>
-                      <span class="side-icon">O</span>
-                      <span>Action Plan PO Approval</span>
-                      <% if pending_action_plan_approval_count("po").positive? %>
-                        <span class="nav-alert-badge"><%= pending_action_plan_approval_count("po") %></span>
+                    <% if menu_show_achievement_entry? %>
+                      <%= link_to achievement_entry_path, class: controller_name == "achievement_entries" ? "side-link active" : "side-link", data: { turbo: false } do %>
+                        <span class="side-icon">E</span>
+                        <span>Achievement Entry</span>
                       <% end %>
                     <% end %>
-                  <% end %>
-                  <% if action_plan_stage_access?("coo") %>
-                    <%= link_to action_plan_approvals_path(stage: "coo"), class: controller_name == "action_plan_approvals" && params[:stage] == "coo" ? "side-link active" : "side-link" do %>
-                      <span class="side-icon">C</span>
-                      <span>Action Plan COO Approval</span>
-                      <% if pending_action_plan_approval_count("coo").positive? %>
-                        <span class="nav-alert-badge"><%= pending_action_plan_approval_count("coo") %></span>
+                    <% if menu_show_achievement_approvals? %>
+                      <% achievement_pending = %w[vertical po coo director].sum { |stage| pending_achievement_approval_count(stage) } %>
+                      <%= link_to achievement_approvals_path(stage: default_achievement_approval_stage), class: controller_name == "achievement_approvals" ? "side-link active" : "side-link" do %>
+                        <span class="side-icon">A</span>
+                        <span>Achievement Approvals</span>
+                        <% if achievement_pending.positive? %>
+                          <span class="nav-alert-badge"><%= achievement_pending %></span>
+                        <% end %>
                       <% end %>
                     <% end %>
-                  <% end %>
-                  <% if action_plan_stage_access?("director") %>
-                    <%= link_to action_plan_approvals_path(stage: "director"), class: controller_name == "action_plan_approvals" && params[:stage] == "director" ? "side-link active" : "side-link" do %>
-                      <span class="side-icon">D</span>
-                      <span>Action Plan Director Approval</span>
-                      <% if pending_action_plan_approval_count("director").positive? %>
-                        <span class="nav-alert-badge"><%= pending_action_plan_approval_count("director") %></span>
+                    <% if menu_show_vertical_action_plan? %>
+                      <%= link_to vertical_action_plans_path, class: controller_name == "vertical_action_plans" ? "side-link active" : "side-link" do %>
+                        <span class="side-icon">V</span>
+                        <span>Vertical Action Plan</span>
                       <% end %>
                     <% end %>
-                  <% end %>
+                    <% if menu_show_vertical_action_plan_record? %>
+                      <%= link_to action_plan_records_path, class: controller_name == "action_plan_records" ? "side-link active" : "side-link" do %>
+                        <span class="side-icon">R</span>
+                        <span>Vertical Action Plan Record</span>
+                      <% end %>
+                    <% end %>
+                    <% if menu_show_action_plan_approval?("po") %>
+                      <%= link_to action_plan_approvals_path(stage: "po"), class: controller_name == "action_plan_approvals" && params[:stage] == "po" ? "side-link active" : "side-link" do %>
+                        <span class="side-icon">O</span>
+                        <span>Action Plan PO Approval</span>
+                        <% if pending_action_plan_approval_count("po").positive? %>
+                          <span class="nav-alert-badge"><%= pending_action_plan_approval_count("po") %></span>
+                        <% end %>
+                      <% end %>
+                    <% end %>
+                    <% if menu_show_action_plan_approval?("coo") %>
+                      <%= link_to action_plan_approvals_path(stage: "coo"), class: controller_name == "action_plan_approvals" && params[:stage] == "coo" ? "side-link active" : "side-link" do %>
+                        <span class="side-icon">C</span>
+                        <span>Action Plan COO Approval</span>
+                        <% if pending_action_plan_approval_count("coo").positive? %>
+                          <span class="nav-alert-badge"><%= pending_action_plan_approval_count("coo") %></span>
+                        <% end %>
+                      <% end %>
+                    <% end %>
+                    <% if menu_show_action_plan_approval?("director") %>
+                      <%= link_to action_plan_approvals_path(stage: "director"), class: controller_name == "action_plan_approvals" && params[:stage] == "director" ? "side-link active" : "side-link" do %>
+                        <span class="side-icon">D</span>
+                        <span>Action Plan Director View</span>
+                        <% if pending_action_plan_approval_count("director").positive? %>
+                          <span class="nav-alert-badge"><%= pending_action_plan_approval_count("director") %></span>
+                        <% end %>
+                      <% end %>
+                    <% end %>
+                  </div>
                 </div>
-              </div>
+              <% end %>
             <% end %>
           </nav>
 
@@ -268,6 +285,8 @@
       </main>
     <% end %>
 
+    <%= render "shared/file_preview_modal" %>
+
     <script>
       (() => {
         function bindSearch(panel) {
@@ -286,7 +305,10 @@
               if (match) visible += 1;
             });
 
-            if (count) count.textContent = `${visible} rows`;
+            if (count) {
+              const label = count.dataset.countLabel || "rows";
+              count.textContent = `${visible} ${label}`;
+            }
           });
         }
 
@@ -424,6 +446,161 @@
         }
 
         document.querySelectorAll("[data-sidebar-nav]").forEach(bindSidebarSections);
+
+        function bindFilePreview() {
+          const modal = document.querySelector("[data-file-preview-modal]");
+          if (!modal) return;
+
+          const title = modal.querySelector("[data-file-preview-title]");
+          const body = modal.querySelector("[data-file-preview-body]");
+          const download = modal.querySelector("[data-file-preview-download]");
+
+          function closePreview() {
+            modal.classList.add("is-hidden");
+            modal.setAttribute("aria-hidden", "true");
+            if (body) body.innerHTML = "";
+          }
+
+          function openPreview(trigger) {
+            const type = trigger.dataset.previewType || "file";
+            const url = trigger.dataset.previewUrl;
+            const downloadUrl = trigger.dataset.previewDownload || url;
+            const name = trigger.dataset.previewName || "File preview";
+            if (!url || !body) return;
+
+            // Non-previewable types open directly in a new tab / download.
+            if (type === "file") {
+              window.open(downloadUrl || url, "_blank", "noopener");
+              return;
+            }
+
+            if (title) title.textContent = name;
+            if (download) download.href = downloadUrl;
+
+            body.innerHTML = "";
+            if (type === "image") {
+              const img = document.createElement("img");
+              img.src = url;
+              img.alt = name;
+              img.className = "file-preview-image";
+              body.appendChild(img);
+            } else if (type === "pdf") {
+              const frame = document.createElement("iframe");
+              frame.src = url;
+              frame.title = name;
+              frame.className = "file-preview-frame";
+              body.appendChild(frame);
+            } else if (type === "video") {
+              const video = document.createElement("video");
+              video.src = url;
+              video.controls = true;
+              video.className = "file-preview-media";
+              body.appendChild(video);
+            } else if (type === "audio") {
+              const audio = document.createElement("audio");
+              audio.src = url;
+              audio.controls = true;
+              audio.className = "file-preview-media";
+              body.appendChild(audio);
+            }
+
+            modal.classList.remove("is-hidden");
+            modal.setAttribute("aria-hidden", "false");
+          }
+
+          document.addEventListener("click", (event) => {
+            const trigger = event.target.closest("[data-file-preview]");
+            if (trigger) {
+              event.preventDefault();
+              openPreview(trigger);
+              return;
+            }
+
+            if (event.target.closest("[data-close-file-preview]")) {
+              closePreview();
+            }
+          });
+
+          document.addEventListener("keydown", (event) => {
+            if (event.key === "Escape" && !modal.classList.contains("is-hidden")) {
+              closePreview();
+            }
+          });
+        }
+
+        bindFilePreview();
+
+        function previewTypeForFile(file) {
+          if (file.type.startsWith("image/")) return "image";
+          if (file.type === "application/pdf" || /\.pdf$/i.test(file.name)) return "pdf";
+          if (file.type.startsWith("video/")) return "video";
+          if (file.type.startsWith("audio/")) return "audio";
+          return "file";
+        }
+
+        function bindLocalFilePreviews() {
+          document.querySelectorAll("[data-local-file-input]").forEach((input) => {
+            input.addEventListener("change", () => {
+              const stack = input.closest("[data-file-stack]");
+              const host = stack?.querySelector("[data-local-file-previews]");
+              if (!host) return;
+
+              host.innerHTML = "";
+              [...(input.files || [])].forEach((file) => {
+                const objectUrl = URL.createObjectURL(file);
+                const type = previewTypeForFile(file);
+                const item = document.createElement("div");
+                item.className = "achievement-local-preview-item is-clickable";
+
+                const trigger = document.createElement("button");
+                trigger.type = "button";
+                trigger.className = type === "image" ? "achievement-file-thumb-button" : "achievement-file-type-badge";
+                trigger.dataset.filePreview = "";
+                trigger.dataset.previewType = type;
+                trigger.dataset.previewUrl = objectUrl;
+                trigger.dataset.previewDownload = objectUrl;
+                trigger.dataset.previewName = file.name;
+                trigger.title = "Click to open";
+
+                if (type === "image") {
+                  const img = document.createElement("img");
+                  img.alt = file.name;
+                  img.src = objectUrl;
+                  img.className = "achievement-file-thumb";
+                  trigger.appendChild(img);
+                } else {
+                  const ext = (file.name.split(".").pop() || "FILE").toUpperCase();
+                  trigger.textContent = type === "pdf" ? "PDF" : ext.slice(0, 4);
+                }
+
+                const meta = document.createElement("div");
+                meta.className = "achievement-file-meta";
+
+                const nameBtn = document.createElement("button");
+                nameBtn.type = "button";
+                nameBtn.className = "achievement-file-link";
+                nameBtn.dataset.filePreview = "";
+                nameBtn.dataset.previewType = type;
+                nameBtn.dataset.previewUrl = objectUrl;
+                nameBtn.dataset.previewDownload = objectUrl;
+                nameBtn.dataset.previewName = file.name;
+                nameBtn.textContent = file.name;
+
+                const hint = document.createElement("div");
+                hint.className = "achievement-local-preview-name";
+                hint.textContent = "Click to open • Save Draft to keep";
+
+                meta.appendChild(nameBtn);
+                meta.appendChild(hint);
+                item.appendChild(trigger);
+                item.appendChild(meta);
+                host.appendChild(item);
+              });
+            });
+          });
+        }
+
+        bindLocalFilePreviews();
       })();
     </script>
   </body>

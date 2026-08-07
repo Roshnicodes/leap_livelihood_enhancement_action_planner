@@ -2,7 +2,7 @@
   "vertical" => "Achievement Vertical Approval",
   "po" => "Achievement PO Approval",
   "coo" => "Achievement COO Approval",
-  "director" => "Achievement Director Approval"
+  "director" => "Achievement Director View"
 }.fetch(@stage) %>
 <% content_for :title, "#{stage_title} | LEAP" %>
 
@@ -10,6 +10,9 @@
   <div>
     <p class="eyebrow">Achievement Approval</p>
     <h1><%= stage_title %></h1>
+    <% if @stage == "director" %>
+      <p class="muted">Director has view-only access. Final approval ends at COO.</p>
+    <% end %>
   </div>
   <div class="header-card">
     <span>Pending</span>
@@ -21,7 +24,7 @@
   <% %w[vertical po coo director].each do |stage| %>
     <% next unless current_user.admin? || achievement_stage_access?(stage) %>
     <%= link_to achievement_approvals_path(stage: stage), class: @stage == stage ? "approval-tab active" : "approval-tab" do %>
-      <span><%= stage == "po" ? "PO" : stage.titleize %></span>
+      <span><%= stage == "po" ? "PO" : stage == "director" ? "Director View" : stage.titleize %></span>
       <% count = pending_achievement_approval_count(stage) %>
       <% if count.positive? %>
         <strong><%= count %></strong>
@@ -35,11 +38,11 @@
     <div class="table-heading">
       <div>
         <h2>Submitted achievements</h2>
-        <p class="muted">Flow: Vertical approval, Project Owner, COO, then Director. Rows are locked after vertical approval.</p>
+        <p class="muted">Flow: Vertical approval → Project Owner → COO (final). Director is view only. Activities are locked after vertical approval.</p>
       </div>
       <div class="table-actions">
         <input type="search" class="table-search" placeholder="Search achievements" data-table-search-input>
-        <span class="table-count" data-filtered-count><%= @submissions.size %> rows</span>
+        <span class="table-count" data-filtered-count data-count-label="activities"><%= @submissions.size %> activities</span>
       </div>
     </div>
 
@@ -51,14 +54,14 @@
             <th>FCO / TO</th>
             <th>Vertical</th>
             <th>Month</th>
-            <th>Rows</th>
+            <th>No of Activity</th>
             <th>Target</th>
             <th>Achievement</th>
             <th>Current Stage</th>
             <th>Vertical Approval</th>
             <th>PO Approval</th>
             <th>COO Approval</th>
-            <th>Director Approval</th>
+            <th>Director View</th>
             <th>Action</th>
           </tr>
         </thead>
@@ -117,10 +120,10 @@
         </div>
 
         <div class="approval-change-overview has-changes">
-          <div><span>Rows</span><strong><%= rows.size %></strong></div>
+          <div><span>No of Activity</span><strong><%= rows.size %></strong></div>
           <div><span>Target</span><strong><%= whole_number(rows.sum { |item| item[:target_value] }) %></strong></div>
           <div><span>Achievement</span><strong><%= whole_number(rows.sum { |item| item[:achievement_value] }) %></strong></div>
-          <p>Approval route: Vertical, Project Owner, COO, Director.</p>
+          <p>Approval route: Vertical, Project Owner, COO (final). Director is view only.</p>
         </div>
 
         <div class="responsive-table modal-table achievement-review-table">
@@ -134,6 +137,8 @@
                 <th class="col-unit">Unit</th>
                 <th class="col-num">Target</th>
                 <th class="col-num">Achievement</th>
+                <th>Means of Verification</th>
+                <th>Remark</th>
               </tr>
             </thead>
             <tbody>
@@ -153,6 +158,16 @@
                   <td class="col-unit"><%= row.unit_type.presence || "-" %></td>
                   <td class="col-num"><strong><%= whole_number(item[:target_value]) %></strong></td>
                   <td class="col-num"><strong><%= whole_number(item[:achievement_value]) %></strong></td>
+                  <td>
+                    <% if item[:files]&.attached? %>
+                      <%= render "shared/attachment_previews",
+                        attachments: item[:files].attachments,
+                        removable: false %>
+                    <% else %>
+                      <span class="muted">-</span>
+                    <% end %>
+                  </td>
+                  <td><%= item[:remark].presence || "-" %></td>
                 </tr>
               <% end %>
             </tbody>
@@ -161,6 +176,7 @@
                 <td colspan="5"><strong>Total</strong></td>
                 <td class="col-num"><strong><%= whole_number(rows.sum { |item| item[:target_value] }) %></strong></td>
                 <td class="col-num"><strong><%= whole_number(rows.sum { |item| item[:achievement_value] }) %></strong></td>
+                <td colspan="2"></td>
               </tr>
             </tfoot>
           </table>
@@ -182,7 +198,13 @@
               </div>
             </div>
           <% else %>
-            <p class="muted">View only. Approval is available only to the assigned approver for this stage.</p>
+            <p class="muted">
+              <% if @stage == "director" %>
+                View only. Final approval ends at COO; Director cannot approve or return.
+              <% else %>
+                View only. Approval is available only to the assigned approver for this stage.
+              <% end %>
+            </p>
           <% end %>
         </div>
       </div>

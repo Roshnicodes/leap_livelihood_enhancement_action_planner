@@ -1,4 +1,6 @@
 class ActionPlanRow < ApplicationRecord
+  has_many :achievement_entry_details, dependent: :destroy
+
   MONTH_COLUMNS = %w[apr may jun jul aug sep oct nov dec jan feb mar].freeze
   ORIGINAL_MONTH_COLUMNS = MONTH_COLUMNS.map { |month| "original_#{month}" }.freeze
   TARGET_MONTH_COLUMNS = MONTH_COLUMNS.map { |month| "#{month}_t" }.freeze

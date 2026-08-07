@@ -79,6 +79,7 @@ class AchievementApprovalsController < ApplicationController
   end
 
   def can_act_on_submission?(submission)
+    return false if @stage == "director"
     return false unless awaiting_this_stage?(submission)
     return false if current_user.admin?
 
@@ -95,7 +96,7 @@ class AchievementApprovalsController < ApplicationController
     when "po"
       { current_stage: "coo", po_reviewed_at: reviewed_at, po_remark: remark }
     when "coo"
-      { current_stage: "director", coo_reviewed_at: reviewed_at, coo_remark: remark }
+      { status: "approved", current_stage: "complete", coo_reviewed_at: reviewed_at, coo_remark: remark }
     else
       { status: "approved", current_stage: "complete", director_reviewed_at: reviewed_at, director_remark: remark }
     end
@@ -117,6 +118,12 @@ class AchievementApprovalsController < ApplicationController
         label: "#{returned ? "Returned" : "Approved"} by #{submission.stage_actor(stage)} • #{helpers.format_record_datetime(reviewed_at)}",
         badge: returned ? "returned" : "approved"
       }
+    elsif stage == "director"
+      if submission.approved?
+        { label: "View only • Final at COO", badge: "approved" }
+      else
+        { label: "View only", badge: "not_submitted" }
+      end
     elsif submission.current_stage == stage
       { label: "Pending with #{submission.stage_actor(stage)}", badge: stage == "vertical" ? "pending" : "forwarded" }
     else
@@ -125,19 +132,26 @@ class AchievementApprovalsController < ApplicationController
   end
 
   def achievement_submission_rows(submission)
-    submission.achievement_submission_rows.includes(:action_plan_row).sort_by do |item|
+    items = submission.achievement_submission_rows.includes(:action_plan_row).sort_by do |item|
       row = item.action_plan_row
       [
         ActionPlanRow.format_decimal_string(row.asa_theme_id).to_f,
         ActionPlanRow.format_decimal_string(row.asa_activity_id).to_f,
         item.id
       ]
-    end.map do |item|
+    end
+
+    details = AchievementEntryDetail.for_rows(items.map(&:action_plan_row_id), submission.month)
+
+    items.map do |item|
       row = item.action_plan_row
+      detail = details[row.id]
       {
         row: row,
         target_value: row.public_send(submission.month).to_i,
-        achievement_value: row.public_send("#{submission.month}_t").to_i
+        achievement_value: row.public_send("#{submission.month}_t").to_i,
+        remark: detail&.remark,
+        files: detail&.files
       }
     end
   end

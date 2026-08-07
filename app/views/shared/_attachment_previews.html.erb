@@ -1,0 +1,67 @@
+<%# locals: attachments:, removable: false %>
+<% removable = local_assigns.fetch(:removable, false) %>
+<% items = Array(attachments) %>
+
+<% if items.present? %>
+  <ul class="achievement-file-list">
+    <% items.each do |attachment| %>
+      <% kind = attachment_preview_kind(attachment) %>
+      <% inline_url = attachment_inline_path(attachment) %>
+      <% download_url = attachment_download_path(attachment) %>
+      <% name = attachment.filename.to_s %>
+      <li class="achievement-file-item kind-<%= kind %>">
+        <% if kind == "image" %>
+          <button type="button"
+            class="achievement-file-thumb-button"
+            data-file-preview
+            data-preview-type="image"
+            data-preview-url="<%= inline_url %>"
+            data-preview-download="<%= download_url %>"
+            data-preview-name="<%= name %>">
+            <%= image_tag inline_url, alt: name, class: "achievement-file-thumb", loading: "lazy" %>
+          </button>
+        <% else %>
+          <button type="button"
+            class="achievement-file-type-badge"
+            data-file-preview
+            data-preview-type="<%= kind %>"
+            data-preview-url="<%= inline_url %>"
+            data-preview-download="<%= download_url %>"
+            data-preview-name="<%= name %>">
+            <%= kind == "pdf" ? "PDF" : attachment_extension_label(attachment) %>
+          </button>
+        <% end %>
+
+        <div class="achievement-file-meta">
+          <button type="button"
+            class="achievement-file-link"
+            data-file-preview
+            data-preview-type="<%= kind %>"
+            data-preview-url="<%= inline_url %>"
+            data-preview-download="<%= download_url %>"
+            data-preview-name="<%= name %>">
+            <%= name %>
+          </button>
+          <div class="achievement-file-actions">
+            <button type="button"
+              class="achievement-file-action"
+              data-file-preview
+              data-preview-type="<%= kind %>"
+              data-preview-url="<%= inline_url %>"
+              data-preview-download="<%= download_url %>"
+              data-preview-name="<%= name %>">
+              View
+            </button>
+            <%= link_to "Download", download_url, class: "achievement-file-action", target: "_blank", rel: "noopener" %>
+            <% if removable %>
+              <label class="achievement-file-remove">
+                <%= check_box_tag "purge_file_ids[]", attachment.id, false, id: "purge_file_#{attachment.id}" %>
+                Remove
+              </label>
+            <% end %>
+          </div>
+        </div>
+      </li>
+    <% end %>
+  </ul>
+<% end %>

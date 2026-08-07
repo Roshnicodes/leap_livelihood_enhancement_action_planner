@@ -14,9 +14,9 @@
 
 <section class="metric-grid admin-grid">
   <article class="metric metric-teal"><span>Project Owners</span><strong><%= @summary[:project_ownerships] %></strong></article>
-  <article class="metric metric-blue"><span>Active Action Rows</span><strong><%= @summary[:action_plan_rows] %></strong></article>
+  <article class="metric metric-blue"><span>No of Activity</span><strong><%= @summary[:action_plan_rows] %></strong></article>
   <article class="metric metric-gold"><span>User Verticals</span><strong><%= @summary[:vertical_mappings] %></strong></article>
-  <article class="metric metric-rose"><span>Archived Rows</span><strong><%= @summary[:archived_action_plan_rows] %></strong></article>
+  <article class="metric metric-rose"><span>Archived Activities</span><strong><%= @summary[:archived_action_plan_rows] %></strong></article>
 </section>
 
 <section class="table-panel import-panel">
@@ -74,7 +74,7 @@
           <th>File Type</th>
           <th>File Name</th>
           <th>Uploaded By</th>
-          <th>Rows</th>
+          <th>No of Activity</th>
           <th>Status</th>
           <th>Uploaded At</th>
           <th>Download</th>
@@ -123,7 +123,7 @@
     </div>
     <div class="table-actions">
       <input type="search" class="table-search" placeholder="Search user verticals" data-table-search-input>
-      <span class="table-count" data-filtered-count><%= @vertical_mappings.size %> rows</span>
+      <span class="table-count" data-filtered-count data-count-label="activities"><%= @vertical_mappings.size %> activities</span>
     </div>
   </div>
 
@@ -169,7 +169,7 @@
     </div>
     <div class="table-actions">
       <input type="search" class="table-search" placeholder="Search project owners" data-table-search-input>
-      <span class="table-count" data-filtered-count><%= @project_ownerships.size %> rows</span>
+      <span class="table-count" data-filtered-count data-count-label="activities"><%= @project_ownerships.size %> activities</span>
     </div>
   </div>
 

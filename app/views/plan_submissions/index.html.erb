@@ -9,7 +9,7 @@
     <h1>Allocated P&B</h1>
   </div>
   <div class="header-card">
-    <span>Total Rows</span>
+    <span>No of Activity</span>
     <strong><%= total_rows %></strong>
   </div>
 </section>
@@ -47,7 +47,7 @@
 </section>
 
 <section class="metric-grid metric-grid-compact">
-  <article class="metric metric-teal"><span>Rows</span><strong><%= total_rows %></strong></article>
+  <article class="metric metric-teal"><span>No of Activity</span><strong><%= total_rows %></strong></article>
   <article class="metric metric-blue"><span>Allocated Total</span><strong><%= currency(@activities.sum(&:allocated_fund)) %></strong></article>
 </section>
 
@@ -62,7 +62,7 @@
         </div>
         <div class="table-actions">
           <input type="search" class="table-search" placeholder="Search records" data-table-search-input>
-          <span class="table-count" data-filtered-count><%= activities.size %> rows</span>
+          <span class="table-count" data-filtered-count data-count-label="activities"><%= activities.size %> activities</span>
         </div>
       </div>
 
@@ -102,6 +102,6 @@
 <% else %>
   <section class="empty-state">
     <h2>No Allocated P&B</h2>
-    <p class="muted">No mapped BLI rows are available for this employee.</p>
+    <p class="muted">No mapped BLI activities are available for this employee.</p>
   </section>
 <% end %>

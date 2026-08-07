@@ -40,11 +40,12 @@ module ApplicationHelper
   end
 
   # Stage whose approver the status headline talks about. Once a plan clears the
-  # last stage its current_stage becomes "complete", which has no approver of
-  # its own, so fall back to the final stage.
+  # last approval stage (COO) its current_stage becomes "complete".
   def action_plan_headline_stage(submission)
+    return "coo" if submission.current_stage.to_s.in?(%w[complete director]) || submission.approved?
+
     stages = ACTION_PLAN_STAGE_TITLES.keys
-    return stages.last unless stages.include?(submission.current_stage)
+    return "coo" unless stages.include?(submission.current_stage)
 
     submission.current_stage
   end
@@ -122,6 +123,12 @@ module ApplicationHelper
         label: "#{verb} by #{action_plan_stage_actor(submission, stage)} • #{format_record_datetime(reviewed_at)}",
         badge: returned ? "returned" : "approved"
       }
+    elsif stage == "director"
+      if submission.approved?
+        { label: "View only • Final at COO", badge: "approved" }
+      else
+        { label: "View only", badge: "not_submitted" }
+      end
     elsif submission.current_stage == stage
       {
         label: "Pending with #{action_plan_stage_actor(submission, stage)}",
@@ -299,6 +306,30 @@ module ApplicationHelper
 
   def empty_approval_status
     { label: "-", badge: "not_submitted" }
+  end
+
+  def attachment_preview_kind(attachment)
+    blob = attachment.respond_to?(:blob) ? attachment.blob : attachment
+    return "image" if blob.image?
+    return "pdf" if blob.content_type.to_s == "application/pdf"
+    return "video" if blob.content_type.to_s.start_with?("video/")
+    return "audio" if blob.content_type.to_s.start_with?("audio/")
+
+    "file"
+  end
+
+  def attachment_extension_label(attachment)
+    blob = attachment.respond_to?(:blob) ? attachment.blob : attachment
+    ext = File.extname(blob.filename.to_s).delete(".").upcase
+    ext.presence || "FILE"
+  end
+
+  def attachment_inline_path(attachment)
+    rails_blob_path(attachment, disposition: "inline")
+  end
+
+  def attachment_download_path(attachment)
+    rails_blob_path(attachment, disposition: "attachment")
   end
 
   private

@@ -24,7 +24,7 @@
 <% if @filtered_record_groups.any? %>
   <section class="toolbar records-search-toolbar">
     <input type="search" class="table-search records-global-search" placeholder="Search records" data-global-record-search>
-    <span class="table-count" data-global-record-count><%= total_record_rows %> rows</span>
+    <span class="table-count" data-global-record-count data-count-label="activities"><%= total_record_rows %> activities</span>
   </section>
 
   <% @filtered_record_groups.each do |record| %>
@@ -210,7 +210,10 @@
         panel.hidden = panelRows === 0;
       });
 
-      if (count) count.textContent = `${visibleRows} rows`;
+      if (count) {
+        const label = count.dataset.countLabel || "activities";
+        count.textContent = `${visibleRows} ${label}`;
+      }
     });
   })();
 </script>

@@ -81,7 +81,7 @@ class ActionPlanApprovalsController < ApplicationController
     when "po"
       { current_stage: "coo", po_reviewed_at: reviewed_at, po_remark: remark }
     when "coo"
-      { current_stage: "director", coo_reviewed_at: reviewed_at, coo_remark: remark }
+      { status: "approved", current_stage: "complete", coo_reviewed_at: reviewed_at, coo_remark: remark }
     else
       { status: "approved", current_stage: "complete", director_reviewed_at: reviewed_at, director_remark: remark }
     end
@@ -145,6 +145,7 @@ class ActionPlanApprovalsController < ApplicationController
   end
 
   def can_act_on_submission?(submission)
+    return false if @stage == "director"
     return false unless awaiting_this_stage?(submission)
     return false if current_user.admin?
 
@@ -153,8 +154,6 @@ class ActionPlanApprovalsController < ApplicationController
       submission.po_approver_id == current_user.employee&.id
     when "coo"
       submission.coo_approver_id == current_user.employee&.id
-    when "director"
-      submission.director_approver_id == current_user.employee&.id
     else
       false
     end

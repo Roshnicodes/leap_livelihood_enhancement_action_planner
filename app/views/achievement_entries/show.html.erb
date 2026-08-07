@@ -24,67 +24,102 @@
 </section>
 
 <section class="toolbar achievement-toolbar">
-  <%= form_with url: achievement_entry_path, method: :get, class: "achievement-filter-form" do |form| %>
+  <%= form_with url: achievement_entry_path,
+        method: :get,
+        local: true,
+        class: "achievement-filter-form",
+        html: { autocomplete: "off", "data-achievement-filters": true } do |form| %>
     <label>
       <span class="filter-label">Choose TO</span>
       <%= form.select :to_id,
-        options_for_select([["Select TO", ""]] + @to_options, @selected_to_id),
+        options_for_select([["Select TO", ""]] + @to_options, @selected_to_id.to_s),
         {},
         class: "select",
-        onchange: "this.form.requestSubmit()" %>
+        autocomplete: "off",
+        data: { filter: "to" } %>
     </label>
 
     <label>
       <span class="filter-label">Choose Project</span>
       <%= form.select :project,
-        options_for_select([["Select Project", ""]] + @project_options.map { |project| [project, project] }, @selected_project),
+        options_for_select([["Select Project", ""]] + @project_options.map { |project| [project, project] }, @selected_project.to_s),
         {},
         class: "select",
-        onchange: "this.form.requestSubmit()",
-        disabled: @selected_to_id.blank? %>
+        autocomplete: "off",
+        data: { filter: "project" } %>
     </label>
 
     <label>
       <span class="filter-label">Choose Month</span>
       <%= form.select :month,
-        options_for_select([["Select Month", ""]] + @month_options, @selected_month),
+        options_for_select([["Select Month", ""]] + @month_options, @selected_month.to_s),
         {},
         class: "select",
-        onchange: "this.form.requestSubmit()",
-        disabled: @selected_project.blank? %>
+        autocomplete: "off",
+        data: { filter: "month" } %>
     </label>
   <% end %>
 </section>
 
-<% if @rows.present? %>
-  <section class="metric-grid metric-grid-compact achievement-metrics">
-    <article class="metric metric-teal"><span>Rows</span><strong><%= @rows.size %></strong></article>
-    <article class="metric metric-gold"><span><%= @selected_month.capitalize %> Target</span><strong><%= whole_number(@target_total) %></strong></article>
-    <article class="metric metric-blue"><span><%= @selected_month.capitalize %> Achievement</span><strong><%= whole_number(@achievement_total) %></strong></article>
-    <article class="metric"><span>Project</span><strong><%= @selected_project %></strong></article>
-  </section>
+<script>
+  (() => {
+    const form = document.querySelector("[data-achievement-filters]");
+    if (!form) return;
 
-  <%= form_with url: achievement_entry_path, method: :patch, class: "table-panel achievement-entry-panel" do %>
+    const toSelect = form.querySelector('[data-filter="to"]');
+    const projectSelect = form.querySelector('[data-filter="project"]');
+    const monthSelect = form.querySelector('[data-filter="month"]');
+
+    function submitFilters() {
+      form.submit();
+    }
+
+    toSelect?.addEventListener("change", () => {
+      // Changing TO should reset project/month so old values don't stick.
+      if (projectSelect) projectSelect.value = "";
+      if (monthSelect) monthSelect.value = "";
+      submitFilters();
+    });
+
+    projectSelect?.addEventListener("change", () => {
+      if (monthSelect) monthSelect.value = "";
+      submitFilters();
+    });
+
+    monthSelect?.addEventListener("change", submitFilters);
+  })();
+</script>
+
+<% if @rows.present? %>
+  <%= form_with url: achievement_entry_path,
+        method: :patch,
+        class: "table-panel achievement-entry-panel",
+        html: { multipart: true } do %>
     <%= hidden_field_tag :to_id, @selected_to_id %>
     <%= hidden_field_tag :project, @selected_project %>
     <%= hidden_field_tag :month, @selected_month %>
 
     <div class="table-heading">
       <div>
-        <p class="eyebrow">Achievement Rows</p>
-        <h2><%= @selected_project %></h2>
+        <p class="eyebrow">Achievement Entry</p>
+        <h2><%= @selected_project %> • <%= @selected_month.capitalize %></h2>
         <p class="muted">
-          <%= @to_options.assoc(@selected_to_id)&.first %> • <%= @selected_month.capitalize %>
+          <%= @to_options.assoc(@selected_to_id)&.first %>
+          • Total Activity Target: <strong><%= @target_rows_count %></strong>
           <% if @locked_submission_count.to_i.positive? %>
             • Locked after vertical approval
           <% elsif @active_submission_count.to_i.positive? %>
             • Submitted for approval
           <% end %>
         </p>
+        <p class="achievement-legend">
+          <span class="achievement-legend-dot"></span>
+          Highlighted activities have a target greater than 0
+        </p>
       </div>
       <div class="table-actions">
         <input type="search" class="table-search" placeholder="Search activities" data-table-search-input>
-        <span class="table-count" data-filtered-count><%= @rows.size %> rows</span>
+        <span class="table-count" data-filtered-count data-count-label="activities"><%= @rows.size %> activities</span>
       </div>
     </div>
 
@@ -101,11 +136,17 @@
             <th>Unit</th>
             <th><%= @selected_month.capitalize %> Target</th>
             <th><%= @selected_month.capitalize %> Achievement</th>
+            <th>Means of Verification</th>
+            <th>Remark</th>
           </tr>
         </thead>
         <tbody>
+          <% locked = @locked_submission_count.to_i.positive? %>
           <% @rows.each_with_index do |row, index| %>
-            <tr>
+            <% month_target = row.public_send(@selected_month).to_i %>
+            <% has_target = month_target.positive? %>
+            <% detail = @entry_details_by_row_id[row.id] %>
+            <tr class="<%= "achievement-row-has-target" if has_target %>">
               <td><span class="code-pill"><%= index + 1 %></span></td>
               <td><strong><%= row.project_name %></strong></td>
               <td>
@@ -122,15 +163,43 @@
               </td>
               <td><%= row.activity.presence || row.activity_id.presence || "-" %></td>
               <td><%= row.unit_type.presence || "-" %></td>
-              <td class="achievement-target-cell"><%= whole_number(row.public_send(@selected_month)) %></td>
-              <td>
+              <td class="achievement-target-cell <%= "has-target" if has_target %>">
+                <span class="achievement-target-pill" <%= raw('style="color:#ffffff;-webkit-text-fill-color:#ffffff;"') if has_target %>><%= whole_number(month_target) %></span>
+              </td>
+              <td class="achievement-input-cell <%= "has-target" if has_target %>">
                 <%= number_field_tag "achievements[#{row.id}]",
                   row.public_send(achievement_column),
                   min: 0,
                   step: 1,
-                  class: "achievement-input",
-                  disabled: @locked_submission_count.to_i.positive?,
+                  class: "achievement-input #{'is-priority' if has_target}",
+                  disabled: locked,
                   aria: { label: "#{@selected_month.capitalize} achievement for #{row.asa_activity_name.presence || row.activity}" } %>
+              </td>
+              <td class="achievement-file-cell">
+                <div class="achievement-file-stack" data-file-stack>
+                  <% if detail&.files&.attached? %>
+                    <%= render "shared/attachment_previews",
+                      attachments: detail.files.attachments,
+                      removable: !locked %>
+                  <% end %>
+                  <div class="achievement-local-previews" data-local-file-previews></div>
+                  <%= file_field_tag "files[#{row.id}][]",
+                    multiple: true,
+                    disabled: locked,
+                    class: "achievement-file-input",
+                    data: { local_file_input: true },
+                    aria: { label: "Upload supporting files for #{row.asa_activity_name.presence || row.activity}" } %>
+                  <small class="muted">Any file type • preview on select • Save Draft to keep • max 10 / 50 MB</small>
+                </div>
+              </td>
+              <td class="achievement-remark-cell">
+                <%= text_area_tag "remarks[#{row.id}]",
+                  detail&.remark,
+                  rows: 2,
+                  class: "achievement-remark-input",
+                  disabled: locked,
+                  placeholder: "Remark",
+                  aria: { label: "Remark for #{row.asa_activity_name.presence || row.activity}" } %>
               </td>
             </tr>
           <% end %>
@@ -161,16 +230,16 @@
   <section class="empty-state">
     <% if @selected_to_id.blank? %>
       <h2>Select TO</h2>
-      <p class="muted">Choose a TO first, then project and month to enter achievements.</p>
+      <p class="muted">Choose a TO first, then project and month.</p>
     <% elsif @selected_project.blank? %>
       <h2>Select Project</h2>
       <p class="muted">Choose a project for the selected TO.</p>
     <% elsif @selected_month.blank? %>
       <h2>Select Month</h2>
-      <p class="muted">Choose a month to view targets and enter achievements.</p>
+      <p class="muted">Choose a month to view and enter achievements.</p>
     <% else %>
-      <h2>No action rows found</h2>
-      <p class="muted">No rows found for this TO, project and month.</p>
+      <h2>No activities found</h2>
+      <p class="muted">No activities found for this TO, project and month.</p>
     <% end %>
   </section>
 <% end %>

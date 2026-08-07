@@ -62,7 +62,7 @@ class ActionPlanSubmission < ApplicationRecord
     {
       "po" => "Pending PO Approval",
       "coo" => "Pending COO Approval",
-      "director" => "Pending Director Approval"
+      "director" => "Approved (view only for Director)"
     }.fetch(current_stage, "Pending Approval")
   end
 
@@ -79,7 +79,7 @@ class ActionPlanSubmission < ApplicationRecord
 
     case stage.to_s
     when "po"
-      where(po_approver: employee).exists?
+      ProjectOwnership.for_employee(employee).exists? || where(po_approver: employee).exists?
     when "coo"
       ProjectOwnership.normalize_employee_code(employee.employee_code) == COO_EMPLOYEE_CODE
     when "director"
@@ -91,14 +91,13 @@ class ActionPlanSubmission < ApplicationRecord
 
   def self.stage_pending_count(employee, stage)
     return 0 unless employee
+    return 0 if stage.to_s == "director"
 
     case stage.to_s
     when "po"
       pending_for_stage("po").where(po_approver: employee).count
     when "coo"
       pending_for_stage("coo").where(coo_approver: employee).count
-    when "director"
-      pending_for_stage("director").where(director_approver: employee).count
     else
       0
     end
@@ -119,6 +118,5 @@ class ActionPlanSubmission < ApplicationRecord
 
     errors.add(:base, "Project Owner approver is not mapped for #{project_name}. Check Project_owner_id in the project ownership file.") if po_approver.blank?
     errors.add(:base, "COO approver is not configured.") if coo_approver.blank?
-    errors.add(:base, "Director approver is not configured.") if director_approver.blank?
   end
 end

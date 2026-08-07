@@ -129,14 +129,14 @@
               <div>
                 <p class="eyebrow"><%= record[:record_type] %></p>
                 <h2 id="<%= modal_id %>-title"><%= record[:scope_label] %></h2>
-                <p class="muted"><%= record[:row_count] %> rows • <%= record[:changed_month_count] %> month changes • <%= whole_number(record[:total_amount]) %> total target</p>
+                <p class="muted"><%= record[:row_count] %> activities • <%= record[:changed_month_count] %> month changes • <%= whole_number(record[:total_amount]) %> total target</p>
               </div>
               <button type="button" class="modal-close-button" data-close-action-plan-record-modal aria-label="Close review">×</button>
             </div>
 
             <div class="approval-change-overview <%= record[:changed_month_count].positive? ? "has-changes" : "no-changes" %>">
               <div>
-                <span>Rows</span>
+                <span>No of Activity</span>
                 <strong><%= record[:row_count] %></strong>
               </div>
               <div>

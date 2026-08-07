@@ -31,7 +31,7 @@
 <% elsif @record_groups.any? %>
   <section class="toolbar records-search-toolbar">
     <input type="search" class="table-search records-global-search" placeholder="Search records" data-global-record-search>
-    <span class="table-count" data-global-record-count><%= total_record_rows %> rows</span>
+    <span class="table-count" data-global-record-count data-count-label="activities"><%= total_record_rows %> activities</span>
   </section>
 
   <% if editable_records.any? %>
@@ -291,7 +291,10 @@
           panel.hidden = panelVisibleRows === 0;
         });
 
-        if (globalSearchCount) globalSearchCount.textContent = `${visibleRows} rows`;
+        if (globalSearchCount) {
+          const label = globalSearchCount.dataset.countLabel || "activities";
+          globalSearchCount.textContent = `${visibleRows} ${label}`;
+        }
       }
 
       globalSearchInput.addEventListener("input", refreshGlobalSearch);

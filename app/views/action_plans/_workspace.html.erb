@@ -6,7 +6,7 @@
     <h1><%= page_title %></h1>
   </div>
   <div class="header-card">
-    <span>Rows</span>
+    <span>No of Activity</span>
     <strong><%= rows.size %></strong>
   </div>
 </section>
@@ -30,7 +30,6 @@
     <% end %>
     <article class="metric metric-blue"><span>Activities</span><strong><%= rows.size %></strong></article>
     <article class="metric"><span>Themes</span><strong><%= theme_count %></strong></article>
-    <article class="metric metric-gold"><span>Plan Total</span><strong><%= current_total %></strong></article>
     <% if show_achievement %>
       <article class="metric metric-rose"><span>Achievement Total</span><strong><%= rows.sum(&:target_total) %></strong></article>
     <% end %>
@@ -50,8 +49,8 @@
         <% end %>
       </div>
       <div class="table-actions">
-        <input type="search" class="table-search" placeholder="Search action rows" data-table-search-input>
-        <span class="table-count" data-filtered-count><%= rows.size %> rows</span>
+        <input type="search" class="table-search" placeholder="Search activities" data-table-search-input>
+        <span class="table-count" data-filtered-count data-count-label="activities"><%= rows.size %> activities</span>
       </div>
     </div>
 

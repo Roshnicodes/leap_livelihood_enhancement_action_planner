@@ -10,9 +10,19 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_06_073000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_07_040100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+
+  create_table "achievement_entry_details", force: :cascade do |t|
+    t.bigint "action_plan_row_id", null: false
+    t.datetime "created_at", null: false
+    t.string "month", null: false
+    t.text "remark"
+    t.datetime "updated_at", null: false
+    t.index ["action_plan_row_id", "month"], name: "idx_achievement_entry_details_row_month", unique: true
+    t.index ["action_plan_row_id"], name: "index_achievement_entry_details_on_action_plan_row_id"
+  end
 
   create_table "achievement_submission_rows", force: :cascade do |t|
     t.bigint "achievement_submission_id", null: false
@@ -25,6 +35,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_06_073000) do
     t.index ["achievement_submission_id"], name: "index_achievement_submission_rows_on_achievement_submission_id"
     t.index ["action_plan_row_id", "month", "achievement_submission_id"], name: "idx_achievement_submission_rows_unique", unique: true
     t.index ["action_plan_row_id"], name: "index_achievement_submission_rows_on_action_plan_row_id"
+    t.index ["month", "action_plan_row_id"], name: "idx_achievement_submission_rows_month_row"
   end
 
   create_table "achievement_submissions", force: :cascade do |t|
@@ -65,6 +76,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_06_073000) do
     t.index ["po_approver_id", "status", "current_stage"], name: "idx_achievement_po_pending"
     t.index ["po_approver_id"], name: "index_achievement_submissions_on_po_approver_id"
     t.index ["status", "current_stage", "submitted_at"], name: "idx_on_status_current_stage_submitted_at_bd6c858085"
+    t.index ["to_id", "project_name", "month", "status"], name: "idx_achievement_submissions_scope_status"
     t.index ["vertical_approver_id", "status", "current_stage"], name: "idx_achievement_vertical_pending"
     t.index ["vertical_approver_id"], name: "index_achievement_submissions_on_vertical_approver_id"
   end
@@ -166,11 +178,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_06_073000) do
     t.string "user_id"
     t.string "user_name"
     t.index ["id_new"], name: "index_action_plan_rows_on_id_new"
+    t.index ["import_flag", "to_id", "project_name"], name: "idx_action_plan_rows_active_to_project"
+    t.index ["import_flag", "user_id", "to_id", "project_name"], name: "idx_action_plan_rows_active_user_to_project"
+    t.index ["import_flag", "user_id", "to_id"], name: "idx_action_plan_rows_active_user_to"
+    t.index ["import_flag", "user_id"], name: "idx_action_plan_rows_active_user"
     t.index ["import_flag"], name: "index_action_plan_rows_on_import_flag"
     t.index ["imported_at"], name: "index_action_plan_rows_on_imported_at"
     t.index ["po_id", "project_name"], name: "index_action_plan_rows_on_po_id_and_project_name"
     t.index ["project_name"], name: "index_action_plan_rows_on_project_name"
+    t.index ["statte", "asa_theme_id"], name: "idx_action_plan_rows_state_theme"
     t.index ["to_id"], name: "index_action_plan_rows_on_to_id"
+    t.index ["user_id"], name: "index_action_plan_rows_on_user_id"
   end
 
   create_table "action_plan_submissions", force: :cascade do |t|
@@ -218,6 +236,35 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_06_073000) do
     t.index ["employee_code", "state_code", "asa_theme_id"], name: "idx_action_plan_vertical_mappings_unique", unique: true
     t.index ["employee_id", "state_code", "asa_theme_id"], name: "idx_action_plan_vertical_mappings_employee_lookup"
     t.index ["employee_id"], name: "index_action_plan_vertical_mappings_on_employee_id"
+    t.index ["state_code", "asa_theme_id"], name: "idx_action_plan_vertical_mappings_state_theme"
+  end
+
+  create_table "active_storage_attachments", force: :cascade do |t|
+    t.bigint "blob_id", null: false
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.bigint "record_id", null: false
+    t.string "record_type", null: false
+    t.index ["blob_id"], name: "index_active_storage_attachments_on_blob_id"
+    t.index ["record_type", "record_id", "name", "blob_id"], name: "index_active_storage_attachments_uniqueness", unique: true
+  end
+
+  create_table "active_storage_blobs", force: :cascade do |t|
+    t.bigint "byte_size", null: false
+    t.string "checksum"
+    t.string "content_type"
+    t.datetime "created_at", null: false
+    t.string "filename", null: false
+    t.string "key", null: false
+    t.text "metadata"
+    t.string "service_name", null: false
+    t.index ["key"], name: "index_active_storage_blobs_on_key", unique: true
+  end
+
+  create_table "active_storage_variant_records", force: :cascade do |t|
+    t.bigint "blob_id", null: false
+    t.string "variation_digest", null: false
+    t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
   end
 
   create_table "bli_activities", force: :cascade do |t|
@@ -430,6 +477,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_06_073000) do
     t.index ["vertical_name"], name: "index_vertical_percents_on_vertical_name", unique: true
   end
 
+  add_foreign_key "achievement_entry_details", "action_plan_rows"
   add_foreign_key "achievement_submission_rows", "achievement_submissions"
   add_foreign_key "achievement_submission_rows", "action_plan_rows"
   add_foreign_key "achievement_submissions", "employees"
@@ -445,6 +493,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_06_073000) do
   add_foreign_key "action_plan_submissions", "employees", column: "po_approver_id"
   add_foreign_key "action_plan_submissions", "project_ownerships"
   add_foreign_key "action_plan_vertical_mappings", "employees"
+  add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "bli_activities", "employees"
   add_foreign_key "employee_vertical_mappings", "employees"
   add_foreign_key "employee_vertical_mappings", "vertical_percents"

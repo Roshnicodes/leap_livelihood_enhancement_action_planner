@@ -44,9 +44,9 @@ class AchievementSubmission < ApplicationRecord
 
     case stage.to_s
     when "vertical"
-      where(vertical_approver: employee).exists?
+      ActionPlanVerticalMapping.for_employee(employee).exists? || where(vertical_approver: employee).exists?
     when "po"
-      where(po_approver: employee).exists?
+      ProjectOwnership.for_employee(employee).exists? || where(po_approver: employee).exists?
     when "coo"
       ProjectOwnership.normalize_employee_code(employee.employee_code) == ActionPlanSubmission::COO_EMPLOYEE_CODE
     when "director"
@@ -58,6 +58,7 @@ class AchievementSubmission < ApplicationRecord
 
   def self.stage_pending_count(employee, stage)
     return 0 unless employee
+    return 0 if stage.to_s == "director"
 
     case stage.to_s
     when "vertical"
@@ -66,8 +67,6 @@ class AchievementSubmission < ApplicationRecord
       pending_for_stage("po").where(po_approver: employee).count
     when "coo"
       pending_for_stage("coo").where(coo_approver: employee).count
-    when "director"
-      pending_for_stage("director").where(director_approver: employee).count
     else
       0
     end
@@ -97,7 +96,7 @@ class AchievementSubmission < ApplicationRecord
       "vertical" => "Pending Vertical Approval",
       "po" => "Pending PO Approval",
       "coo" => "Pending COO Approval",
-      "director" => "Pending Director Approval"
+      "director" => "Approved (view only for Director)"
     }.fetch(current_stage, "Pending Approval")
   end
 
@@ -127,6 +126,5 @@ class AchievementSubmission < ApplicationRecord
     end
     errors.add(:base, "Project Owner approver is not mapped for #{project_name}.") if po_approver.blank?
     errors.add(:base, "COO approver is not configured.") if coo_approver.blank?
-    errors.add(:base, "Director approver is not configured.") if director_approver.blank?
   end
 end
