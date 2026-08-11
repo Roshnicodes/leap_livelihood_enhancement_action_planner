@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_07_040100) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_11_103000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -99,6 +99,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_040100) do
     t.string "content_type"
     t.datetime "created_at", null: false
     t.text "error_message"
+    t.string "financial_year", null: false
     t.string "import_type", null: false
     t.datetime "imported_at", null: false
     t.string "original_filename", null: false
@@ -107,6 +108,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_040100) do
     t.string "storage_path", null: false
     t.datetime "updated_at", null: false
     t.bigint "uploaded_by_id"
+    t.index ["financial_year"], name: "index_action_plan_import_files_on_financial_year"
     t.index ["import_type"], name: "index_action_plan_import_files_on_import_type"
     t.index ["imported_at"], name: "index_action_plan_import_files_on_imported_at"
     t.index ["status"], name: "index_action_plan_import_files_on_status"
@@ -307,6 +309,30 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_040100) do
     t.index ["vertical_name"], name: "index_bli_activities_on_vertical_name"
   end
 
+  create_table "budget_utilizations", force: :cascade do |t|
+    t.string "activity_name", null: false
+    t.string "bli_code"
+    t.datetime "created_at", null: false
+    t.string "month", null: false
+    t.decimal "planned_amount", precision: 15, scale: 2, default: "0.0", null: false
+    t.string "project_name", null: false
+    t.text "remark"
+    t.string "status", default: "draft", null: false
+    t.datetime "submitted_at"
+    t.bigint "submitted_by_id"
+    t.datetime "updated_at", null: false
+    t.bigint "updated_by_id"
+    t.decimal "utilized_amount", precision: 15, scale: 2, default: "0.0", null: false
+    t.string "vertical_name", null: false
+    t.index ["month"], name: "index_budget_utilizations_on_month"
+    t.index ["project_name", "bli_code", "month"], name: "idx_budget_utilizations_unique_scope", unique: true
+    t.index ["project_name", "month", "status"], name: "index_budget_utilizations_on_project_name_and_month_and_status"
+    t.index ["project_name", "month"], name: "index_budget_utilizations_on_project_name_and_month"
+    t.index ["status"], name: "index_budget_utilizations_on_status"
+    t.index ["submitted_by_id"], name: "index_budget_utilizations_on_submitted_by_id"
+    t.index ["updated_by_id"], name: "index_budget_utilizations_on_updated_by_id"
+  end
+
   create_table "employee_vertical_mappings", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "employee_id", null: false
@@ -349,6 +375,31 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_040100) do
     t.index ["employee_id"], name: "index_parent_activity_assignments_on_employee_id"
     t.index ["source_parent_activity"], name: "index_parent_activity_assignments_on_source", unique: true
     t.index ["vertical_percent_id"], name: "index_parent_activity_assignments_on_vertical_percent_id"
+  end
+
+  create_table "pb_import_files", force: :cascade do |t|
+    t.datetime "approved_at"
+    t.bigint "approved_by_id"
+    t.integer "byte_size", default: 0, null: false
+    t.string "content_type"
+    t.datetime "created_at", null: false
+    t.text "error_message"
+    t.string "file_kind", default: "source", null: false
+    t.string "financial_year", null: false
+    t.datetime "imported_at", null: false
+    t.string "original_filename", null: false
+    t.integer "row_count"
+    t.string "status", default: "saved", null: false
+    t.string "storage_path", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "uploaded_by_id"
+    t.index ["approved_by_id"], name: "index_pb_import_files_on_approved_by_id"
+    t.index ["file_kind"], name: "index_pb_import_files_on_file_kind"
+    t.index ["financial_year"], name: "index_pb_import_files_on_financial_year"
+    t.index ["imported_at"], name: "index_pb_import_files_on_imported_at"
+    t.index ["status"], name: "index_pb_import_files_on_status"
+    t.index ["storage_path"], name: "index_pb_import_files_on_storage_path", unique: true
+    t.index ["uploaded_by_id"], name: "index_pb_import_files_on_uploaded_by_id"
   end
 
   create_table "plan_submission_items", force: :cascade do |t|
@@ -429,6 +480,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_040100) do
     t.bigint "employee_id", null: false
     t.datetime "first_approved_at"
     t.bigint "first_approver_id"
+    t.datetime "pb_applied_at"
     t.datetime "reviewed_at"
     t.string "status", default: "pending", null: false
     t.text "submission_remark"
@@ -496,10 +548,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_040100) do
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "bli_activities", "employees"
+  add_foreign_key "budget_utilizations", "users", column: "submitted_by_id"
+  add_foreign_key "budget_utilizations", "users", column: "updated_by_id"
   add_foreign_key "employee_vertical_mappings", "employees"
   add_foreign_key "employee_vertical_mappings", "vertical_percents"
   add_foreign_key "parent_activity_assignments", "employees"
   add_foreign_key "parent_activity_assignments", "vertical_percents"
+  add_foreign_key "pb_import_files", "users", column: "approved_by_id"
+  add_foreign_key "pb_import_files", "users", column: "uploaded_by_id"
   add_foreign_key "plan_submission_items", "bli_activities"
   add_foreign_key "plan_submission_items", "plan_submissions"
   add_foreign_key "plan_submissions", "employees"

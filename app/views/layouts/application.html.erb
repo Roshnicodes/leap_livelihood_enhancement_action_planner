@@ -35,9 +35,9 @@
           <nav class="sidebar-nav" data-sidebar-nav>
             <% if current_user.admin? %>
               <% admin_open = controller_path == "admin/employees" %>
-              <% pb_controllers = %w[plan_submissions project_summary_records project_summary_approvals] %>
+              <% pb_controllers = %w[plan_submissions budget_utilizations budget_utilization_reports project_summary_records project_summary_approvals] %>
               <% ap_controllers = %w[action_plans vertical_action_plans action_plan_records achievement_approvals project_summary_approval_records] %>
-              <% pb_open = pb_controllers.include?(controller_name) %>
+              <% pb_open = pb_controllers.include?(controller_name) || controller_path == "admin/pb_imports" %>
               <% ap_open = ap_controllers.include?(controller_name) || controller_path == "admin/action_plan_imports" %>
               <% pb_open = true if !admin_open && !pb_open && !ap_open %>
 
@@ -60,9 +60,21 @@
                   <span class="sidebar-section-caret" aria-hidden="true"></span>
                 </button>
                 <div class="sidebar-section-menu">
+                  <%= link_to admin_pb_imports_path, class: controller_path == "admin/pb_imports" ? "side-link active" : "side-link" do %>
+                    <span class="side-icon">I</span>
+                    <span>P&amp;B Download</span>
+                  <% end %>
                   <%= link_to plan_submissions_path, class: controller_name == "plan_submissions" ? "side-link active" : "side-link" do %>
                     <span class="side-icon">S</span>
                     <span>Allocated P&amp;B</span>
+                  <% end %>
+                  <%= link_to budget_utilizations_path, class: controller_name == "budget_utilizations" ? "side-link active" : "side-link" do %>
+                    <span class="side-icon">U</span>
+                    <span>Budget Utilization</span>
+                  <% end %>
+                  <%= link_to budget_utilization_reports_path, class: controller_name == "budget_utilization_reports" ? "side-link active" : "side-link" do %>
+                    <span class="side-icon">B</span>
+                    <span>Budget Utilization Report</span>
                   <% end %>
                   <%= link_to project_summary_records_path, class: controller_name == "project_summary_records" ? "side-link active" : "side-link" do %>
                     <span class="side-icon">R</span>
@@ -119,7 +131,7 @@
                 </div>
               </div>
             <% else %>
-              <% pb_controllers = %w[plan_submissions project_summaries project_summary_records project_summary_approvals project_summary_approval_records] %>
+              <% pb_controllers = %w[plan_submissions budget_utilizations budget_utilization_reports project_summaries project_summary_records project_summary_approvals project_summary_approval_records] %>
               <% ap_controllers = %w[action_plans achievement_entries achievement_approvals vertical_action_plans action_plan_records action_plan_approvals] %>
               <% pb_open = pb_controllers.include?(controller_name) %>
               <% ap_open = ap_controllers.include?(controller_name) %>
@@ -143,6 +155,18 @@
                       <%= link_to project_summary_path, class: controller_name == "project_summaries" ? "side-link active" : "side-link" do %>
                         <span class="side-icon">T</span>
                         <span>Project Summary</span>
+                      <% end %>
+                    <% end %>
+                    <% if menu_show_budget_utilization? %>
+                      <%= link_to budget_utilizations_path, class: controller_name == "budget_utilizations" ? "side-link active" : "side-link" do %>
+                        <span class="side-icon">U</span>
+                        <span>Budget Utilization</span>
+                      <% end %>
+                    <% end %>
+                    <% if menu_show_budget_utilization_report? %>
+                      <%= link_to budget_utilization_reports_path, class: controller_name == "budget_utilization_reports" ? "side-link active" : "side-link" do %>
+                        <span class="side-icon">B</span>
+                        <span>Budget Utilization Report</span>
                       <% end %>
                     <% end %>
                     <% if menu_show_project_summary_record? %>
@@ -313,6 +337,30 @@
         }
 
         document.querySelectorAll("[data-searchable-table]").forEach(bindSearch);
+
+        function bindCollapsiblePanel(panel) {
+          const toggle = panel.querySelector("[data-collapsible-toggle]");
+          const content = panel.querySelector("[data-collapsible-content]");
+          if (!toggle || !content) return;
+
+          const showLabel = toggle.dataset.showLabel || "Show";
+          const hideLabel = toggle.dataset.hideLabel || "Hide";
+
+          function setOpen(open) {
+            panel.classList.toggle("is-collapsed", !open);
+            content.hidden = !open;
+            toggle.textContent = open ? hideLabel : showLabel;
+            toggle.setAttribute("aria-expanded", open ? "true" : "false");
+          }
+
+          setOpen(panel.dataset.collapsed !== "true");
+
+          toggle.addEventListener("click", () => {
+            setOpen(content.hidden);
+          });
+        }
+
+        document.querySelectorAll("[data-collapsible-panel]").forEach(bindCollapsiblePanel);
 
         function bindTargetBalance(panel) {
           const bar = panel.querySelector("[data-balance-bar]");

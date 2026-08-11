@@ -18,6 +18,9 @@ Rails.application.routes.draw do
 
   get "dashboard" => "dashboard#index"
   resources :plan_submissions, only: %i[index create]
+  get "budget_utilizations" => "budget_utilizations#index", as: :budget_utilizations
+  patch "budget_utilizations" => "budget_utilizations#update"
+  get "budget_utilization_reports" => "budget_utilization_reports#index", as: :budget_utilization_reports
   resources :action_plans, only: %i[index create]
   resource :achievement_entry, only: %i[show update] do
     post :submit
@@ -46,6 +49,10 @@ Rails.application.routes.draw do
 
   namespace :admin do
     resources :employees, only: :index
+    resources :pb_imports, only: :index do
+      get :download, on: :collection
+      get :download_file, on: :member
+    end
     resources :action_plan_imports, only: %i[index create] do
       get :download, on: :collection
       get :download_file, on: :member

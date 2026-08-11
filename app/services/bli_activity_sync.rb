@@ -7,13 +7,18 @@ class BliActivitySync
   DEFAULT_XLSX_PATH = "/home/asa/Downloads/ASA BLI PDO.xlsx"
   DEFAULT_FINANCIAL_YEAR = "2026-2027"
 
-  def initialize(csv_path: DEFAULT_CSV_PATH, xlsx_path: DEFAULT_XLSX_PATH, financial_year: DEFAULT_FINANCIAL_YEAR)
+  def initialize(csv_path: DEFAULT_CSV_PATH, xlsx_path: DEFAULT_XLSX_PATH, source_path: nil, financial_year: DEFAULT_FINANCIAL_YEAR, save_history: true)
     @csv_path = csv_path
     @xlsx_path = xlsx_path
+    @source_path = source_path
     @financial_year = financial_year
+    @save_history = save_history
   end
 
   def call(clear_summaries: false)
+    source_file = effective_source_path
+    PbImportFile.capture_active_snapshot! if save_history && source_file.present?
+
     ActiveRecord::Base.transaction do
       clear_existing_records(clear_summaries)
 
@@ -37,12 +42,23 @@ class BliActivitySync
       end
     end
 
-    BliActivity.count
+    imported_count = BliActivity.count
+    if save_history && source_file.present?
+      PbImportFile.capture_path!(
+        path: source_file,
+        original_filename: File.basename(source_file),
+        status: "imported",
+        file_kind: "source",
+        row_count: imported_count
+      )
+    end
+
+    imported_count
   end
 
   private
 
-  attr_reader :csv_path, :xlsx_path, :financial_year
+  attr_reader :csv_path, :xlsx_path, :source_path, :financial_year, :save_history
 
   def clear_existing_records(clear_summaries)
     PlanSubmissionItem.delete_all
@@ -57,10 +73,28 @@ class BliActivitySync
   end
 
   def source_rows
+    if effective_source_path.present?
+      return CSV.read(effective_source_path, headers: true, encoding: "bom|utf-8").map(&:to_h) if File.extname(effective_source_path).downcase == ".csv"
+      return xlsx_bli_rows(effective_source_path)
+    end
+
     return CSV.read(csv_path, headers: true, encoding: "bom|utf-8").map(&:to_h) if File.exist?(csv_path)
     return xlsx_bli_rows(xlsx_path) if File.exist?(xlsx_path)
 
     []
+  end
+
+  def effective_source_path
+    @effective_source_path ||= begin
+      explicit_path = source_path.to_s
+      if explicit_path.present? && File.exist?(explicit_path)
+        explicit_path
+      elsif File.exist?(csv_path)
+        csv_path
+      elsif File.exist?(xlsx_path)
+        xlsx_path
+      end
+    end
   end
 
   def employees_mapped_to_vertical(vertical_name)

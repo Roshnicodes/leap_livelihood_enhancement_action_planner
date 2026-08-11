@@ -27,6 +27,7 @@ class SessionsController < ApplicationController
 
   def after_login_path(user)
     return admin_employees_path if user.admin?
+    return budget_utilizations_path if BudgetUtilization.finance_user?(user)
     return project_summary_approvals_path if ProjectSummarySubmission.summary_access?(user.employee)
 
     plan_submissions_path

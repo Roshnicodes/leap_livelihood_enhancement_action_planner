@@ -55,63 +55,73 @@
   <% end %>
 </section>
 
-<section class="table-panel import-history-panel" data-searchable-table>
+<section class="table-panel import-history-panel collapsible-panel is-collapsed" data-searchable-table data-collapsible-panel data-collapsed="true">
   <div class="table-heading">
     <div>
       <h2>Import history</h2>
       <p class="muted">Original uploaded files are saved before import. Download any old file from here.</p>
     </div>
     <div class="table-actions">
-      <input type="search" class="table-search" placeholder="Search imports" data-table-search-input>
-      <span class="table-count" data-filtered-count><%= @import_files.size %> files</span>
+      <span class="table-count" data-filtered-count data-count-label="files"><%= @import_files.size %> files</span>
+      <button type="button" class="panel-toggle-button" data-collapsible-toggle data-show-label="Show history" data-hide-label="Hide history" aria-expanded="false">
+        Show history
+      </button>
     </div>
   </div>
 
-  <div class="responsive-table">
-    <table>
-      <thead>
-        <tr>
-          <th>File Type</th>
-          <th>File Name</th>
-          <th>Uploaded By</th>
-          <th>No of Activity</th>
-          <th>Status</th>
-          <th>Uploaded At</th>
-          <th>Download</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% if @import_files.any? %>
-          <% @import_files.each do |import_file| %>
+  <div class="collapsible-content" data-collapsible-content hidden>
+    <div class="collapsible-tools">
+      <input type="search" class="table-search" placeholder="Search imports" data-table-search-input>
+    </div>
+
+    <div class="responsive-table">
+      <table>
+        <thead>
+          <tr>
+            <th>File Type</th>
+            <th>File Name</th>
+            <th>Financial Year</th>
+            <th>Uploaded By</th>
+            <th>No of Activity</th>
+            <th>Status</th>
+            <th>Uploaded At</th>
+            <th>Download</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if @import_files.any? %>
+            <% @import_files.each do |import_file| %>
+              <tr>
+                <td><span class="code-pill"><%= import_file.type_label %></span></td>
+                <td>
+                  <strong><%= import_file.original_filename %></strong>
+                  <div class="muted"><%= number_to_human_size(import_file.byte_size) %></div>
+                  <% if import_file.error_message.present? %>
+                    <div class="import-error"><%= import_file.error_message %></div>
+                  <% end %>
+                </td>
+                <td><span class="code-pill"><%= import_file.financial_year %></span></td>
+                <td><%= import_file.uploaded_by&.admin? ? "PMC" : import_file.uploaded_by&.employee&.name || "-" %></td>
+                <td><%= import_file.row_count || "-" %></td>
+                <td><span class="status-badge status-<%= import_file.status == "failed" ? "returned" : "approved" %>"><%= import_file.status.titleize %></span></td>
+                <td><%= import_file.imported_at.strftime("%d %b %Y %I:%M %p") %></td>
+                <td>
+                  <% if import_file.file_available? %>
+                    <%= link_to "Download", download_file_admin_action_plan_import_path(import_file), class: "approval-review-button" %>
+                  <% else %>
+                    <span class="status-badge status-not_submitted">Missing</span>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          <% else %>
             <tr>
-              <td><span class="code-pill"><%= import_file.type_label %></span></td>
-              <td>
-                <strong><%= import_file.original_filename %></strong>
-                <div class="muted"><%= number_to_human_size(import_file.byte_size) %></div>
-                <% if import_file.error_message.present? %>
-                  <div class="import-error"><%= import_file.error_message %></div>
-                <% end %>
-              </td>
-              <td><%= import_file.uploaded_by&.admin? ? "PMC" : import_file.uploaded_by&.employee&.name || "-" %></td>
-              <td><%= import_file.row_count || "-" %></td>
-              <td><span class="status-badge status-<%= import_file.status == "failed" ? "returned" : "approved" %>"><%= import_file.status.titleize %></span></td>
-              <td><%= import_file.imported_at.strftime("%d %b %Y %I:%M %p") %></td>
-              <td>
-                <% if import_file.file_available? %>
-                  <%= link_to "Download", download_file_admin_action_plan_import_path(import_file), class: "approval-review-button" %>
-                <% else %>
-                  <span class="status-badge status-not_submitted">Missing</span>
-                <% end %>
-              </td>
+              <td colspan="8">No saved import files yet.</td>
             </tr>
           <% end %>
-        <% else %>
-          <tr>
-            <td colspan="7">No saved import files yet.</td>
-          </tr>
-        <% end %>
-      </tbody>
-    </table>
+        </tbody>
+      </table>
+    </div>
   </div>
 </section>
 

@@ -1,0 +1,139 @@
+<% content_for :title, "Budget Utilization | LEAP" %>
+
+<section class="page-header budget-utilization-header">
+  <div>
+    <p class="eyebrow"><%= @can_edit ? "Finance Workspace" : "P&B Workspace" %></p>
+    <h1>Budget Utilization</h1>
+    <p class="muted">
+      <% if @can_edit %>
+        Choose a project and month to update utilization for all BLI lines.
+      <% else %>
+        View utilization for your assigned BLI lines only. Accounts fills values for all projects.
+      <% end %>
+    </p>
+  </div>
+  <div class="header-card">
+    <span>Projects</span>
+    <strong><%= @project_options.size %></strong>
+  </div>
+</section>
+
+<section class="toolbar budget-utilization-toolbar">
+  <%= form_with url: budget_utilizations_path,
+        method: :get,
+        class: "budget-utilization-filter-form",
+        html: { autocomplete: "off" } do |form| %>
+    <label>
+      <span class="filter-label">Choose Project</span>
+      <%= form.select :project,
+        options_for_select([["Select Project", ""]] + @project_options.map { |project| [project, project] }, @selected_project.to_s),
+        {},
+        class: "select",
+        autocomplete: "off",
+        onchange: "this.form.requestSubmit()" %>
+    </label>
+    <label>
+      <span class="filter-label">Choose Month</span>
+      <%= form.select :month,
+        options_for_select([["Select Month", ""]] + @month_options, @selected_month.to_s),
+        {},
+        class: "select",
+        autocomplete: "off",
+        onchange: "this.form.requestSubmit()" %>
+    </label>
+  <% end %>
+</section>
+
+<% if @selected_project.present? && @selected_month.present? && @rows.any? %>
+  <section class="metric-grid metric-grid-compact budget-utilization-metrics">
+    <article class="metric metric-teal"><span>No of Activity</span><strong><%= @rows.size %></strong></article>
+    <article class="metric"><span>Total Allocated Budget</span><strong><%= currency(@project_total) %></strong></article>
+    <article class="metric metric-blue"><span>Total Expenditure</span><strong><%= currency(@expenditure_total) %></strong></article>
+    <article class="metric metric-rose"><span>Total Remaining Budget</span><strong><%= currency(@remaining_total) %></strong></article>
+    <article class="metric metric-gold"><span><%= @selected_month.capitalize %> Utilized</span><strong><%= currency(@utilized_total) %></strong></article>
+  </section>
+
+  <% if @can_edit && !@submitted_locked %>
+    <%= form_with url: budget_utilizations_path, method: :patch, class: "table-panel budget-utilization-panel", data: { searchable_table: true, budget_utilization_panel: true } do %>
+      <%= hidden_field_tag :project, @selected_project %>
+      <%= hidden_field_tag :month, @selected_month %>
+      <%= render "budget_utilizations/records_table", editable: true %>
+      <div class="submit-panel budget-utilization-submit">
+        <p class="muted">
+          <% if @has_draft %>
+            Draft saved for <%= @selected_project %> / <%= @selected_month.capitalize %>. Review and correct it, then submit final.
+          <% else %>
+            Save draft first for <%= @selected_project %> / <%= @selected_month.capitalize %>. Final submit unlocks only after draft is saved.
+          <% end %>
+        </p>
+        <div class="budget-utilization-submit-actions">
+          <%= submit_tag "Save Draft", class: "secondary-button" %>
+          <%= submit_tag "Submit Final", class: "submit-plan-button", disabled: !@has_draft %>
+        </div>
+      </div>
+    <% end %>
+  <% else %>
+    <div class="table-panel budget-utilization-panel" data-searchable-table="true">
+      <%= render "budget_utilizations/records_table", editable: false %>
+      <div class="submit-panel budget-utilization-submit">
+        <p class="muted">
+          <% if @submitted_locked %>
+            Submitted final for <%= @selected_project %> / <%= @selected_month.capitalize %>. Changes are locked.
+          <% else %>
+            View only — your assigned BLI lines. Full project report is under Budget Utilization Report.
+          <% end %>
+        </p>
+      </div>
+    </div>
+  <% end %>
+<% else %>
+  <section class="empty-state">
+    <% if @selected_project.blank? %>
+      <h2>Select Project</h2>
+      <p class="muted">Choose a project first, then month to <%= @can_edit ? "enter" : "view" %> utilization.</p>
+    <% elsif @selected_month.blank? %>
+      <h2>Select Month</h2>
+      <p class="muted">Choose a month for <%= @selected_project %>.</p>
+    <% else %>
+      <h2>No activities found</h2>
+      <p class="muted">No P&amp;B activities are available for this project.</p>
+    <% end %>
+  </section>
+<% end %>
+
+<% if @can_edit %>
+<script>
+  (() => {
+    const panel = document.querySelector("[data-budget-utilization-panel]");
+    if (!panel) return;
+
+    const formatter = new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    });
+
+    panel.querySelectorAll("[data-budget-row]").forEach((row) => {
+      const input = row.querySelector("[data-budget-utilization-input]");
+      const expenditure = row.querySelector("[data-budget-row-expenditure]");
+      const remaining = row.querySelector("[data-budget-row-remaining]");
+      if (!input) return;
+
+      const refresh = () => {
+        const allocated = Number.parseFloat(row.dataset.totalAllocated || "0");
+        const prior = Number.parseFloat(row.dataset.priorExpenditure || "0");
+        const utilized = Number.parseFloat(input.value || "0");
+        const totalExpenditure = prior + utilized;
+        const totalRemaining = allocated - totalExpenditure;
+
+        if (expenditure) expenditure.innerHTML = `<strong>${formatter.format(totalExpenditure)}</strong>`;
+        if (remaining) remaining.innerHTML = `<strong>${formatter.format(totalRemaining)}</strong>`;
+      };
+
+      input.addEventListener("input", refresh);
+      refresh();
+    });
+  })();
+</script>
+<% end %>

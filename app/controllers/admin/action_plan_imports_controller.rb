@@ -45,6 +45,7 @@ module Admin
         return
       end
 
+      ActionPlanImportFile.capture_active_snapshot!(uploaded_by: current_user) if params[:action_plan_file].present?
       saved_files = capture_uploads!
 
       result = ActionPlanImporter.new(

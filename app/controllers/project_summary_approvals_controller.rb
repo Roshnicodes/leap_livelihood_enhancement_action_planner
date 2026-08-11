@@ -85,7 +85,10 @@ class ProjectSummaryApprovalsController < ApplicationController
   end
 
   def update_submission!(status)
-    @submission.update!(approval_attributes_for(@submission, status))
+    ProjectSummarySubmission.transaction do
+      @submission.update!(approval_attributes_for(@submission, status))
+      @submission.apply_to_pb! if @submission.approved?
+    end
   end
 
   def update_submissions!(status)
@@ -95,6 +98,7 @@ class ProjectSummaryApprovalsController < ApplicationController
     ProjectSummarySubmission.transaction do
       submissions.find_each do |submission|
         submission.update!(approval_attributes_for(submission, status, reviewed_at))
+        submission.apply_to_pb! if submission.approved?
       end
     end
   end

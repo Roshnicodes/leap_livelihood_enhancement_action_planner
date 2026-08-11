@@ -3,7 +3,8 @@ class ApplicationController < ActionController::Base
     :action_plan_stage_access?, :achievement_stage_access?, :pending_achievement_approval_count,
     :default_achievement_approval_stage,
     :menu_show_allocated_pb?, :menu_show_project_summary?, :menu_show_project_summary_record?,
-    :menu_show_pb_summary_approval?, :menu_show_pb_approval_records?,
+    :menu_show_pb_summary_approval?, :menu_show_pb_approval_records?, :menu_show_budget_utilization?,
+    :menu_show_budget_utilization_report?,
     :menu_show_project_action_plan?, :menu_show_achievement_entry?, :menu_show_achievement_approvals?,
     :menu_show_vertical_action_plan?, :menu_show_vertical_action_plan_record?,
     :menu_show_action_plan_approval?, :menu_show_pb_section?, :menu_show_action_plan_section?
@@ -128,6 +129,14 @@ class ApplicationController < ActionController::Base
     current_user&.admin? || ProjectSummarySubmission.summary_access?(menu_employee)
   end
 
+  def menu_show_budget_utilization?
+    current_user.present?
+  end
+
+  def menu_show_budget_utilization_report?
+    current_user.present?
+  end
+
   def menu_show_project_action_plan?
     return true if current_user&.admin?
     return true if ProjectOwnership.for_employee(menu_employee).exists?
@@ -162,7 +171,8 @@ class ApplicationController < ActionController::Base
 
   def menu_show_pb_section?
     menu_show_allocated_pb? || menu_show_project_summary? || menu_show_project_summary_record? ||
-      menu_show_pb_summary_approval? || menu_show_pb_approval_records?
+      menu_show_pb_summary_approval? || menu_show_pb_approval_records? || menu_show_budget_utilization? ||
+      menu_show_budget_utilization_report?
   end
 
   def menu_show_action_plan_section?

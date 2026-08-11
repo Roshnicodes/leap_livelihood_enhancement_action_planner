@@ -1,0 +1,108 @@
+<% content_for :title, "P&B Download | LEAP" %>
+
+<section class="page-header">
+  <div>
+    <p class="eyebrow">PMC workspace</p>
+    <h1>P&amp;B Download</h1>
+    <p class="muted">Download the latest active P&amp;B Excel. Backend imports save the previous active file first, then keep the newly imported source in history.</p>
+  </div>
+  <div class="header-card">
+    <span>Activities</span>
+    <strong><%= @summary[:activities] %></strong>
+  </div>
+</section>
+
+<section class="metric-grid admin-grid">
+  <article class="metric metric-teal"><span>Projects</span><strong><%= @summary[:projects] %></strong></article>
+  <article class="metric metric-blue"><span>Activities</span><strong><%= @summary[:activities] %></strong></article>
+  <article class="metric metric-gold"><span>Verticals</span><strong><%= @summary[:verticals] %></strong></article>
+  <article class="metric metric-ink"><span>Allocated</span><strong><%= currency(@summary[:allocated]) %></strong></article>
+</section>
+
+<section class="table-panel import-panel">
+  <div class="table-heading">
+    <div>
+      <h2>Download P&amp;B file</h2>
+      <p class="muted">This downloads current active P&amp;B data. User changes are included only after Director final approval.</p>
+    </div>
+    <div class="table-actions">
+      <%= link_to "Download P&B Excel", download_admin_pb_imports_path, class: "submit-plan-button" %>
+    </div>
+  </div>
+  <div class="submit-panel">
+    <p>
+      Latest backend P&amp;B import:
+      <strong><%= @latest_imported_at&.strftime("%d %b %Y %I:%M %p") || "Not imported yet" %></strong>
+    </p>
+  </div>
+</section>
+
+<section class="table-panel import-history-panel collapsible-panel is-collapsed" data-searchable-table data-collapsible-panel data-collapsed="true">
+  <div class="table-heading">
+    <div>
+      <h2>P&amp;B file history</h2>
+      <p class="muted">Backend imports save old active snapshots and new source files with date-time stamps.</p>
+    </div>
+    <div class="table-actions">
+      <span class="table-count" data-filtered-count data-count-label="files"><%= @import_files.size %> files</span>
+      <button type="button" class="panel-toggle-button" data-collapsible-toggle data-show-label="Show history" data-hide-label="Hide history" aria-expanded="false">
+        Show history
+      </button>
+    </div>
+  </div>
+
+  <div class="collapsible-content" data-collapsible-content hidden>
+    <div class="collapsible-tools">
+      <input type="search" class="table-search" placeholder="Search P&B files" data-table-search-input>
+    </div>
+
+    <div class="responsive-table">
+      <table>
+        <thead>
+          <tr>
+            <th>File Name</th>
+            <th>Type</th>
+            <th>Financial Year</th>
+            <th>Uploaded By</th>
+            <th>No of Activity</th>
+            <th>Status</th>
+            <th>Uploaded At</th>
+            <th>Download</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if @import_files.any? %>
+            <% @import_files.each do |import_file| %>
+              <tr>
+                <td>
+                  <strong><%= import_file.original_filename %></strong>
+                  <div class="muted"><%= number_to_human_size(import_file.byte_size) %></div>
+                  <% if import_file.error_message.present? %>
+                    <div class="import-error"><%= import_file.error_message %></div>
+                  <% end %>
+                </td>
+                <td><span class="code-pill"><%= import_file.file_kind.to_s.humanize %></span></td>
+                <td><span class="code-pill"><%= import_file.financial_year %></span></td>
+                <td><%= import_file.uploaded_by&.admin? ? "PMC" : import_file.uploaded_by&.employee&.name || "-" %></td>
+                <td><%= import_file.row_count || "-" %></td>
+                <td><span class="status-badge status-<%= import_file.status == "failed" ? "returned" : "approved" %>"><%= import_file.status.titleize %></span></td>
+                <td><%= import_file.imported_at.strftime("%d %b %Y %I:%M %p") %></td>
+                <td>
+                  <% if import_file.file_available? %>
+                    <%= link_to "Download", download_file_admin_pb_import_path(import_file), class: "approval-review-button" %>
+                  <% else %>
+                    <span class="status-badge status-not_submitted">Missing</span>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          <% else %>
+            <tr>
+              <td colspan="8">No saved P&amp;B import files yet.</td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>

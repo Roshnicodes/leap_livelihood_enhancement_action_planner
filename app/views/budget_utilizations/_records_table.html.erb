@@ -1,0 +1,95 @@
+<div class="table-heading">
+  <div>
+    <p class="eyebrow">Project Records</p>
+    <h2><%= @selected_project %></h2>
+    <p class="muted">
+      <%= @selected_month.capitalize %> <%= editable ? "entry" : "view" %>
+      <% if @prior_months.any? %>
+        • Previous months shown filled: <%= @prior_months.map(&:capitalize).join(", ") %>
+      <% end %>
+    </p>
+  </div>
+  <div class="table-actions">
+    <% status_label = { "not_started" => "Not Started", "draft" => "Draft", "submitted" => "Submitted" }.fetch(@selected_budget_status, @selected_budget_status.to_s.titleize) %>
+    <% status_badge = @selected_budget_status == "submitted" ? "approved" : (@selected_budget_status == "draft" ? "pending" : "not_submitted") %>
+    <span class="status-badge status-<%= status_badge %>"><%= status_label %></span>
+    <input type="search" class="table-search" placeholder="Search activities" data-table-search-input>
+    <span class="table-count" data-filtered-count data-count-label="activities"><%= @rows.size %> activities</span>
+  </div>
+</div>
+
+<div class="responsive-table budget-utilization-table-wrap">
+  <table class="budget-utilization-table">
+    <thead>
+      <tr>
+        <th>S.No.</th>
+        <th>Project</th>
+        <th>Project P&amp;B</th>
+        <th>Project BLI Code</th>
+        <th>Project BLI</th>
+        <th>Total Allocated Budget</th>
+        <th>Total Expenditure</th>
+        <th>Total Remaining Budget</th>
+        <% @prior_months.each do |month| %>
+          <th><%= month.capitalize %> Utilized</th>
+        <% end %>
+        <th><%= @selected_month.capitalize %> Utilized</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @rows.each_with_index do |row, index| %>
+        <tr<% if editable %> data-budget-row
+          data-total-allocated="<%= currency_input_value(row[:total_allocated]) %>"
+          data-prior-expenditure="<%= currency_input_value(row[:prior_expenditure]) %>"<% end %>>
+          <td><span class="code-pill"><%= index + 1 %></span></td>
+          <td>
+            <%= row[:project_name] %>
+            <% if editable %>
+              <%= hidden_field_tag "utilizations[#{index}][project_name]", row[:project_name] %>
+            <% end %>
+          </td>
+          <td>
+            <%= row[:vertical_name] %>
+            <% if editable %>
+              <%= hidden_field_tag "utilizations[#{index}][vertical_name]", row[:vertical_name] %>
+            <% end %>
+          </td>
+          <td>
+            <span class="code-pill"><%= row[:bli_code].presence || "-" %></span>
+            <% if editable %>
+              <%= hidden_field_tag "utilizations[#{index}][bli_code]", row[:bli_code] %>
+            <% end %>
+          </td>
+          <td>
+            <%= row[:activity_name] %>
+            <% if editable %>
+              <%= hidden_field_tag "utilizations[#{index}][activity_name]", row[:activity_name] %>
+            <% end %>
+          </td>
+          <td class="money-cell"><strong><%= currency(row[:total_allocated]) %></strong></td>
+          <td class="money-cell" <%= "data-budget-row-expenditure" if editable %>><strong><%= currency(row[:total_expenditure]) %></strong></td>
+          <td class="money-cell" <%= "data-budget-row-remaining" if editable %>><strong><%= currency(row[:total_remaining]) %></strong></td>
+          <% @prior_months.each do |month| %>
+            <td class="money-cell budget-prior-month-cell">
+              <strong><%= currency(row[:month_utilized][month]) %></strong>
+            </td>
+          <% end %>
+          <td class="money-cell<%= " budget-prior-month-cell" unless editable %>">
+            <% if editable %>
+              <%= hidden_field_tag "utilizations[#{index}][planned_amount]", currency_input_value(row[:month_amount]) %>
+              <%= number_field_tag "utilizations[#{index}][utilized_amount]",
+                currency_input_value(row[:utilized_amount]),
+                min: 0,
+                step: 1,
+                class: "summary-month-input budget-utilization-input",
+                data: { budget_utilization_input: true },
+                aria: { label: "#{@selected_month.capitalize} utilized amount for #{row[:activity_name]}" } %>
+            <% else %>
+              <strong><%= currency(row[:utilized_amount]) %></strong>
+            <% end %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>

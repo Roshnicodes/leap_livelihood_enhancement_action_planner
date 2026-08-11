@@ -1,0 +1,91 @@
+<% content_for :title, "Budget Utilization Report | LEAP" %>
+
+<section class="page-header budget-utilization-header">
+  <div>
+    <p class="eyebrow">P&amp;B Workspace</p>
+    <h1>Budget Utilization Report</h1>
+    <p class="muted">
+      Project-wise totals with month and quarter utilization.
+      <% if @latest_month.present? %>
+        Through <%= @latest_month.capitalize %>.
+      <% end %>
+    </p>
+  </div>
+  <div class="header-card">
+    <span>Projects</span>
+    <strong><%= @rows.size %></strong>
+  </div>
+</section>
+
+<% if @rows.any? %>
+  <section class="metric-grid metric-grid-compact budget-utilization-metrics">
+    <article class="metric metric-teal"><span>No of Project</span><strong><%= @rows.size %></strong></article>
+    <article class="metric"><span>Total Allocated Budget</span><strong><%= currency(@project_total) %></strong></article>
+    <article class="metric metric-blue"><span>Total Expenditure</span><strong><%= currency(@expenditure_total) %></strong></article>
+    <article class="metric metric-rose"><span>Total Remaining Budget</span><strong><%= currency(@remaining_total) %></strong></article>
+    <article class="metric metric-gold"><span>Through</span><strong><%= @latest_month.capitalize %></strong></article>
+  </section>
+
+  <div class="table-panel budget-utilization-panel" data-searchable-table="true">
+    <div class="table-heading">
+      <div>
+        <p class="eyebrow">Utilization Report</p>
+        <h2>Projects with saved utilization</h2>
+        <p class="muted">
+          Months: <%= @report_columns.select { |column| column[:type] == :month }.map { |column| column[:label] }.join(", ") %>
+          <% quarters = @report_columns.select { |column| column[:type] == :quarter }.map { |column| column[:label] } %>
+          <% if quarters.any? %>
+            • Quarters: <%= quarters.join(", ") %>
+          <% end %>
+        </p>
+      </div>
+      <div class="table-actions">
+        <input type="search" class="table-search" placeholder="Search projects" data-table-search-input>
+        <span class="table-count" data-filtered-count data-count-label="projects"><%= @rows.size %> projects</span>
+      </div>
+    </div>
+
+    <div class="responsive-table budget-utilization-table-wrap">
+      <table class="budget-utilization-table budget-report-table">
+        <thead>
+          <tr>
+            <th>S.No.</th>
+            <th>Project</th>
+            <th>Total Allocated Budget</th>
+            <th>Total Expenditure</th>
+            <th>Total Remaining Budget</th>
+            <% @report_columns.each do |column| %>
+              <th class="<%= column[:type] == :quarter ? "budget-quarter-heading" : nil %>"><%= column[:label] %></th>
+            <% end %>
+          </tr>
+        </thead>
+        <tbody>
+          <% @rows.each_with_index do |row, index| %>
+            <tr>
+              <td><span class="code-pill"><%= index + 1 %></span></td>
+              <td><strong><%= row[:project_name] %></strong></td>
+              <td class="money-cell"><strong><%= currency(row[:total_allocated]) %></strong></td>
+              <td class="money-cell"><strong><%= currency(row[:total_expenditure]) %></strong></td>
+              <td class="money-cell"><strong><%= currency(row[:total_remaining]) %></strong></td>
+              <% @report_columns.each do |column| %>
+                <% value = if column[:type] == :month
+                  row[:month_utilized][column[:key]].to_d
+                else
+                  column[:months].sum { |month| row[:month_utilized][month].to_d }
+                end %>
+                <td class="money-cell <%= "budget-quarter-cell" if column[:type] == :quarter %>">
+                  <strong><%= currency(value) %></strong>
+                </td>
+              <% end %>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% else %>
+  <section class="empty-state">
+    <h2>No utilization saved</h2>
+    <p class="muted">Accounts has not saved utilization yet. Report will appear after entries are saved.</p>
+  </section>
+<% end %>
