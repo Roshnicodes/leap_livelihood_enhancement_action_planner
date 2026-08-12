@@ -1,5 +1,6 @@
 class ProjectSummaryRecordsController < ApplicationController
   before_action :require_login
+  before_action :require_employee_budget_edit_access, only: %i[update bulk_update]
   before_action :set_editable_submission, only: :update
 
   def index
@@ -109,6 +110,12 @@ class ProjectSummaryRecordsController < ApplicationController
     return unless @submission.approved?
 
     redirect_to project_summary_records_path, alert: "Approved project summary cannot be changed."
+  end
+
+  def require_employee_budget_edit_access
+    return if current_user.employee.present? && !current_user.admin? && !ProjectSummarySubmission.summary_access?(current_user.employee)
+
+    redirect_to project_summary_records_path(vertical: params[:vertical].presence), alert: "PMC can view records but cannot edit."
   end
 
   def record_items_params

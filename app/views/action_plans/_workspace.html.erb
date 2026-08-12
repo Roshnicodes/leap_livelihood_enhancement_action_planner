@@ -120,7 +120,7 @@
     <% end %>
   </section>
 
-  <% if show_submission && !submit_with_targets %>
+  <% if show_submission && !submit_with_targets && !current_user.admin? %>
     <% submit_locked = balance_warning.present? || existing_submission&.approved? %>
     <%= form_with url: submit_path, method: :post, class: "table-panel action-plan-submit-form" do |form| %>
       <%= form.hidden_field :project_name, value: selected_project %>

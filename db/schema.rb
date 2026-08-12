@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_11_103000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_12_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -75,6 +75,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_103000) do
     t.index ["employee_id"], name: "index_achievement_submissions_on_employee_id"
     t.index ["po_approver_id", "status", "current_stage"], name: "idx_achievement_po_pending"
     t.index ["po_approver_id"], name: "index_achievement_submissions_on_po_approver_id"
+    t.index ["project_name", "month", "submitted_at"], name: "idx_achievement_submissions_project_month_time"
     t.index ["status", "current_stage", "submitted_at"], name: "idx_on_status_current_stage_submitted_at_bd6c858085"
     t.index ["to_id", "project_name", "month", "status"], name: "idx_achievement_submissions_scope_status"
     t.index ["vertical_approver_id", "status", "current_stage"], name: "idx_achievement_vertical_pending"
@@ -90,6 +91,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_103000) do
     t.datetime "updated_at", null: false
     t.index ["employee_code"], name: "index_action_plan_fco_mappings_on_employee_code"
     t.index ["employee_id", "fco_id"], name: "idx_action_plan_fco_employee_fco", unique: true
+    t.index ["employee_id", "fco_name", "fco_id"], name: "idx_action_plan_fco_mappings_employee_name"
     t.index ["employee_id"], name: "index_action_plan_fco_mappings_on_employee_id"
     t.index ["fco_id"], name: "index_action_plan_fco_mappings_on_fco_id"
   end
@@ -109,6 +111,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_103000) do
     t.datetime "updated_at", null: false
     t.bigint "uploaded_by_id"
     t.index ["financial_year"], name: "index_action_plan_import_files_on_financial_year"
+    t.index ["import_type", "status", "financial_year", "imported_at"], name: "idx_action_plan_import_files_type_status_year_time"
     t.index ["import_type"], name: "index_action_plan_import_files_on_import_type"
     t.index ["imported_at"], name: "index_action_plan_import_files_on_imported_at"
     t.index ["status"], name: "index_action_plan_import_files_on_status"
@@ -180,7 +183,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_103000) do
     t.string "user_id"
     t.string "user_name"
     t.index ["id_new"], name: "index_action_plan_rows_on_id_new"
+    t.index ["import_flag", "po_id", "id"], name: "idx_action_plan_rows_active_po_order"
+    t.index ["import_flag", "po_id", "project_name", "id"], name: "idx_action_plan_rows_active_po_project_order"
+    t.index ["import_flag", "project_name", "id"], name: "idx_action_plan_rows_active_project_order"
+    t.index ["import_flag", "project_name", "theme"], name: "idx_action_plan_rows_active_project_theme"
     t.index ["import_flag", "to_id", "project_name"], name: "idx_action_plan_rows_active_to_project"
+    t.index ["import_flag", "user_id", "project_name", "id"], name: "idx_action_plan_rows_active_fco_project_order"
+    t.index ["import_flag", "user_id", "to_id", "project_name", "asa_theme_id", "asa_activity_id", "activity_id", "id"], name: "idx_action_plan_rows_active_achievement_order"
+    t.index ["import_flag", "user_id", "to_id", "project_name", "id"], name: "idx_action_plan_rows_active_fco_to_project_order"
     t.index ["import_flag", "user_id", "to_id", "project_name"], name: "idx_action_plan_rows_active_user_to_project"
     t.index ["import_flag", "user_id", "to_id"], name: "idx_action_plan_rows_active_user_to"
     t.index ["import_flag", "user_id"], name: "idx_action_plan_rows_active_user"
@@ -223,6 +233,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_103000) do
     t.index ["plan_type", "status", "current_stage"], name: "idx_action_plan_submissions_type_stage"
     t.index ["po_approver_id", "status", "current_stage"], name: "idx_action_plan_po_pending"
     t.index ["po_approver_id"], name: "index_action_plan_submissions_on_po_approver_id"
+    t.index ["project_name", "plan_type", "submitted_at"], name: "idx_action_plan_submissions_project_type_time"
     t.index ["project_ownership_id"], name: "index_action_plan_submissions_on_project_ownership_id"
     t.index ["status", "current_stage", "submitted_at"], name: "idx_on_status_current_stage_submitted_at_6caf8268b6"
   end
@@ -235,6 +246,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_103000) do
     t.bigint "employee_id"
     t.string "state_code", null: false
     t.datetime "updated_at", null: false
+    t.index ["employee_code", "state_code", "asa_theme_id"], name: "idx_action_plan_vertical_mappings_employee_code_lookup"
     t.index ["employee_code", "state_code", "asa_theme_id"], name: "idx_action_plan_vertical_mappings_unique", unique: true
     t.index ["employee_id", "state_code", "asa_theme_id"], name: "idx_action_plan_vertical_mappings_employee_lookup"
     t.index ["employee_id"], name: "index_action_plan_vertical_mappings_on_employee_id"
@@ -300,11 +312,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_103000) do
     t.datetime "updated_at", null: false
     t.decimal "utilised_fund", precision: 15, scale: 2, default: "0.0", null: false
     t.string "vertical_name"
+    t.index ["employee_id", "project_name", "bli_code", "name", "activity_name", "vertical_name"], name: "idx_bli_activities_employee_budget_order"
+    t.index ["employee_id", "project_name", "vertical_name", "activity_name", "bli_code", "id"], name: "idx_bli_activities_employee_export_order"
     t.index ["employee_id", "project_name", "vertical_name"], name: "index_bli_activities_on_employee_project_vertical"
     t.index ["employee_id", "vertical_name", "project_name", "activity_name"], name: "index_bli_activities_on_employee_vertical_project_activity"
     t.index ["employee_id"], name: "index_bli_activities_on_employee_id"
     t.index ["financial_year"], name: "index_bli_activities_on_financial_year"
+    t.index ["project_name", "activity_name", "vertical_name"], name: "idx_bli_activities_project_activity_vertical"
+    t.index ["project_name", "bli_code", "name", "activity_name", "vertical_name"], name: "idx_bli_activities_project_budget_order"
+    t.index ["project_name", "bli_code"], name: "idx_bli_activities_project_code"
+    t.index ["project_name", "vertical_name", "bli_code", "id"], name: "idx_bli_activities_project_vertical_code_id"
     t.index ["project_name"], name: "index_bli_activities_on_project_name"
+    t.index ["responsible_user_name"], name: "idx_bli_activities_responsible_user_name"
     t.index ["vertical_name", "project_name"], name: "index_bli_activities_on_vertical_project"
     t.index ["vertical_name"], name: "index_bli_activities_on_vertical_name"
   end
@@ -328,9 +347,40 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_103000) do
     t.index ["project_name", "bli_code", "month"], name: "idx_budget_utilizations_unique_scope", unique: true
     t.index ["project_name", "month", "status"], name: "index_budget_utilizations_on_project_name_and_month_and_status"
     t.index ["project_name", "month"], name: "index_budget_utilizations_on_project_name_and_month"
+    t.index ["project_name", "status", "updated_at"], name: "idx_budget_utilizations_project_status_updated"
+    t.index ["status", "month", "project_name"], name: "idx_budget_utilizations_status_month_project"
+    t.index ["status", "project_name", "month", "bli_code"], name: "idx_budget_utilizations_report_lookup"
     t.index ["status"], name: "index_budget_utilizations_on_status"
+    t.index ["submitted_by_id", "status", "submitted_at"], name: "idx_budget_utilizations_submitter_status_time"
     t.index ["submitted_by_id"], name: "index_budget_utilizations_on_submitted_by_id"
     t.index ["updated_by_id"], name: "index_budget_utilizations_on_updated_by_id"
+  end
+
+  create_table "donor_report_types", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.datetime "updated_at", null: false
+    t.index ["active", "name"], name: "idx_donor_report_types_active_name"
+    t.index ["active"], name: "index_donor_report_types_on_active"
+    t.index ["name"], name: "index_donor_report_types_on_name", unique: true
+  end
+
+  create_table "donor_report_uploads", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "donor_report_type_id", null: false
+    t.string "frequency", null: false
+    t.string "project_name", null: false
+    t.date "submission_date", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "uploaded_by_id"
+    t.index ["created_at", "id"], name: "idx_donor_uploads_recent_order"
+    t.index ["donor_report_type_id"], name: "index_donor_report_uploads_on_donor_report_type_id"
+    t.index ["frequency"], name: "index_donor_report_uploads_on_frequency"
+    t.index ["project_name", "frequency", "donor_report_type_id", "created_at"], name: "idx_donor_uploads_filters_recent"
+    t.index ["project_name"], name: "index_donor_report_uploads_on_project_name"
+    t.index ["submission_date"], name: "index_donor_report_uploads_on_submission_date"
+    t.index ["uploaded_by_id"], name: "index_donor_report_uploads_on_uploaded_by_id"
   end
 
   create_table "employee_vertical_mappings", force: :cascade do |t|
@@ -359,10 +409,42 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_103000) do
     t.string "primary_vertical"
     t.string "sub_branch"
     t.datetime "updated_at", null: false
+    t.index "lower((email)::text)", name: "idx_employees_lower_email"
+    t.index "lower((name)::text)", name: "idx_employees_lower_name"
+    t.index ["active", "name"], name: "idx_employees_active_name"
     t.index ["department"], name: "index_employees_on_department"
     t.index ["email"], name: "index_employees_on_email"
     t.index ["employee_code"], name: "index_employees_on_employee_code", unique: true
     t.index ["name"], name: "index_employees_on_name"
+  end
+
+  create_table "fund_report_types", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.datetime "updated_at", null: false
+    t.index ["active", "name"], name: "idx_fund_report_types_active_name"
+    t.index ["active"], name: "index_fund_report_types_on_active"
+    t.index ["name"], name: "index_fund_report_types_on_name", unique: true
+  end
+
+  create_table "fund_report_uploads", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "fund_report_type_id", null: false
+    t.string "project_name", null: false
+    t.decimal "submission_letter_amount", precision: 15, scale: 2, default: "0.0", null: false
+    t.date "submission_letter_date", null: false
+    t.decimal "submission_receipt_amount", precision: 15, scale: 2, default: "0.0", null: false
+    t.date "submission_receipt_date", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "uploaded_by_id"
+    t.index ["created_at", "id"], name: "idx_fund_uploads_recent_order"
+    t.index ["fund_report_type_id"], name: "index_fund_report_uploads_on_fund_report_type_id"
+    t.index ["project_name", "fund_report_type_id", "created_at"], name: "idx_fund_uploads_filters_recent"
+    t.index ["project_name"], name: "index_fund_report_uploads_on_project_name"
+    t.index ["submission_letter_date"], name: "index_fund_report_uploads_on_submission_letter_date"
+    t.index ["submission_receipt_date"], name: "index_fund_report_uploads_on_submission_receipt_date"
+    t.index ["uploaded_by_id"], name: "index_fund_report_uploads_on_uploaded_by_id"
   end
 
   create_table "parent_activity_assignments", force: :cascade do |t|
@@ -394,12 +476,40 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_103000) do
     t.datetime "updated_at", null: false
     t.bigint "uploaded_by_id"
     t.index ["approved_by_id"], name: "index_pb_import_files_on_approved_by_id"
+    t.index ["file_kind", "status", "financial_year", "imported_at"], name: "idx_pb_import_files_kind_status_year_time"
     t.index ["file_kind"], name: "index_pb_import_files_on_file_kind"
     t.index ["financial_year"], name: "index_pb_import_files_on_financial_year"
     t.index ["imported_at"], name: "index_pb_import_files_on_imported_at"
     t.index ["status"], name: "index_pb_import_files_on_status"
     t.index ["storage_path"], name: "index_pb_import_files_on_storage_path", unique: true
     t.index ["uploaded_by_id"], name: "index_pb_import_files_on_uploaded_by_id"
+  end
+
+  create_table "pis_document_types", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.datetime "updated_at", null: false
+    t.index ["active", "name"], name: "idx_pis_document_types_active_name"
+    t.index ["active"], name: "index_pis_document_types_on_active"
+    t.index ["name"], name: "index_pis_document_types_on_name", unique: true
+  end
+
+  create_table "pis_report_documents", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "financial_year", null: false
+    t.bigint "pis_document_type_id", null: false
+    t.string "project_name", null: false
+    t.date "submission_date", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "uploaded_by_id"
+    t.index ["created_at", "id"], name: "idx_pis_documents_recent_order"
+    t.index ["financial_year"], name: "index_pis_report_documents_on_financial_year"
+    t.index ["pis_document_type_id"], name: "index_pis_report_documents_on_pis_document_type_id"
+    t.index ["project_name", "financial_year", "pis_document_type_id", "created_at"], name: "idx_pis_documents_filters_recent"
+    t.index ["project_name"], name: "index_pis_report_documents_on_project_name"
+    t.index ["submission_date"], name: "index_pis_report_documents_on_submission_date"
+    t.index ["uploaded_by_id"], name: "index_pis_report_documents_on_uploaded_by_id"
   end
 
   create_table "plan_submission_items", force: :cascade do |t|
@@ -426,6 +536,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_103000) do
     t.datetime "updated_at", null: false
     t.index ["employee_id", "mode", "filter_name", "submitted_at"], name: "index_plan_submissions_lookup_latest"
     t.index ["employee_id"], name: "index_plan_submissions_on_employee_id"
+    t.index ["mode", "filter_name", "submitted_at"], name: "idx_plan_submissions_mode_filter_time"
     t.index ["mode"], name: "index_plan_submissions_on_mode"
     t.index ["submitted_at"], name: "index_plan_submissions_on_submitted_at"
   end
@@ -438,6 +549,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_103000) do
     t.string "project_name", null: false
     t.string "project_owner_id"
     t.datetime "updated_at", null: false
+    t.index "lower((email_id)::text)", name: "idx_project_ownerships_lower_email_id"
+    t.index "lower((po_name)::text)", name: "idx_project_ownerships_lower_po_name"
     t.index ["email_id"], name: "index_project_ownerships_on_email_id"
     t.index ["po_id", "project_name"], name: "index_project_ownerships_on_po_id_and_project_name", unique: true
     t.index ["project_name"], name: "index_project_ownerships_on_project_name"
@@ -469,6 +582,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_103000) do
     t.index ["project_name", "activity_name", "vertical_name"], name: "index_project_summary_items_on_project_activity_vertical"
     t.index ["project_name"], name: "index_project_summary_submission_items_on_project_name"
     t.index ["project_summary_submission_id", "project_name"], name: "index_project_summary_items_on_submission_project"
+    t.index ["project_summary_submission_id", "vertical_name", "activity_name"], name: "idx_project_summary_items_submission_vertical_activity"
     t.index ["project_summary_submission_id"], name: "idx_on_project_summary_submission_id_82944b0850"
     t.index ["vertical_name", "project_name"], name: "index_project_summary_items_on_vertical_project"
   end
@@ -491,7 +605,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_103000) do
     t.index ["approver_id"], name: "index_project_summary_submissions_on_approver_id"
     t.index ["employee_id", "status", "submitted_at"], name: "index_project_summary_submissions_on_employee_status_time"
     t.index ["employee_id"], name: "index_project_summary_submissions_on_employee_id"
+    t.index ["first_approver_id", "status", "submitted_at"], name: "idx_project_summary_first_approver_status_time"
     t.index ["first_approver_id"], name: "index_project_summary_submissions_on_first_approver_id"
+    t.index ["status", "submitted_at"], name: "idx_project_summary_status_time"
     t.index ["status"], name: "index_project_summary_submissions_on_status"
     t.index ["submitted_at"], name: "index_project_summary_submissions_on_submitted_at"
   end
@@ -550,12 +666,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_103000) do
   add_foreign_key "bli_activities", "employees"
   add_foreign_key "budget_utilizations", "users", column: "submitted_by_id"
   add_foreign_key "budget_utilizations", "users", column: "updated_by_id"
+  add_foreign_key "donor_report_uploads", "donor_report_types"
+  add_foreign_key "donor_report_uploads", "users", column: "uploaded_by_id"
   add_foreign_key "employee_vertical_mappings", "employees"
   add_foreign_key "employee_vertical_mappings", "vertical_percents"
+  add_foreign_key "fund_report_uploads", "fund_report_types"
+  add_foreign_key "fund_report_uploads", "users", column: "uploaded_by_id"
   add_foreign_key "parent_activity_assignments", "employees"
   add_foreign_key "parent_activity_assignments", "vertical_percents"
   add_foreign_key "pb_import_files", "users", column: "approved_by_id"
   add_foreign_key "pb_import_files", "users", column: "uploaded_by_id"
+  add_foreign_key "pis_report_documents", "pis_document_types"
+  add_foreign_key "pis_report_documents", "users", column: "uploaded_by_id"
   add_foreign_key "plan_submission_items", "bli_activities"
   add_foreign_key "plan_submission_items", "plan_submissions"
   add_foreign_key "plan_submissions", "employees"

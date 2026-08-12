@@ -3,6 +3,7 @@ class VerticalActionPlansController < ApplicationController
   include ActionPlanSubmitting
 
   before_action :require_login
+  before_action :require_employee_action_plan_edit_access, only: %i[update create]
   before_action :require_vertical_mapping, only: %i[update create]
 
   def index
@@ -15,7 +16,7 @@ class VerticalActionPlansController < ApplicationController
     @balance_warning = unbalanced_rows_message(@rows) if @selected_project.present?
     @show_achievement = false
     @show_submission = !current_user.admin?
-    @editable_targets = true
+    @editable_targets = !current_user.admin?
   end
 
   def update
@@ -84,6 +85,12 @@ class VerticalActionPlansController < ApplicationController
     return if current_user.admin? || action_plan_vertical_names.present?
 
     redirect_to vertical_action_plans_path, alert: "No parent activity mapping found for your account."
+  end
+
+  def require_employee_action_plan_edit_access
+    return if current_user.employee.present? && !current_user.admin?
+
+    redirect_to vertical_action_plans_path(project: params[:project].presence || params[:project_name].presence), alert: "PMC can view records but cannot edit."
   end
 
   def target_row_params

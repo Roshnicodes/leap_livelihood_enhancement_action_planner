@@ -1,0 +1,191 @@
+<% content_for :title, "Donor Report Upload | LEAP" %>
+
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Document Workspace</p>
+    <h1>Donor Report Upload</h1>
+    <p class="muted">Upload donor reports and keep them available for download by all users.</p>
+  </div>
+  <div class="header-card">
+    <span>Reports</span>
+    <strong><%= @uploads.size %></strong>
+  </div>
+</section>
+
+<section class="metric-grid admin-grid">
+  <article class="metric metric-teal"><span>Projects</span><strong><%= @project_options.size %></strong></article>
+  <article class="metric metric-blue"><span>Reports Name</span><strong><%= @report_types.size %></strong></article>
+  <article class="metric metric-gold"><span>Frequencies</span><strong><%= @frequency_options.size %></strong></article>
+  <article class="metric metric-ink"><span>Uploaded</span><strong><%= DonorReportUpload.count %></strong></article>
+</section>
+
+<% if @can_upload_donor_report %>
+  <section class="table-panel import-panel">
+    <div class="table-heading">
+      <div>
+        <h2>Reports name master</h2>
+        <p class="muted">Add report names for the upload dropdown.</p>
+      </div>
+    </div>
+
+    <%= form_with scope: :donor_report_type, url: report_types_donor_report_uploads_path, method: :post, class: "import-form" do |form| %>
+      <div class="import-grid pis-master-grid">
+        <label>
+          <span>Reports Name</span>
+          <%= form.text_field :name, class: "input", placeholder: "Enter reports name", required: true %>
+        </label>
+      </div>
+      <div class="submit-panel">
+        <p class="muted">New report names become available immediately for upload.</p>
+        <%= form.submit "Add Reports Name", class: "secondary-button" %>
+      </div>
+    <% end %>
+  </section>
+
+  <section class="table-panel import-panel">
+    <div class="table-heading">
+      <div>
+        <h2>Upload donor report</h2>
+        <p class="muted">Choose project, reports name, frequency, submission date and file.</p>
+      </div>
+    </div>
+
+    <%= form_with model: DonorReportUpload.new, url: donor_report_uploads_path, method: :post, multipart: true, class: "import-form pis-upload-form" do |form| %>
+      <div class="import-grid pis-upload-grid">
+        <label>
+          <span>Project</span>
+          <%= form.select :project_name,
+            options_for_select([["Select Project", ""]] + @project_options.map { |project| [project, project] }),
+            {},
+            class: "select",
+            required: true %>
+        </label>
+
+        <label>
+          <span>Reports Name</span>
+          <%= form.collection_select :donor_report_type_id,
+            @report_types,
+            :id,
+            :name,
+            { prompt: "Select Reports Name" },
+            class: "select",
+            required: true %>
+        </label>
+
+        <label>
+          <span>Frequency</span>
+          <%= form.select :frequency,
+            options_for_select([["Select Frequency", ""]] + @frequency_options.map { |frequency| [frequency, frequency] }),
+            {},
+            class: "select",
+            required: true %>
+        </label>
+
+        <label>
+          <span>Submission Date</span>
+          <%= form.date_field :submission_date, class: "input", required: true %>
+        </label>
+
+        <label>
+          <span>Email/Application Screenshot Upload</span>
+          <%= form.file_field :file, class: "input", required: true %>
+        </label>
+      </div>
+
+      <div class="submit-panel">
+        <p class="muted">Uploaded reports will be visible in the list below for all users.</p>
+        <%= form.submit "Upload Donor Report", class: "submit-plan-button" %>
+      </div>
+    <% end %>
+  </section>
+<% end %>
+
+<section class="toolbar pis-report-filter-toolbar">
+  <%= form_with url: donor_report_uploads_path, method: :get, class: "budget-utilization-filter-form", html: { autocomplete: "off" } do |form| %>
+    <label>
+      <span class="filter-label">Project</span>
+      <%= form.select :project,
+        options_for_select([["All Projects", ""]] + @project_options.map { |project| [project, project] }, @selected_project.to_s),
+        {},
+        class: "select",
+        onchange: "this.form.requestSubmit()" %>
+    </label>
+
+    <label>
+      <span class="filter-label">Reports Name</span>
+      <%= form.select :report_type_id,
+        options_for_select([["All Reports", ""]] + @report_types.map { |report_type| [report_type.name, report_type.id] }, @selected_report_type_id),
+        {},
+        class: "select",
+        onchange: "this.form.requestSubmit()" %>
+    </label>
+
+    <label>
+      <span class="filter-label">Frequency</span>
+      <%= form.select :frequency,
+        options_for_select([["All Frequencies", ""]] + @frequency_options.map { |frequency| [frequency, frequency] }, @selected_frequency.to_s),
+        {},
+        class: "select",
+        onchange: "this.form.requestSubmit()" %>
+    </label>
+  <% end %>
+</section>
+
+<section class="table-panel import-history-panel" data-searchable-table>
+  <div class="table-heading">
+    <div>
+      <h2>Uploaded donor reports</h2>
+      <p class="muted">Search, filter and download donor reports whenever needed.</p>
+    </div>
+    <div class="table-actions">
+      <input type="search" class="table-search" placeholder="Search donor reports" data-table-search-input>
+      <span class="table-count" data-filtered-count data-count-label="reports"><%= @uploads.size %> reports</span>
+    </div>
+  </div>
+
+  <div class="responsive-table">
+    <table>
+      <thead>
+        <tr>
+          <th>Project</th>
+          <th>Reports Name</th>
+          <th>Frequency</th>
+          <th>Submission Date</th>
+          <th>File</th>
+          <th>Uploaded By</th>
+          <th>Uploaded At</th>
+          <th>Download</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if @uploads.any? %>
+          <% @uploads.each do |upload| %>
+            <tr>
+              <td><strong><%= upload.project_name %></strong></td>
+              <td><span class="code-pill"><%= upload.donor_report_type.name %></span></td>
+              <td><span class="code-pill"><%= upload.frequency %></span></td>
+              <td><%= upload.submission_date.strftime("%d %b %Y") %></td>
+              <td>
+                <strong><%= upload.file_name %></strong>
+                <div class="muted"><%= number_to_human_size(upload.file_size) %></div>
+              </td>
+              <td><%= upload.uploaded_by&.admin? ? "PMC" : upload.uploaded_by&.employee&.name || "-" %></td>
+              <td><%= upload.created_at.strftime("%d %b %Y %I:%M %p") %></td>
+              <td>
+                <% if upload.file.attached? %>
+                  <%= link_to "Download", rails_blob_path(upload.file, disposition: "attachment"), class: "approval-review-button" %>
+                <% else %>
+                  <span class="status-badge status-not_submitted">Missing</span>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        <% else %>
+          <tr>
+            <td colspan="8">No uploaded donor reports yet.</td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>

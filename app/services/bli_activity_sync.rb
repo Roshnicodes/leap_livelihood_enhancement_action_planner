@@ -1,5 +1,6 @@
 require "csv"
 require "rexml/document"
+require "zlib"
 require "zip"
 
 class BliActivitySync
@@ -35,7 +36,10 @@ class BliActivitySync
         elsif (employee = employee_for_responsible_user(row))
           create_activity(employee, row, vertical_name_for_parent_activity(source_parent_activity))
         else
-          employees_mapped_to_vertical(source_parent_activity).find_each do |employee|
+          mapped_employees = employees_mapped_to_vertical(source_parent_activity).to_a
+          mapped_employees = [ placeholder_employee_for_responsible_user(row) ].compact if mapped_employees.blank?
+
+          mapped_employees.each do |employee|
             create_activity(employee, row, source_parent_activity)
           end
         end
@@ -123,6 +127,24 @@ class BliActivitySync
     return if tokens.blank?
 
     Employee.where(tokens.map { "LOWER(name) LIKE ?" }.join(" AND "), *tokens.map { |token| "%#{token}%" }).first
+  end
+
+  def placeholder_employee_for_responsible_user(row)
+    responsible_user_name = row_value(row, "Responsible Users", "Responsible User")
+    return if responsible_user_name.blank?
+
+    normalized_name = responsible_user_name.to_s.squish
+    Employee.find_or_create_by!(employee_code: placeholder_employee_code(normalized_name)) do |employee|
+      employee.name = normalized_name
+      employee.active = false
+      employee.primary_project = project_label(row)
+      employee.primary_vertical = row_value(row, "Parent Activity", "Vertical")
+      employee.office_name = row_value(row, "Office Name")
+    end
+  end
+
+  def placeholder_employee_code(name)
+    "AUTO-#{Zlib.crc32(name.to_s.downcase).to_s(36).upcase}"
   end
 
   def vertical_name_for_parent_activity(source_parent_activity)

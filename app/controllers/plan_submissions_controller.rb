@@ -1,5 +1,6 @@
 class PlanSubmissionsController < ApplicationController
   before_action :require_login
+  before_action :require_employee_budget_edit_access, only: :create
 
   def index
     @activities = activity_scope
@@ -61,10 +62,7 @@ class PlanSubmissionsController < ApplicationController
   end
 
   def global_unique_activities
-    BliActivity
-      .order(:project_name, :vertical_name, :activity_name, :bli_code, :id)
-      .to_a
-      .uniq { |activity| [ activity.project_name, activity.vertical_name, activity.bli_code, activity.name, activity.activity_name, activity.allocated_fund ] }
+    BliActivity.order(:project_name, :vertical_name, :activity_name, :bli_code, :id).to_a
   end
 
   def submission_scope
@@ -75,5 +73,11 @@ class PlanSubmissionsController < ApplicationController
     params.fetch(:items, {}).values.map do |item|
       item.permit(:bli_activity_id, :changed_fund, :remark)
     end
+  end
+
+  def require_employee_budget_edit_access
+    return if current_user.employee.present? && !current_user.admin?
+
+    redirect_to plan_submissions_path, alert: "PMC can view records but cannot edit."
   end
 end

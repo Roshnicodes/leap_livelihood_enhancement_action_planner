@@ -1,10 +1,10 @@
-<% content_for :title, "P&B Download | LEAP" %>
+<% content_for :title, "P&B Import & Download | LEAP" %>
 
 <section class="page-header">
   <div>
     <p class="eyebrow">PMC workspace</p>
-    <h1>P&amp;B Download</h1>
-    <p class="muted">Download the latest active P&amp;B Excel. Backend imports save the previous active file first, then keep the newly imported source in history.</p>
+    <h1>P&amp;B Import &amp; Download</h1>
+    <p class="muted">Upload or download the latest active P&amp;B Excel. Every import saves the previous active file first, then keeps the new source in history.</p>
   </div>
   <div class="header-card">
     <span>Activities</span>
@@ -22,19 +22,33 @@
 <section class="table-panel import-panel">
   <div class="table-heading">
     <div>
-      <h2>Download P&amp;B file</h2>
-      <p class="muted">This downloads current active P&amp;B data. User changes are included only after Director final approval.</p>
+      <h2>Upload P&amp;B file</h2>
+      <p class="muted">PMC can import the P&amp;B source and parent activity mapping here. The previous active P&amp;B file is saved before a new source becomes active.</p>
     </div>
     <div class="table-actions">
       <%= link_to "Download P&B Excel", download_admin_pb_imports_path, class: "submit-plan-button" %>
     </div>
   </div>
-  <div class="submit-panel">
-    <p>
-      Latest backend P&amp;B import:
-      <strong><%= @latest_imported_at&.strftime("%d %b %Y %I:%M %p") || "Not imported yet" %></strong>
-    </p>
-  </div>
+
+  <%= form_with url: admin_pb_imports_path, method: :post, multipart: true, class: "import-form" do |form| %>
+    <div class="import-grid">
+      <label>
+        <span>P&amp;B source file</span>
+        <%= form.file_field :pb_file, accept: ".xlsx,.csv", class: "input" %>
+      </label>
+      <label>
+        <span>Parent activity mapping file</span>
+        <%= form.file_field :parent_activity_file, accept: ".xlsx,.csv", class: "input" %>
+      </label>
+    </div>
+    <div class="submit-panel">
+      <p>
+        Latest P&amp;B import:
+        <strong><%= @latest_imported_at&.strftime("%d %b %Y %I:%M %p") || "Not imported yet" %></strong>
+      </p>
+      <%= form.submit "Import P&B", class: "submit-plan-button" %>
+    </div>
+  <% end %>
 </section>
 
 <section class="table-panel import-history-panel collapsible-panel is-collapsed" data-searchable-table data-collapsible-panel data-collapsed="true">

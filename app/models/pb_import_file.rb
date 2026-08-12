@@ -3,7 +3,7 @@ require "securerandom"
 
 class PbImportFile < ApplicationRecord
   STATUSES = %w[pending imported failed backup].freeze
-  FILE_KINDS = %w[source before_import_snapshot].freeze
+  FILE_KINDS = %w[source parent_activity_mapping before_import_snapshot].freeze
 
   belongs_to :uploaded_by, class_name: "User", optional: true
   belongs_to :approved_by, class_name: "User", optional: true
@@ -56,14 +56,15 @@ class PbImportFile < ApplicationRecord
     )
   end
 
-  def self.capture!(upload:, uploaded_by:)
+  def self.capture!(upload:, uploaded_by:, file_kind: "source")
     capture_path!(
       path: upload.path,
       original_filename: upload.original_filename,
       content_type: upload.respond_to?(:content_type) ? upload.content_type : nil,
       byte_size: upload.respond_to?(:size) ? upload.size.to_i : nil,
       uploaded_by: uploaded_by,
-      status: "pending"
+      status: "pending",
+      file_kind: file_kind
     )
   end
 

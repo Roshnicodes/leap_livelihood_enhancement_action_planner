@@ -21,6 +21,15 @@ Rails.application.routes.draw do
   get "budget_utilizations" => "budget_utilizations#index", as: :budget_utilizations
   patch "budget_utilizations" => "budget_utilizations#update"
   get "budget_utilization_reports" => "budget_utilization_reports#index", as: :budget_utilization_reports
+  resources :pis_report_uploads, only: %i[index create] do
+    post :document_types, on: :collection, action: :create_document_type
+  end
+  resources :donor_report_uploads, only: %i[index create] do
+    post :report_types, on: :collection, action: :create_report_type
+  end
+  resources :fund_report_uploads, only: %i[index create] do
+    post :report_types, on: :collection, action: :create_report_type
+  end
   resources :action_plans, only: %i[index create]
   resource :achievement_entry, only: %i[show update] do
     post :submit
@@ -49,7 +58,7 @@ Rails.application.routes.draw do
 
   namespace :admin do
     resources :employees, only: :index
-    resources :pb_imports, only: :index do
+    resources :pb_imports, only: %i[index create] do
       get :download, on: :collection
       get :download_file, on: :member
     end

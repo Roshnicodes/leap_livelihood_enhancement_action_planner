@@ -72,33 +72,10 @@ namespace :leap do
     file_path = ENV.fetch("FILE", "/home/asa/Downloads/Book4.xlsx")
     abort "Missing assignment file: #{file_path}" unless File.exist?(file_path)
 
-    rows = leap_xlsx_rows(file_path)
-    verticals_by_name = VerticalPercent.all.index_by { |vertical| vertical.vertical_name.squish.downcase }
-    imported = 0
-
-    ParentActivityAssignment.transaction do
-      ParentActivityAssignment.delete_all
-      EmployeeVerticalMapping.delete_all if ENV.fetch("REPLACE_EMPLOYEE_VERTICALS", "true") == "true"
-
-      rows.each do |row|
-        source_parent_activity = row["Parent Activity"].to_s.squish
-        employee_code = row["Employee ID"].to_s.squish.sub(/\.0\z/, "")
-        next if source_parent_activity.blank? || employee_code.blank?
-
-        employee = Employee.find_by!(employee_code: employee_code)
-        vertical_percent = leap_vertical_percent_for_source(source_parent_activity, verticals_by_name)
-        abort "No vertical percent found for #{source_parent_activity.inspect}" unless vertical_percent
-
-        employee.update!(active: true) unless employee.active?
-        ParentActivityAssignment.create!(
-          source_parent_activity: source_parent_activity,
-          employee: employee,
-          vertical_percent: vertical_percent
-        )
-        EmployeeVerticalMapping.find_or_create_by!(employee: employee, vertical_percent: vertical_percent)
-        imported += 1
-      end
-    end
+    imported = ParentActivityAssignmentImporter.new(
+      file_path: file_path,
+      replace_employee_verticals: ENV.fetch("REPLACE_EMPLOYEE_VERTICALS", "true") == "true"
+    ).import!
 
     puts "Imported #{imported} parent activity assignments from #{file_path}"
   end

@@ -3,6 +3,7 @@ class ActionPlanRecordsController < ApplicationController
   include ActionPlanSubmitting
 
   before_action :require_login
+  before_action :require_employee_action_plan_edit_access, only: :create
 
   def index
     @project_options = record_project_options
@@ -53,6 +54,12 @@ class ActionPlanRecordsController < ApplicationController
   end
 
   private
+
+  def require_employee_action_plan_edit_access
+    return if current_user.employee.present? && !current_user.admin?
+
+    redirect_to action_plan_records_path(project: params[:project].presence || params[:project_name].presence), alert: "PMC can view records but cannot edit."
+  end
 
   def record_project_options
     return all_project_options if current_user.admin?

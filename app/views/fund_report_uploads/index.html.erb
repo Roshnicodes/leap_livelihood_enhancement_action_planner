@@ -1,0 +1,195 @@
+<% content_for :title, "Fund Report Upload | LEAP" %>
+
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Document Workspace</p>
+    <h1>Fund Report Upload</h1>
+    <p class="muted">Upload fund submission and receipt documents for project-wise download.</p>
+  </div>
+  <div class="header-card">
+    <span>Reports</span>
+    <strong><%= @uploads.size %></strong>
+  </div>
+</section>
+
+<section class="metric-grid admin-grid">
+  <article class="metric metric-teal"><span>Projects</span><strong><%= @project_options.size %></strong></article>
+  <article class="metric metric-blue"><span>Reports Name</span><strong><%= @report_types.size %></strong></article>
+  <article class="metric metric-gold"><span>Uploaded</span><strong><%= FundReportUpload.count %></strong></article>
+  <article class="metric metric-ink"><span>Total Amount</span><strong><%= currency(@uploads.sum(&:submission_receipt_amount)) %></strong></article>
+</section>
+
+<% if @can_upload_fund_report %>
+  <section class="table-panel import-panel">
+    <div class="table-heading">
+      <div>
+        <h2>Reports name master</h2>
+        <p class="muted">Add report names for the upload dropdown.</p>
+      </div>
+    </div>
+
+    <%= form_with scope: :fund_report_type, url: report_types_fund_report_uploads_path, method: :post, class: "import-form" do |form| %>
+      <div class="import-grid pis-master-grid">
+        <label>
+          <span>Reports Name</span>
+          <%= form.text_field :name, class: "input", placeholder: "Enter reports name", required: true %>
+        </label>
+      </div>
+      <div class="submit-panel">
+        <p class="muted">New report names become available immediately for upload.</p>
+        <%= form.submit "Add Reports Name", class: "secondary-button" %>
+      </div>
+    <% end %>
+  </section>
+
+  <section class="table-panel import-panel">
+    <div class="table-heading">
+      <div>
+        <h2>Upload fund report</h2>
+        <p class="muted">Enter submission and receipt details, then upload the document and screenshot.</p>
+      </div>
+    </div>
+
+    <%= form_with model: FundReportUpload.new, url: fund_report_uploads_path, method: :post, multipart: true, class: "import-form pis-upload-form" do |form| %>
+      <div class="import-grid pis-upload-grid">
+        <label>
+          <span>Project</span>
+          <%= form.select :project_name,
+            options_for_select([["Select Project", ""]] + @project_options.map { |project| [project, project] }),
+            {},
+            class: "select",
+            required: true %>
+        </label>
+
+        <label>
+          <span>Reports Name</span>
+          <%= form.collection_select :fund_report_type_id,
+            @report_types,
+            :id,
+            :name,
+            { prompt: "Select Reports Name" },
+            class: "select",
+            required: true %>
+        </label>
+
+        <label>
+          <span>Submission Letter Date</span>
+          <%= form.date_field :submission_letter_date, class: "input", required: true %>
+        </label>
+
+        <label>
+          <span>Submission Letter Amount</span>
+          <%= form.number_field :submission_letter_amount, min: 0, step: 1, class: "input", required: true %>
+        </label>
+
+        <label>
+          <span>Submission/Receipt Date</span>
+          <%= form.date_field :submission_receipt_date, class: "input", required: true %>
+        </label>
+
+        <label>
+          <span>Submission/Receipt Amount</span>
+          <%= form.number_field :submission_receipt_amount, min: 0, step: 1, class: "input", required: true %>
+        </label>
+
+        <label>
+          <span>Doc Upload</span>
+          <%= form.file_field :document_file, class: "input", required: true %>
+        </label>
+
+        <label>
+          <span>Email/Application Screenshot Upload</span>
+          <%= form.file_field :screenshot_file, class: "input", required: true %>
+        </label>
+      </div>
+
+      <div class="submit-panel">
+        <p class="muted">Uploaded fund reports will be visible below for all users.</p>
+        <%= form.submit "Upload Fund Report", class: "submit-plan-button" %>
+      </div>
+    <% end %>
+  </section>
+<% end %>
+
+<section class="toolbar pis-report-filter-toolbar">
+  <%= form_with url: fund_report_uploads_path, method: :get, class: "budget-utilization-filter-form", html: { autocomplete: "off" } do |form| %>
+    <label>
+      <span class="filter-label">Project</span>
+      <%= form.select :project,
+        options_for_select([["All Projects", ""]] + @project_options.map { |project| [project, project] }, @selected_project.to_s),
+        {},
+        class: "select",
+        onchange: "this.form.requestSubmit()" %>
+    </label>
+
+    <label>
+      <span class="filter-label">Reports Name</span>
+      <%= form.select :report_type_id,
+        options_for_select([["All Reports", ""]] + @report_types.map { |report_type| [report_type.name, report_type.id] }, @selected_report_type_id),
+        {},
+        class: "select",
+        onchange: "this.form.requestSubmit()" %>
+    </label>
+  <% end %>
+</section>
+
+<section class="table-panel import-history-panel" data-searchable-table>
+  <div class="table-heading">
+    <div>
+      <h2>Uploaded fund reports</h2>
+      <p class="muted">Search, filter and download fund report documents whenever needed.</p>
+    </div>
+    <div class="table-actions">
+      <input type="search" class="table-search" placeholder="Search fund reports" data-table-search-input>
+      <span class="table-count" data-filtered-count data-count-label="reports"><%= @uploads.size %> reports</span>
+    </div>
+  </div>
+
+  <div class="responsive-table">
+    <table>
+      <thead>
+        <tr>
+          <th>Project</th>
+          <th>Reports Name</th>
+          <th>Letter Date</th>
+          <th>Letter Amount</th>
+          <th>Receipt Date</th>
+          <th>Receipt Amount</th>
+          <th>Files</th>
+          <th>Uploaded By</th>
+          <th>Uploaded At</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if @uploads.any? %>
+          <% @uploads.each do |upload| %>
+            <tr>
+              <td><strong><%= upload.project_name %></strong></td>
+              <td><span class="code-pill"><%= upload.fund_report_type.name %></span></td>
+              <td><%= upload.submission_letter_date.strftime("%d %b %Y") %></td>
+              <td><strong><%= currency(upload.submission_letter_amount) %></strong></td>
+              <td><%= upload.submission_receipt_date.strftime("%d %b %Y") %></td>
+              <td><strong><%= currency(upload.submission_receipt_amount) %></strong></td>
+              <td>
+                <div class="document-link-stack">
+                  <% if upload.document_file.attached? %>
+                    <%= link_to "Download Doc", rails_blob_path(upload.document_file, disposition: "attachment"), class: "approval-review-button" %>
+                  <% end %>
+                  <% if upload.screenshot_file.attached? %>
+                    <%= link_to "Download Screenshot", rails_blob_path(upload.screenshot_file, disposition: "attachment"), class: "approval-review-button" %>
+                  <% end %>
+                </div>
+              </td>
+              <td><%= upload.uploaded_by&.admin? ? "PMC" : upload.uploaded_by&.employee&.name || "-" %></td>
+              <td><%= upload.created_at.strftime("%d %b %Y %I:%M %p") %></td>
+            </tr>
+          <% end %>
+        <% else %>
+          <tr>
+            <td colspan="9">No uploaded fund reports yet.</td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>

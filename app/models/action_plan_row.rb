@@ -15,9 +15,7 @@ class ActionPlanRow < ApplicationRecord
     }
   end.freeze
   ADMIN_ONLY_COLUMNS = [
-    { header: "ID_New", attribute: :id_new },
     { header: "State", attribute: :statte },
-    { header: "PO_ID", attribute: :po_id },
     { header: "Project_Owner", attribute: :project_owner }
   ].freeze
   PROJECT_ID_COLUMN = { header: "Project_ID", attribute: :project_id }.freeze

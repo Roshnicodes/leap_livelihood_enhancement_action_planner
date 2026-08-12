@@ -7,6 +7,7 @@ class ApplicationController < ActionController::Base
     :menu_show_budget_utilization_report?,
     :menu_show_project_action_plan?, :menu_show_achievement_entry?, :menu_show_achievement_approvals?,
     :menu_show_vertical_action_plan?, :menu_show_vertical_action_plan_record?,
+    :menu_show_pis_report_upload?, :menu_show_donor_report_upload?, :menu_show_fund_report_upload?,
     :menu_show_action_plan_approval?, :menu_show_pb_section?, :menu_show_action_plan_section?
 
   # Changes to the importmap will invalidate the etag for HTML responses
@@ -165,6 +166,18 @@ class ApplicationController < ActionController::Base
     menu_show_vertical_action_plan?
   end
 
+  def menu_show_pis_report_upload?
+    current_user.present?
+  end
+
+  def menu_show_donor_report_upload?
+    current_user.present?
+  end
+
+  def menu_show_fund_report_upload?
+    current_user.present?
+  end
+
   def menu_show_action_plan_approval?(stage)
     action_plan_stage_access?(stage)
   end
@@ -177,7 +190,8 @@ class ApplicationController < ActionController::Base
 
   def menu_show_action_plan_section?
     menu_show_project_action_plan? || menu_show_achievement_entry? || menu_show_achievement_approvals? ||
-      menu_show_vertical_action_plan? || menu_show_vertical_action_plan_record? ||
+      menu_show_vertical_action_plan? || menu_show_vertical_action_plan_record? || menu_show_pis_report_upload? ||
+      menu_show_donor_report_upload? || menu_show_fund_report_upload? ||
       %w[po coo director].any? { |stage| menu_show_action_plan_approval?(stage) }
   end
 end

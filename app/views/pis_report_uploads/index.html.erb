@@ -1,0 +1,191 @@
+<% content_for :title, "PIS Report Upload | LEAP" %>
+
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Document Workspace</p>
+    <h1>PIS Report Upload</h1>
+    <p class="muted">Upload project documents once and keep them available for download by all users.</p>
+  </div>
+  <div class="header-card">
+    <span>Documents</span>
+    <strong><%= @documents.size %></strong>
+  </div>
+</section>
+
+<section class="metric-grid admin-grid">
+  <article class="metric metric-teal"><span>Projects</span><strong><%= @project_options.size %></strong></article>
+  <article class="metric metric-blue"><span>Doc Names</span><strong><%= @document_types.size %></strong></article>
+  <article class="metric metric-gold"><span>Financial Years</span><strong><%= @financial_year_options.size %></strong></article>
+  <article class="metric metric-ink"><span>Uploaded</span><strong><%= PisReportDocument.count %></strong></article>
+</section>
+
+<% if @can_upload_pis_report %>
+  <section class="table-panel import-panel">
+    <div class="table-heading">
+      <div>
+        <h2>Doc name master</h2>
+        <p class="muted">Add document names for the upload dropdown.</p>
+      </div>
+    </div>
+
+    <%= form_with scope: :pis_document_type, url: document_types_pis_report_uploads_path, method: :post, class: "import-form" do |form| %>
+      <div class="import-grid pis-master-grid">
+        <label>
+          <span>Doc Name</span>
+          <%= form.text_field :name, class: "input", placeholder: "Enter doc name", required: true %>
+        </label>
+      </div>
+      <div class="submit-panel">
+        <p class="muted">New doc names become available immediately for upload.</p>
+        <%= form.submit "Add Doc Name", class: "secondary-button" %>
+      </div>
+    <% end %>
+  </section>
+
+  <section class="table-panel import-panel">
+    <div class="table-heading">
+      <div>
+        <h2>Upload document</h2>
+        <p class="muted">Choose project, document name, financial year, submission date and file.</p>
+      </div>
+    </div>
+
+    <%= form_with model: PisReportDocument.new, url: pis_report_uploads_path, method: :post, multipart: true, class: "import-form pis-upload-form" do |form| %>
+      <div class="import-grid pis-upload-grid">
+        <label>
+          <span>Project</span>
+          <%= form.select :project_name,
+            options_for_select([["Select Project", ""]] + @project_options.map { |project| [project, project] }),
+            {},
+            class: "select",
+            required: true %>
+        </label>
+
+        <label>
+          <span>Doc Name</span>
+          <%= form.collection_select :pis_document_type_id,
+            @document_types,
+            :id,
+            :name,
+            { prompt: "Select Doc Name" },
+            class: "select",
+            required: true %>
+        </label>
+
+        <label>
+          <span>FY</span>
+          <%= form.select :financial_year,
+            options_for_select([["Select FY", ""]] + @financial_year_options.map { |year| [year, year] }, PisReportDocument.financial_year_for),
+            {},
+            class: "select",
+            required: true %>
+        </label>
+
+        <label>
+          <span>Submission / Receipt Date</span>
+          <%= form.date_field :submission_date, class: "input", required: true %>
+        </label>
+
+        <label>
+          <span>Document Upload</span>
+          <%= form.file_field :file, class: "input", required: true %>
+        </label>
+      </div>
+
+      <div class="submit-panel">
+        <p class="muted">Uploaded documents will be visible in the list below for all users.</p>
+        <%= form.submit "Upload Document", class: "submit-plan-button" %>
+      </div>
+    <% end %>
+  </section>
+<% end %>
+
+<section class="toolbar pis-report-filter-toolbar">
+  <%= form_with url: pis_report_uploads_path, method: :get, class: "budget-utilization-filter-form", html: { autocomplete: "off" } do |form| %>
+    <label>
+      <span class="filter-label">Project</span>
+      <%= form.select :project,
+        options_for_select([["All Projects", ""]] + @project_options.map { |project| [project, project] }, @selected_project.to_s),
+        {},
+        class: "select",
+        onchange: "this.form.requestSubmit()" %>
+    </label>
+
+    <label>
+      <span class="filter-label">Doc Name</span>
+      <%= form.select :document_type_id,
+        options_for_select([["All Doc Names", ""]] + @document_types.map { |doc_type| [doc_type.name, doc_type.id] }, @selected_document_type_id),
+        {},
+        class: "select",
+        onchange: "this.form.requestSubmit()" %>
+    </label>
+
+    <label>
+      <span class="filter-label">FY</span>
+      <%= form.select :financial_year,
+        options_for_select([["All FY", ""]] + @financial_year_options.map { |year| [year, year] }, @selected_financial_year.to_s),
+        {},
+        class: "select",
+        onchange: "this.form.requestSubmit()" %>
+    </label>
+  <% end %>
+</section>
+
+<section class="table-panel import-history-panel" data-searchable-table>
+  <div class="table-heading">
+    <div>
+      <h2>Uploaded documents</h2>
+      <p class="muted">Search, filter and download project documents whenever needed.</p>
+    </div>
+    <div class="table-actions">
+      <input type="search" class="table-search" placeholder="Search documents" data-table-search-input>
+      <span class="table-count" data-filtered-count data-count-label="documents"><%= @documents.size %> documents</span>
+    </div>
+  </div>
+
+  <div class="responsive-table">
+    <table>
+      <thead>
+        <tr>
+          <th>Project</th>
+          <th>Doc Name</th>
+          <th>FY</th>
+          <th>Submission Date</th>
+          <th>File</th>
+          <th>Uploaded By</th>
+          <th>Uploaded At</th>
+          <th>Download</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if @documents.any? %>
+          <% @documents.each do |document| %>
+            <tr>
+              <td><strong><%= document.project_name %></strong></td>
+              <td><span class="code-pill"><%= document.pis_document_type.name %></span></td>
+              <td><span class="code-pill"><%= document.financial_year %></span></td>
+              <td><%= document.submission_date.strftime("%d %b %Y") %></td>
+              <td>
+                <strong><%= document.file_name %></strong>
+                <div class="muted"><%= number_to_human_size(document.file_size) %></div>
+              </td>
+              <td><%= document.uploaded_by&.admin? ? "PMC" : document.uploaded_by&.employee&.name || "-" %></td>
+              <td><%= document.created_at.strftime("%d %b %Y %I:%M %p") %></td>
+              <td>
+                <% if document.file.attached? %>
+                  <%= link_to "Download", rails_blob_path(document.file, disposition: "attachment"), class: "approval-review-button" %>
+                <% else %>
+                  <span class="status-badge status-not_submitted">Missing</span>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        <% else %>
+          <tr>
+            <td colspan="8">No uploaded documents yet.</td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>

@@ -36,7 +36,7 @@
             <% if current_user.admin? %>
               <% admin_open = controller_path == "admin/employees" %>
               <% pb_controllers = %w[plan_submissions budget_utilizations budget_utilization_reports project_summary_records project_summary_approvals] %>
-              <% ap_controllers = %w[action_plans vertical_action_plans action_plan_records achievement_approvals project_summary_approval_records] %>
+              <% ap_controllers = %w[action_plans vertical_action_plans action_plan_records achievement_approvals project_summary_approval_records pis_report_uploads donor_report_uploads fund_report_uploads] %>
               <% pb_open = pb_controllers.include?(controller_name) || controller_path == "admin/pb_imports" %>
               <% ap_open = ap_controllers.include?(controller_name) || controller_path == "admin/action_plan_imports" %>
               <% pb_open = true if !admin_open && !pb_open && !ap_open %>
@@ -100,6 +100,18 @@
                     <span class="side-icon">I</span>
                     <span>Action Plan Import</span>
                   <% end %>
+                  <%= link_to pis_report_uploads_path, class: controller_name == "pis_report_uploads" ? "side-link active" : "side-link" do %>
+                    <span class="side-icon">D</span>
+                    <span>PIS Report Upload</span>
+                  <% end %>
+                  <%= link_to donor_report_uploads_path, class: controller_name == "donor_report_uploads" ? "side-link active" : "side-link" do %>
+                    <span class="side-icon">F</span>
+                    <span>Donor Report Upload</span>
+                  <% end %>
+                  <%= link_to fund_report_uploads_path, class: controller_name == "fund_report_uploads" ? "side-link active" : "side-link" do %>
+                    <span class="side-icon">M</span>
+                    <span>Fund Report Upload</span>
+                  <% end %>
                   <%= link_to action_plans_path, class: controller_name == "action_plans" ? "side-link active" : "side-link" do %>
                     <span class="side-icon">P</span>
                     <span>Project Action Plan</span>
@@ -132,7 +144,7 @@
               </div>
             <% else %>
               <% pb_controllers = %w[plan_submissions budget_utilizations budget_utilization_reports project_summaries project_summary_records project_summary_approvals project_summary_approval_records] %>
-              <% ap_controllers = %w[action_plans achievement_entries achievement_approvals vertical_action_plans action_plan_records action_plan_approvals] %>
+              <% ap_controllers = %w[action_plans achievement_entries achievement_approvals vertical_action_plans action_plan_records action_plan_approvals pis_report_uploads donor_report_uploads fund_report_uploads] %>
               <% pb_open = pb_controllers.include?(controller_name) %>
               <% ap_open = ap_controllers.include?(controller_name) %>
               <% pb_open = true if menu_show_pb_section? && !pb_open && !ap_open %>
@@ -201,6 +213,24 @@
                     <span class="sidebar-section-caret" aria-hidden="true"></span>
                   </button>
                   <div class="sidebar-section-menu">
+                    <% if menu_show_pis_report_upload? %>
+                      <%= link_to pis_report_uploads_path, class: controller_name == "pis_report_uploads" ? "side-link active" : "side-link" do %>
+                        <span class="side-icon">D</span>
+                        <span>PIS Report Upload</span>
+                      <% end %>
+                    <% end %>
+                    <% if menu_show_donor_report_upload? %>
+                      <%= link_to donor_report_uploads_path, class: controller_name == "donor_report_uploads" ? "side-link active" : "side-link" do %>
+                        <span class="side-icon">F</span>
+                        <span>Donor Report Upload</span>
+                      <% end %>
+                    <% end %>
+                    <% if menu_show_fund_report_upload? %>
+                      <%= link_to fund_report_uploads_path, class: controller_name == "fund_report_uploads" ? "side-link active" : "side-link" do %>
+                        <span class="side-icon">M</span>
+                        <span>Fund Report Upload</span>
+                      <% end %>
+                    <% end %>
                     <% if menu_show_project_action_plan? %>
                       <%= link_to action_plans_path, class: controller_name == "action_plans" ? "side-link active" : "side-link" do %>
                         <span class="side-icon">P</span>

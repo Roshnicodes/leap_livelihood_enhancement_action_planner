@@ -31,7 +31,7 @@ class ActionPlanImporter
     seen_projects = {}
 
     rows = SpreadsheetRows.read(file_path(@project_file)).filter_map do |row|
-      po_id = value(row, "PO_ID")
+      po_id = value(row, "PO_ID").presence || value(row, "Project_ID", "Project ID")
       project_name = value(row, "Project")
       next if po_id.blank? || project_name.blank?
 
@@ -155,10 +155,10 @@ class ActionPlanImporter
         user_name: value(row, "FCO Name", "FCO_Name", "FCOName", "User_Name", "User Name"),
         to_id: value(row, "TO_ID"),
         to_name: value(row, "TO_NAME"),
-        theme_id: value(row, "Theme_ID"),
-        theme: value(row, "Theme"),
-        activity_id: ActionPlanRow.format_decimal_string(value(row, "Activity_ID")),
-        activity: value(row, "Activity"),
+        theme_id: value(row, "Project Theme ID", "Project_Theme_ID", "Theme_ID", "Theme ID"),
+        theme: value(row, "Project Theme", "Project_Theme", "Theme"),
+        activity_id: ActionPlanRow.format_decimal_string(value(row, "Project Activity ID", "Project_Activity_ID", "Activity_ID", "Activity ID")),
+        activity: value(row, "Project Activity", "Project_Activity", "Activity"),
         unit_type: value(row, "Unit_Type"),
         a_remark: value(row, "A_remark"),
         responsibel: value(row, "responsibel", "Responsible", "responsible"),
