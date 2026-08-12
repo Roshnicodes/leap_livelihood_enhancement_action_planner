@@ -32,8 +32,8 @@
     <label>
       <span class="filter-label">Choose TO</span>
       <%= form.select :to_id,
-        options_for_select([["Select TO", ""]] + @to_options, @selected_to_id.to_s),
-        {},
+        options_for_select(@to_options, @selected_to_id.to_s),
+        { prompt: "Select TO" },
         class: "select",
         autocomplete: "off",
         data: { filter: "to" } %>
@@ -42,8 +42,8 @@
     <label>
       <span class="filter-label">Choose Project</span>
       <%= form.select :project,
-        options_for_select([["Select Project", ""]] + @project_options.map { |project| [project, project] }, @selected_project.to_s),
-        {},
+        options_for_select(@project_options.map { |project| [project, project] }, @selected_project.to_s),
+        { prompt: "Select Project" },
         class: "select",
         autocomplete: "off",
         data: { filter: "project" } %>
@@ -52,8 +52,8 @@
     <label>
       <span class="filter-label">Choose Month</span>
       <%= form.select :month,
-        options_for_select([["Select Month", ""]] + @month_options, @selected_month.to_s),
-        {},
+        options_for_select(@month_options, @selected_month.to_s),
+        { prompt: "Select Month" },
         class: "select",
         autocomplete: "off",
         data: { filter: "month" } %>

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_12_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_12_133000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -430,6 +430,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_12_130000) do
 
   create_table "fund_report_uploads", force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.string "financial_year", default: "2026-2027", null: false
     t.bigint "fund_report_type_id", null: false
     t.string "project_name", null: false
     t.decimal "submission_letter_amount", precision: 15, scale: 2, default: "0.0", null: false
@@ -440,6 +441,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_12_130000) do
     t.bigint "uploaded_by_id"
     t.index ["created_at", "id"], name: "idx_fund_uploads_recent_order"
     t.index ["fund_report_type_id"], name: "index_fund_report_uploads_on_fund_report_type_id"
+    t.index ["project_name", "financial_year", "fund_report_type_id", "created_at"], name: "idx_fund_uploads_project_year_type_recent"
     t.index ["project_name", "fund_report_type_id", "created_at"], name: "idx_fund_uploads_filters_recent"
     t.index ["project_name"], name: "index_fund_report_uploads_on_project_name"
     t.index ["submission_letter_date"], name: "index_fund_report_uploads_on_submission_letter_date"

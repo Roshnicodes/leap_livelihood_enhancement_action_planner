@@ -5,14 +5,22 @@ class FundReportUpload < ApplicationRecord
   has_one_attached :document_file
   has_one_attached :screenshot_file
 
-  validates :project_name, :submission_letter_date, :submission_receipt_date, presence: true
+  validates :project_name, :financial_year, :submission_letter_date, :submission_receipt_date, presence: true
+  validates :financial_year, format: { with: /\A\d{4}-\d{4}\z/ }
   validates :submission_letter_amount, :submission_receipt_amount, numericality: { greater_than_or_equal_to: 0 }
   validate :document_file_must_be_attached
   validate :screenshot_file_must_be_attached
 
   scope :recent, -> { includes(:fund_report_type, :uploaded_by).order(created_at: :desc, id: :desc) }
   scope :for_project, ->(project_name) { where(project_name: project_name) if project_name.present? }
+  scope :for_financial_year, ->(financial_year) { where(financial_year: financial_year) if financial_year.present? }
   scope :for_report_type, ->(report_type_id) { where(fund_report_type_id: report_type_id) if report_type_id.present? }
+
+  def self.financial_year_for(date = Date.current)
+    date = date.to_date
+    start_year = date.month >= 4 ? date.year : date.year - 1
+    "#{start_year}-#{start_year + 1}"
+  end
 
   def document_file_name
     document_file.attached? ? document_file.filename.to_s : "-"

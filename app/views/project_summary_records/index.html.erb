@@ -79,13 +79,13 @@
           <tbody>
             <% record[:rows].each_with_index do |row, index| %>
               <% changed_months = row[:month_deltas].select { |_month, delta| delta.abs >= 0.01 } %>
-              <% row_match_total = rounded_month_total(row[:month_amounts]) %>
-              <tr data-summary-row data-original-total="<%= row_match_total %>" data-project-name="<%= h(row[:project_name]) %>" data-activity-name="<%= h(row[:activity_name]) %>" data-vertical-name="<%= h(row[:vertical_name]) %>" data-total-label="<%= currency(row_match_total) %>">
+              <% row_match_total = row[:total_amount] %>
+              <tr data-summary-row data-original-total="<%= currency_input_value(row_match_total) %>" data-project-name="<%= h(row[:project_name]) %>" data-activity-name="<%= h(row[:activity_name]) %>" data-vertical-name="<%= h(row[:vertical_name]) %>" data-total-label="<%= currency(row_match_total) %>">
                 <% if editable %>
                   <%= hidden_field_tag "records[#{record[:form_key]}][rows][#{index}][project_name]", row[:project_name] %>
                   <%= hidden_field_tag "records[#{record[:form_key]}][rows][#{index}][activity_name]", row[:activity_name] %>
                   <%= hidden_field_tag "records[#{record[:form_key]}][rows][#{index}][vertical_name]", row[:vertical_name] %>
-                  <%= hidden_field_tag "records[#{record[:form_key]}][rows][#{index}][total_amount]", currency_input_value(row_match_total) %>
+                  <%= hidden_field_tag "records[#{record[:form_key]}][rows][#{index}][total_amount]", currency_input_value(row[:total_amount]) %>
                 <% end %>
                 <td><span class="code-pill"><%= index + 1 %></span></td>
                 <td><span class="code-pill"><%= row[:bli_code].presence || "-" %></span></td>
@@ -333,7 +333,7 @@
         rows.forEach((row) => {
           const originalTotal = Number.parseFloat(row.dataset.originalTotal || "0");
           const changedTotal = rowChangedTotal(row);
-          const matched = Math.abs(changedTotal - originalTotal) < 1;
+          const matched = Math.abs(changedTotal - originalTotal) < 0.01;
           const totalCell = row.querySelector("[data-row-changed-total]");
 
           if (totalCell) totalCell.textContent = formatter.format(changedTotal);
@@ -488,7 +488,7 @@
           }, 0);
           const totalCell = row.querySelector("[data-row-changed-total]");
           if (totalCell) totalCell.textContent = formatter.format(changedTotal);
-          return Math.abs(changedTotal - originalTotal) < 1;
+          return Math.abs(changedTotal - originalTotal) < 0.01;
         });
       });
 

@@ -6,12 +6,16 @@ class DonorReportUploadsController < ApplicationController
     load_workspace
   end
 
+  def records
+    load_workspace
+  end
+
   def create
     upload = DonorReportUpload.new(upload_params)
     upload.uploaded_by = current_user
 
     if upload.save
-      redirect_to donor_report_uploads_path, notice: "Donor report uploaded."
+      redirect_to donor_report_records_path, notice: "Donor report uploaded."
     else
       redirect_to donor_report_uploads_path, alert: upload.errors.full_messages.to_sentence
     end
@@ -30,7 +34,7 @@ class DonorReportUploadsController < ApplicationController
   private
 
   def upload_params
-    params.require(:donor_report_upload).permit(:project_name, :donor_report_type_id, :frequency, :submission_date, :file)
+    params.require(:donor_report_upload).permit(:project_name, :donor_report_type_id, :frequency, :submission_date, :document_file, :screenshot_file)
   end
 
   def load_workspace

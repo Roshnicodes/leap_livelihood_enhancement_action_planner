@@ -6,12 +6,16 @@ class PisReportUploadsController < ApplicationController
     load_workspace
   end
 
+  def records
+    load_workspace
+  end
+
   def create
     document = PisReportDocument.new(document_params)
     document.uploaded_by = current_user
 
     if document.save
-      redirect_to pis_report_uploads_path, notice: "PIS report document uploaded."
+      redirect_to pis_report_records_path, notice: "PIS report document uploaded."
     else
       redirect_to pis_report_uploads_path, alert: document.errors.full_messages.to_sentence
     end
@@ -30,7 +34,7 @@ class PisReportUploadsController < ApplicationController
   private
 
   def document_params
-    params.require(:pis_report_document).permit(:project_name, :pis_document_type_id, :financial_year, :submission_date, :file)
+    params.require(:pis_report_document).permit(:project_name, :pis_document_type_id, :financial_year, :submission_date, :file, :screenshot_file)
   end
 
   def load_workspace

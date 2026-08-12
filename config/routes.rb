@@ -21,15 +21,22 @@ Rails.application.routes.draw do
   get "budget_utilizations" => "budget_utilizations#index", as: :budget_utilizations
   patch "budget_utilizations" => "budget_utilizations#update"
   get "budget_utilization_reports" => "budget_utilization_reports#index", as: :budget_utilization_reports
+  get "report_masters" => "report_masters#index"
+  post "report_masters/pis_document_types" => "report_masters#create_pis_document_type", as: :pis_document_types_report_masters
+  post "report_masters/donor_report_types" => "report_masters#create_donor_report_type", as: :donor_report_types_report_masters
+  post "report_masters/fund_report_types" => "report_masters#create_fund_report_type", as: :fund_report_types_report_masters
   resources :pis_report_uploads, only: %i[index create] do
     post :document_types, on: :collection, action: :create_document_type
   end
+  get "pis_report_records" => "pis_report_uploads#records"
   resources :donor_report_uploads, only: %i[index create] do
     post :report_types, on: :collection, action: :create_report_type
   end
+  get "donor_report_records" => "donor_report_uploads#records"
   resources :fund_report_uploads, only: %i[index create] do
     post :report_types, on: :collection, action: :create_report_type
   end
+  get "fund_report_records" => "fund_report_uploads#records"
   resources :action_plans, only: %i[index create]
   resource :achievement_entry, only: %i[show update] do
     post :submit

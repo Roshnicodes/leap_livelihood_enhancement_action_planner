@@ -41,8 +41,7 @@ class ActionPlanRow < ApplicationRecord
     { header: "Unit_Type", attribute: :unit_type }
   ].freeze
   ADMIN_DETAIL_COLUMNS = [
-    { header: "A_remark", attribute: :a_remark },
-    { header: "Responsible", attribute: :responsibel }
+    { header: "A_remark", attribute: :a_remark }
   ].freeze
   PILL_ATTRIBUTES = %i[id_new po_id project_id user_id to_id theme_id activity_id asa_theme_id asa_activity_id].freeze
   DECIMAL_ATTRIBUTES = %i[activity_id].freeze

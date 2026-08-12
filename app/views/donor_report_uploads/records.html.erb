@@ -1,0 +1,105 @@
+<% content_for :title, "Donor Report Record | LEAP" %>
+
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Reports</p>
+    <h1>Donor Report Record</h1>
+    <p class="muted">Search, filter and download uploaded donor reports.</p>
+  </div>
+  <div class="header-card">
+    <span>Reports</span>
+    <strong><%= @uploads.size %></strong>
+  </div>
+</section>
+
+<section class="toolbar pis-report-filter-toolbar">
+  <%= form_with url: donor_report_records_path, method: :get, class: "budget-utilization-filter-form", html: { autocomplete: "off" } do |form| %>
+    <label>
+      <span class="filter-label">Project</span>
+      <%= form.select :project,
+        options_for_select([["All Projects", ""]] + @project_options.map { |project| [project, project] }, @selected_project.to_s),
+        {},
+        class: "select",
+        onchange: "this.form.requestSubmit()" %>
+    </label>
+
+    <label>
+      <span class="filter-label">Reports Name</span>
+      <%= form.select :report_type_id,
+        options_for_select([["All Reports", ""]] + @report_types.map { |report_type| [report_type.name, report_type.id] }, @selected_report_type_id),
+        {},
+        class: "select",
+        onchange: "this.form.requestSubmit()" %>
+    </label>
+
+    <label>
+      <span class="filter-label">Frequency</span>
+      <%= form.select :frequency,
+        options_for_select([["All Frequencies", ""]] + @frequency_options.map { |frequency| [frequency, frequency] }, @selected_frequency.to_s),
+        {},
+        class: "select",
+        onchange: "this.form.requestSubmit()" %>
+    </label>
+  <% end %>
+</section>
+
+<section class="table-panel import-history-panel" data-searchable-table>
+  <div class="table-heading">
+    <div>
+      <h2>Uploaded donor reports</h2>
+      <p class="muted">Reports uploaded by PMC are available here for download.</p>
+    </div>
+    <div class="table-actions">
+      <input type="search" class="table-search" placeholder="Search donor reports" data-table-search-input>
+      <span class="table-count" data-filtered-count data-count-label="reports"><%= @uploads.size %> reports</span>
+    </div>
+  </div>
+
+  <div class="responsive-table">
+    <table>
+      <thead>
+        <tr>
+          <th>Project</th>
+          <th>Reports Name</th>
+          <th>Frequency</th>
+          <th>Submission Date</th>
+          <th>Document Upload</th>
+          <th>Email/Application Screenshot Upload</th>
+          <th>Uploaded By</th>
+          <th>Uploaded At</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if @uploads.any? %>
+          <% @uploads.each do |upload| %>
+            <tr>
+              <td><strong><%= upload.project_name %></strong></td>
+              <td><span class="code-pill"><%= upload.donor_report_type.name %></span></td>
+              <td><span class="code-pill"><%= upload.frequency %></span></td>
+              <td><%= upload.submission_date.strftime("%d %b %Y") %></td>
+              <td>
+                <% document_attachment = upload.document_file.attached? ? upload.document_file : upload.file %>
+                <%= render "shared/report_attachment_cards",
+                  attachments: [
+                    { label: "Report Document", attachment: document_attachment }
+                  ] %>
+              </td>
+              <td>
+                <%= render "shared/report_attachment_cards",
+                  attachments: [
+                    { label: "Email/Application Screenshot", attachment: upload.screenshot_file }
+                  ] %>
+              </td>
+              <td><%= upload.uploaded_by&.admin? ? "PMC" : upload.uploaded_by&.employee&.name || "-" %></td>
+              <td><%= upload.created_at.strftime("%d %b %Y %I:%M %p") %></td>
+            </tr>
+          <% end %>
+        <% else %>
+          <tr>
+            <td colspan="8">No uploaded donor reports yet.</td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>

@@ -3,10 +3,12 @@ class PisReportDocument < ApplicationRecord
   belongs_to :uploaded_by, class_name: "User", optional: true
 
   has_one_attached :file
+  has_one_attached :screenshot_file
 
   validates :project_name, :financial_year, :submission_date, presence: true
   validates :financial_year, format: { with: /\A\d{4}-\d{4}\z/ }
   validate :file_must_be_attached
+  validate :screenshot_file_must_be_attached
 
   scope :recent, -> { includes(:pis_document_type, :uploaded_by).order(created_at: :desc, id: :desc) }
   scope :for_project, ->(project_name) { where(project_name: project_name) if project_name.present? }
@@ -27,9 +29,17 @@ class PisReportDocument < ApplicationRecord
     file.attached? ? file.filename.to_s : "-"
   end
 
+  def screenshot_file_name
+    screenshot_file.attached? ? screenshot_file.filename.to_s : "-"
+  end
+
   private
 
   def file_must_be_attached
     errors.add(:file, "must be attached") unless file.attached?
+  end
+
+  def screenshot_file_must_be_attached
+    errors.add(:screenshot_file, "must be attached") unless screenshot_file.attached?
   end
 end

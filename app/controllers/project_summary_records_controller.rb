@@ -47,7 +47,7 @@ class ProjectSummaryRecordsController < ApplicationController
 
     redirect_to project_summary_records_path(vertical: params[:vertical].presence), notice: "Project summary sent for approval."
   rescue ArgumentError
-    redirect_to project_summary_records_path(vertical: params[:vertical].presence), alert: "Invalid monthly amount value."
+    redirect_to project_summary_records_path(vertical: params[:vertical].presence), alert: "Every row changed total must match its total amount."
   rescue ActiveRecord::RecordInvalid => error
     redirect_to project_summary_records_path(vertical: params[:vertical].presence), alert: error.record.errors.full_messages.to_sentence.presence || "Every row changed total must match its total amount."
   end
@@ -61,6 +61,7 @@ class ProjectSummaryRecordsController < ApplicationController
         project_name = record["project_name"].to_s
         rows = record.fetch("rows", {}).values
         next if project_name.blank? || rows.blank?
+        ensure_changed_totals_match!(rows)
 
         submission = editable_submission_for(employee, project_name)
         next if submission.approved?
@@ -98,7 +99,7 @@ class ProjectSummaryRecordsController < ApplicationController
 
     redirect_to project_summary_records_path(vertical: params[:vertical].presence), notice: "Project summaries sent for approval."
   rescue ArgumentError
-    redirect_to project_summary_records_path(vertical: params[:vertical].presence), alert: "Invalid monthly amount value."
+    redirect_to project_summary_records_path(vertical: params[:vertical].presence), alert: "Every row changed total must match its total amount."
   rescue ActiveRecord::RecordInvalid => error
     redirect_to project_summary_records_path(vertical: params[:vertical].presence), alert: error.record.errors.full_messages.to_sentence.presence || "Every row changed total must match its total amount."
   end
@@ -128,6 +129,16 @@ class ProjectSummaryRecordsController < ApplicationController
 
   def decimal(value)
     BigDecimal(value.presence || "0")
+  end
+
+  def ensure_changed_totals_match!(rows)
+    rows.each do |row|
+      total_amount = decimal(row["total_amount"])
+      changed_total = VerticalPercent::MONTH_COLUMNS.sum { |month| decimal(row[month.to_s]) }
+      next if (changed_total - total_amount).abs < BigDecimal("0.01")
+
+      raise ArgumentError, "changed total mismatch"
+    end
   end
 
   def submission_scope

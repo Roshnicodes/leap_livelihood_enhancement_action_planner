@@ -284,6 +284,44 @@ body.app-body {
   font-weight: 800;
 }
 
+.report-master-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.report-master-card {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.report-master-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+  padding: 0 16px 14px;
+}
+
+.report-master-form label {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.master-chip-list {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-height: 72px;
+  padding: 14px 16px 16px;
+  border-top: 1px solid var(--line);
+  background: rgba(244, 248, 250, 0.7);
+}
+
 .approval-button-row,
 .approval-return-form {
   display: flex;
@@ -465,6 +503,10 @@ td {
   .admin-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+
+  .report-master-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 820px) {
@@ -519,7 +561,9 @@ td {
   .metric-grid,
   .admin-grid,
   .fund-total-panel,
-  .import-grid {
+  .import-grid,
+  .report-master-grid,
+  .report-master-form {
     grid-template-columns: 1fr;
   }
 
@@ -6326,6 +6370,47 @@ body.app-body {
   gap: 8px;
 }
 
+.report-file-list {
+  display: grid;
+  gap: 10px;
+  min-width: 260px;
+  margin: 0;
+  padding: 0;
+}
+
+.report-file-card {
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid #d7e7ef;
+  border-radius: 8px;
+  background: #fbfefd;
+}
+
+.report-file-label {
+  color: #5c7088;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.report-file-card .achievement-file-item {
+  grid-template-columns: 48px minmax(0, 1fr);
+}
+
+.report-file-card .achievement-file-thumb-button,
+.report-file-card .achievement-file-type-badge {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+}
+
+.report-file-card .achievement-file-link {
+  max-width: 220px;
+  font-size: 0.82rem;
+}
+
 @media (max-width: 1120px) {
   .record-change-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -6420,18 +6505,24 @@ body.app-body {
 
 .sidebar {
   width: 246px;
+  height: calc(100vh - 28px);
   max-height: calc(100vh - 28px);
+  overflow: hidden;
+}
+
+.sidebar-nav {
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.24) transparent;
 }
 
-.sidebar::-webkit-scrollbar {
+.sidebar-nav::-webkit-scrollbar {
   width: 6px;
 }
 
-.sidebar::-webkit-scrollbar-thumb {
+.sidebar-nav::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.22);
   border-radius: 999px;
 }
@@ -6533,6 +6624,7 @@ body.app-body {
 
   .sidebar {
     width: auto;
+    height: auto;
     max-height: 82px;
     overflow-x: auto;
     overflow-y: hidden;
@@ -6544,6 +6636,7 @@ body.app-body {
     flex: 1 0 auto;
     align-items: center;
     gap: 8px;
+    overflow: visible;
   }
 
   .sidebar-section {

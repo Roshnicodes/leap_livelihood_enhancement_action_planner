@@ -1,0 +1,104 @@
+<% content_for :title, "PIS Report Record | LEAP" %>
+
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Reports</p>
+    <h1>PIS Report Record</h1>
+    <p class="muted">Search, filter and download uploaded PIS documents.</p>
+  </div>
+  <div class="header-card">
+    <span>Documents</span>
+    <strong><%= @documents.size %></strong>
+  </div>
+</section>
+
+<section class="toolbar pis-report-filter-toolbar">
+  <%= form_with url: pis_report_records_path, method: :get, class: "budget-utilization-filter-form", html: { autocomplete: "off" } do |form| %>
+    <label>
+      <span class="filter-label">Project</span>
+      <%= form.select :project,
+        options_for_select([["All Projects", ""]] + @project_options.map { |project| [project, project] }, @selected_project.to_s),
+        {},
+        class: "select",
+        onchange: "this.form.requestSubmit()" %>
+    </label>
+
+    <label>
+      <span class="filter-label">Doc Name</span>
+      <%= form.select :document_type_id,
+        options_for_select([["All Doc Names", ""]] + @document_types.map { |doc_type| [doc_type.name, doc_type.id] }, @selected_document_type_id),
+        {},
+        class: "select",
+        onchange: "this.form.requestSubmit()" %>
+    </label>
+
+    <label>
+      <span class="filter-label">FY</span>
+      <%= form.select :financial_year,
+        options_for_select([["All FY", ""]] + @financial_year_options.map { |year| [year, year] }, @selected_financial_year.to_s),
+        {},
+        class: "select",
+        onchange: "this.form.requestSubmit()" %>
+    </label>
+  <% end %>
+</section>
+
+<section class="table-panel import-history-panel" data-searchable-table>
+  <div class="table-heading">
+    <div>
+      <h2>Uploaded PIS documents</h2>
+      <p class="muted">Documents uploaded by PMC are available here for download.</p>
+    </div>
+    <div class="table-actions">
+      <input type="search" class="table-search" placeholder="Search documents" data-table-search-input>
+      <span class="table-count" data-filtered-count data-count-label="documents"><%= @documents.size %> documents</span>
+    </div>
+  </div>
+
+  <div class="responsive-table">
+    <table>
+      <thead>
+        <tr>
+          <th>Project</th>
+          <th>Doc Name</th>
+          <th>FY</th>
+          <th>Submission Date</th>
+          <th>Document Upload</th>
+          <th>Email/Application Screenshot Upload</th>
+          <th>Uploaded By</th>
+          <th>Uploaded At</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if @documents.any? %>
+          <% @documents.each do |document| %>
+            <tr>
+              <td><strong><%= document.project_name %></strong></td>
+              <td><span class="code-pill"><%= document.pis_document_type.name %></span></td>
+              <td><span class="code-pill"><%= document.financial_year %></span></td>
+              <td><%= document.submission_date.strftime("%d %b %Y") %></td>
+              <td>
+                <%= render "shared/report_attachment_cards",
+                  attachments: [
+                    { label: "Document", attachment: document.file }
+                  ] %>
+              </td>
+              <td>
+                <%= render "shared/report_attachment_cards",
+                  attachments: [
+                    { label: "Email/Application Screenshot", attachment: document.screenshot_file }
+                  ] %>
+              </td>
+              <td><%= document.uploaded_by&.admin? ? "PMC" : document.uploaded_by&.employee&.name || "-" %></td>
+              <td><%= document.created_at.strftime("%d %b %Y %I:%M %p") %></td>
+            </tr>
+          <% end %>
+        <% else %>
+          <tr>
+            <td colspan="8">No uploaded PIS documents yet.</td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>

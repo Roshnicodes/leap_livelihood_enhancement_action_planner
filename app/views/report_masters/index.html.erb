@@ -1,0 +1,102 @@
+<% content_for :title, "Report Masters | LEAP" %>
+
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Masters</p>
+    <h1>Report Masters</h1>
+    <p class="muted">Manage the names used in PIS, donor and fund report upload dropdowns.</p>
+  </div>
+  <div class="header-card">
+    <span>Total Masters</span>
+    <strong><%= @pis_document_types.size + @donor_report_types.size + @fund_report_types.size %></strong>
+  </div>
+</section>
+
+<section class="metric-grid admin-grid">
+  <article class="metric metric-teal"><span>PIS Doc Names</span><strong><%= @pis_document_types.size %></strong></article>
+  <article class="metric metric-blue"><span>Donor Reports</span><strong><%= @donor_report_types.size %></strong></article>
+  <article class="metric metric-gold"><span>Fund Reports</span><strong><%= @fund_report_types.size %></strong></article>
+</section>
+
+<section class="report-master-grid">
+  <article class="table-panel report-master-card">
+    <div class="table-heading">
+      <div>
+        <h2>PIS Doc Names</h2>
+        <p class="muted">These names appear in PIS Report Upload.</p>
+      </div>
+    </div>
+
+    <%= form_with scope: :pis_document_type, url: pis_document_types_report_masters_path, method: :post, class: "report-master-form" do |form| %>
+      <label>
+        <span>Doc Name</span>
+        <%= form.text_field :name, class: "input", placeholder: "Enter doc name", required: true %>
+      </label>
+      <%= form.submit "Add", class: "secondary-button" %>
+    <% end %>
+
+    <div class="master-chip-list">
+      <% if @pis_document_types.any? %>
+        <% @pis_document_types.each do |document_type| %>
+          <span class="code-pill"><%= document_type.name %></span>
+        <% end %>
+      <% else %>
+        <span class="muted">No PIS doc names added yet.</span>
+      <% end %>
+    </div>
+  </article>
+
+  <article class="table-panel report-master-card">
+    <div class="table-heading">
+      <div>
+        <h2>Donor Report Names</h2>
+        <p class="muted">These names appear in Donor Report Upload.</p>
+      </div>
+    </div>
+
+    <%= form_with scope: :donor_report_type, url: donor_report_types_report_masters_path, method: :post, class: "report-master-form" do |form| %>
+      <label>
+        <span>Reports Name</span>
+        <%= form.text_field :name, class: "input", placeholder: "Enter reports name", required: true %>
+      </label>
+      <%= form.submit "Add", class: "secondary-button" %>
+    <% end %>
+
+    <div class="master-chip-list">
+      <% if @donor_report_types.any? %>
+        <% @donor_report_types.each do |report_type| %>
+          <span class="code-pill"><%= report_type.name %></span>
+        <% end %>
+      <% else %>
+        <span class="muted">No donor report names added yet.</span>
+      <% end %>
+    </div>
+  </article>
+
+  <article class="table-panel report-master-card">
+    <div class="table-heading">
+      <div>
+        <h2>Fund Report Names</h2>
+        <p class="muted">These names appear in Fund Report Upload.</p>
+      </div>
+    </div>
+
+    <%= form_with scope: :fund_report_type, url: fund_report_types_report_masters_path, method: :post, class: "report-master-form" do |form| %>
+      <label>
+        <span>Reports Name</span>
+        <%= form.text_field :name, class: "input", placeholder: "Enter reports name", required: true %>
+      </label>
+      <%= form.submit "Add", class: "secondary-button" %>
+    <% end %>
+
+    <div class="master-chip-list">
+      <% if @fund_report_types.any? %>
+        <% @fund_report_types.each do |report_type| %>
+          <span class="code-pill"><%= report_type.name %></span>
+        <% end %>
+      <% else %>
+        <span class="muted">No fund report names added yet.</span>
+      <% end %>
+    </div>
+  </article>
+</section>

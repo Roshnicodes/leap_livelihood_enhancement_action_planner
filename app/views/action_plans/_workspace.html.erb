@@ -14,7 +14,7 @@
 <section class="toolbar">
   <%= form_with url: form_path, method: :get, class: "filter-form" do |form| %>
     <%= form.label :project, "Choose Project", class: "filter-label" %>
-    <%= form.select :project, options_for_select([["Select Project", ""]] + project_options.map { |project| [project, project] }, selected_project), {}, class: "select", onchange: "this.form.requestSubmit()" %>
+    <%= form.select :project, options_for_select(project_options.map { |project| [project, project] }, selected_project), { prompt: "Select Project" }, class: "select", onchange: "this.form.requestSubmit()" %>
   <% end %>
 </section>
 

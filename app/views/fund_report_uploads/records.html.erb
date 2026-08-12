@@ -1,0 +1,110 @@
+<% content_for :title, "Fund Report Record | LEAP" %>
+
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Reports</p>
+    <h1>Fund Report Record</h1>
+    <p class="muted">Search, filter and download uploaded fund reports.</p>
+  </div>
+  <div class="header-card">
+    <span>Reports</span>
+    <strong><%= @uploads.size %></strong>
+  </div>
+</section>
+
+<section class="toolbar pis-report-filter-toolbar">
+  <%= form_with url: fund_report_records_path, method: :get, class: "budget-utilization-filter-form", html: { autocomplete: "off" } do |form| %>
+    <label>
+      <span class="filter-label">Project</span>
+      <%= form.select :project,
+        options_for_select([["All Projects", ""]] + @project_options.map { |project| [project, project] }, @selected_project.to_s),
+        {},
+        class: "select",
+        onchange: "this.form.requestSubmit()" %>
+    </label>
+
+    <label>
+      <span class="filter-label">Reports Name</span>
+      <%= form.select :report_type_id,
+        options_for_select([["All Reports", ""]] + @report_types.map { |report_type| [report_type.name, report_type.id] }, @selected_report_type_id),
+        {},
+        class: "select",
+        onchange: "this.form.requestSubmit()" %>
+    </label>
+
+    <label>
+      <span class="filter-label">FY</span>
+      <%= form.select :financial_year,
+        options_for_select([["All FY", ""]] + @financial_year_options.map { |year| [year, year] }, @selected_financial_year.to_s),
+        {},
+        class: "select",
+        onchange: "this.form.requestSubmit()" %>
+    </label>
+  <% end %>
+</section>
+
+<section class="table-panel import-history-panel" data-searchable-table>
+  <div class="table-heading">
+    <div>
+      <h2>Uploaded fund reports</h2>
+      <p class="muted">Reports uploaded by PMC are available here for download.</p>
+    </div>
+    <div class="table-actions">
+      <input type="search" class="table-search" placeholder="Search fund reports" data-table-search-input>
+      <span class="table-count" data-filtered-count data-count-label="reports"><%= @uploads.size %> reports</span>
+    </div>
+  </div>
+
+  <div class="responsive-table">
+    <table>
+      <thead>
+        <tr>
+          <th>Project</th>
+          <th>Reports Name</th>
+          <th>FY</th>
+          <th>Letter Date</th>
+          <th>Letter Amount</th>
+          <th>Receipt Date</th>
+          <th>Receipt Amount</th>
+          <th>Document Upload</th>
+          <th>Email/Application Screenshot Upload</th>
+          <th>Uploaded By</th>
+          <th>Uploaded At</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if @uploads.any? %>
+          <% @uploads.each do |upload| %>
+            <tr>
+              <td><strong><%= upload.project_name %></strong></td>
+              <td><span class="code-pill"><%= upload.fund_report_type.name %></span></td>
+              <td><span class="code-pill"><%= upload.financial_year %></span></td>
+              <td><%= upload.submission_letter_date.strftime("%d %b %Y") %></td>
+              <td><strong><%= currency(upload.submission_letter_amount) %></strong></td>
+              <td><%= upload.submission_receipt_date.strftime("%d %b %Y") %></td>
+              <td><strong><%= currency(upload.submission_receipt_amount) %></strong></td>
+              <td>
+                <%= render "shared/report_attachment_cards",
+                  attachments: [
+                    { label: "Fund Document", attachment: upload.document_file }
+                  ] %>
+              </td>
+              <td>
+                <%= render "shared/report_attachment_cards",
+                  attachments: [
+                    { label: "Email/Application Screenshot", attachment: upload.screenshot_file }
+                  ] %>
+              </td>
+              <td><%= upload.uploaded_by&.admin? ? "PMC" : upload.uploaded_by&.employee&.name || "-" %></td>
+              <td><%= upload.created_at.strftime("%d %b %Y %I:%M %p") %></td>
+            </tr>
+          <% end %>
+        <% else %>
+          <tr>
+            <td colspan="11">No uploaded fund reports yet.</td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>

@@ -13,9 +13,9 @@
 
 <section class="toolbar">
   <%= form_with url: project_summary_path, method: :get, class: "filter-form" do |form| %>
-    <% project_select_options = [["Select Project", ""], ["All Project", ProjectSummariesController::ALL_PROJECTS_OPTION]] + @project_options.map { |project| [project, project] } %>
+    <% project_select_options = [["All Project", ProjectSummariesController::ALL_PROJECTS_OPTION]] + @project_options.map { |project| [project, project] } %>
     <%= form.label :project, "Choose Project", class: "filter-label" %>
-    <%= form.select :project, options_for_select(project_select_options, @selected_project), {}, class: "select", onchange: "this.form.requestSubmit()" %>
+    <%= form.select :project, options_for_select(project_select_options, @selected_project), { prompt: "Select Project" }, class: "select", onchange: "this.form.requestSubmit()" %>
   <% end %>
 </section>
 
@@ -74,8 +74,8 @@
       </thead>
       <tbody>
         <% @summary_rows.each_with_index do |row, index| %>
-          <% row_match_total = rounded_month_total(row[:month_amounts]) %>
-          <tr data-summary-row data-original-total="<%= row_match_total %>">
+          <% row_match_total = row[:total_amount] %>
+          <tr data-summary-row data-original-total="<%= currency_input_value(row_match_total) %>">
             <td><span class="code-pill"><%= index + 1 %></span></td>
             <td><span class="code-pill"><%= row[:bli_code].presence || "-" %></span></td>
             <td><%= row[:project_name] %></td>
@@ -85,7 +85,7 @@
             <%= hidden_field_tag "summary[#{index}][project_name]", row[:project_name] %>
             <%= hidden_field_tag "summary[#{index}][activity_name]", row[:activity_name] %>
             <%= hidden_field_tag "summary[#{index}][vertical_name]", row[:vertical_name] %>
-            <%= hidden_field_tag "summary[#{index}][total_amount]", currency_input_value(row_match_total) %>
+            <%= hidden_field_tag "summary[#{index}][total_amount]", currency_input_value(row[:total_amount]) %>
             <% VerticalPercent::MONTH_COLUMNS.each do |month| %>
               <td>
                 <%= number_field_tag "summary[#{index}][#{month}]", currency_input_value(row[:month_amounts][month]), min: 0, step: 1, class: "summary-month-input", disabled: @existing_summary_submission&.approved?, aria: { label: "#{month.to_s.titleize} amount for #{row[:activity_name]}" } %>
@@ -148,7 +148,7 @@
         const originalTotal = Number.parseFloat(row.dataset.originalTotal || "0");
         const changedTotal = rowChangedTotal(row);
         const difference = changedTotal - originalTotal;
-        const matched = Math.abs(difference) < 1;
+        const matched = Math.abs(difference) < 0.01;
         const totalCell = row.querySelector("[data-row-changed-total]");
         const status = row.querySelector("[data-row-status]");
 

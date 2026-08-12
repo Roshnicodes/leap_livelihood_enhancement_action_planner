@@ -8,7 +8,9 @@ class ApplicationController < ActionController::Base
     :menu_show_project_action_plan?, :menu_show_achievement_entry?, :menu_show_achievement_approvals?,
     :menu_show_vertical_action_plan?, :menu_show_vertical_action_plan_record?,
     :menu_show_pis_report_upload?, :menu_show_donor_report_upload?, :menu_show_fund_report_upload?,
-    :menu_show_action_plan_approval?, :menu_show_pb_section?, :menu_show_action_plan_section?
+    :menu_show_pis_report_records?, :menu_show_donor_report_records?, :menu_show_fund_report_records?,
+    :menu_show_report_masters?, :menu_show_action_plan_approval?, :menu_show_pb_section?,
+    :menu_show_action_plan_section?, :menu_show_reports_section?, :menu_show_masters_section?
 
   # Changes to the importmap will invalidate the etag for HTML responses
   stale_when_importmap_changes
@@ -167,15 +169,31 @@ class ApplicationController < ActionController::Base
   end
 
   def menu_show_pis_report_upload?
-    current_user.present?
+    current_user&.admin?
   end
 
   def menu_show_donor_report_upload?
-    current_user.present?
+    current_user&.admin?
   end
 
   def menu_show_fund_report_upload?
+    current_user&.admin?
+  end
+
+  def menu_show_pis_report_records?
     current_user.present?
+  end
+
+  def menu_show_donor_report_records?
+    current_user.present?
+  end
+
+  def menu_show_fund_report_records?
+    current_user.present?
+  end
+
+  def menu_show_report_masters?
+    current_user&.admin?
   end
 
   def menu_show_action_plan_approval?(stage)
@@ -190,8 +208,16 @@ class ApplicationController < ActionController::Base
 
   def menu_show_action_plan_section?
     menu_show_project_action_plan? || menu_show_achievement_entry? || menu_show_achievement_approvals? ||
-      menu_show_vertical_action_plan? || menu_show_vertical_action_plan_record? || menu_show_pis_report_upload? ||
-      menu_show_donor_report_upload? || menu_show_fund_report_upload? ||
+      menu_show_vertical_action_plan? || menu_show_vertical_action_plan_record? ||
       %w[po coo director].any? { |stage| menu_show_action_plan_approval?(stage) }
+  end
+
+  def menu_show_reports_section?
+    menu_show_pis_report_upload? || menu_show_donor_report_upload? || menu_show_fund_report_upload? ||
+      menu_show_pis_report_records? || menu_show_donor_report_records? || menu_show_fund_report_records?
+  end
+
+  def menu_show_masters_section?
+    menu_show_report_masters?
   end
 end
