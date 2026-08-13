@@ -4,7 +4,6 @@
   <div>
     <p class="eyebrow">Reports</p>
     <h1>Donor Report Upload</h1>
-    <p class="muted">Upload donor reports and keep them available for download by all users.</p>
   </div>
   <div class="header-card">
     <span>Reports</span>
@@ -17,7 +16,6 @@
     <div class="table-heading">
       <div>
         <h2>Upload donor report</h2>
-        <p class="muted">Choose project, reports name, frequency, submission date and file.</p>
       </div>
     </div>
 
@@ -53,6 +51,15 @@
         </label>
 
         <label>
+          <span>FY</span>
+          <%= form.select :financial_year,
+            options_for_select(@financial_year_options.map { |year| [year, year] }, DonorReportUpload.financial_year_for),
+            { prompt: "Select FY" },
+            class: "select",
+            required: true %>
+        </label>
+
+        <label>
           <span>Submission Date</span>
           <%= form.date_field :submission_date, class: "input", required: true %>
         </label>
@@ -69,7 +76,6 @@
       </div>
 
       <div class="submit-panel">
-        <p class="muted">Uploaded reports will be visible in Donor Report Record for all users.</p>
         <%= form.submit "Upload Donor Report", class: "submit-plan-button" %>
       </div>
     <% end %>

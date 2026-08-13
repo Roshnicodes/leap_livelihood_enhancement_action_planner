@@ -297,7 +297,7 @@ module ApplicationHelper
   def format_record_datetime(timestamp)
     return if timestamp.blank?
 
-    timestamp.strftime("%d %b %Y, %I:%M %p")
+    timestamp.in_time_zone("Asia/Kolkata").strftime("%d %b %Y, %I:%M %p")
   end
 
   def approval_status_result(label, badge)

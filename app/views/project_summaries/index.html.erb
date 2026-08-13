@@ -42,9 +42,9 @@
           <p><%= summary_approval_subline(@existing_summary_submission) %></p>
         <% end %>
         <p>
-          Submitted <%= @existing_summary_submission.submitted_at.strftime("%d %b %Y, %I:%M %p") %>
+          Submitted <%= format_record_datetime(@existing_summary_submission.submitted_at) %>
           <% if @existing_summary_submission.reviewed_at.present? %>
-            • Reviewed <%= @existing_summary_submission.reviewed_at.strftime("%d %b %Y, %I:%M %p") %>
+            • Reviewed <%= format_record_datetime(@existing_summary_submission.reviewed_at) %>
           <% end %>
         </p>
         <% if @existing_summary_submission.submission_remark.present? %>

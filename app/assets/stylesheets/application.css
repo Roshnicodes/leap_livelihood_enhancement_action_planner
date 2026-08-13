@@ -218,6 +218,38 @@ body.app-body {
   min-width: min(340px, 100%);
 }
 
+.action-plan-filter-form {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.4fr) minmax(180px, 0.8fr) minmax(180px, 0.8fr);
+  gap: 12px;
+  width: 100%;
+}
+
+.action-plan-filter-form label {
+  min-width: 0;
+}
+
+.records-filter-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 14px;
+}
+
+.records-filter-toolbar .toolbar-actions {
+  display: flex;
+  align-items: end;
+  justify-content: flex-end;
+  min-width: 190px;
+}
+
+.records-filter-toolbar .secondary-button {
+  width: 100%;
+  min-height: 46px;
+  justify-content: center;
+  white-space: nowrap;
+}
+
 .filter-label {
   margin: 0 0 6px 4px;
   font-size: 0.72rem;
@@ -274,6 +306,190 @@ body.app-body {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+
+.project-info-upload-grid {
+  grid-template-columns: minmax(280px, 640px);
+}
+
+.project-info-page-header {
+  min-height: 124px;
+  margin-bottom: 12px;
+  padding: 24px 32px;
+}
+
+.project-info-page-header h1 {
+  font-size: clamp(2.15rem, 4vw, 3rem);
+}
+
+.project-info-compact-panel {
+  margin-bottom: 10px;
+}
+
+.project-info-compact-panel .table-heading {
+  min-height: 46px;
+  padding: 12px 18px 8px;
+}
+
+.project-info-compact-panel .table-heading h2 {
+  font-size: 1.18rem;
+}
+
+.project-info-import-row {
+  display: grid;
+  grid-template-columns: minmax(240px, 420px) auto auto;
+  align-items: end;
+  gap: 10px;
+  padding: 0 14px 12px;
+}
+
+.project-info-import-row label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 850;
+}
+
+.project-info-import-row .input {
+  min-height: 40px;
+  padding: 7px 10px;
+}
+
+.project-info-import-row .submit-plan-button,
+.project-info-export-button {
+  min-height: 40px;
+  align-self: end;
+}
+
+.project-info-filter-panel {
+  margin-bottom: 10px;
+  padding: 14px 16px;
+}
+
+.project-info-filter-panel .budget-utilization-filter-form {
+  gap: 14px;
+}
+
+.project-info-filter-panel .select {
+  min-height: 42px;
+}
+
+.project-info-sheet-panel {
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+.project-info-table-wrap {
+  max-height: calc(100vh - 420px);
+  min-height: 360px;
+  overflow: auto;
+  position: relative;
+  isolation: isolate;
+  border-top: 1px solid rgba(216, 226, 234, 0.9);
+  background: linear-gradient(180deg, #f7fffd, #eefaf7);
+}
+
+.project-info-table {
+  min-width: 2440px;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.project-info-table th:nth-child(1),
+.project-info-table td:nth-child(1) { width: 82px; }
+.project-info-table th:nth-child(2),
+.project-info-table td:nth-child(2) { width: 260px; }
+.project-info-table th:nth-child(3),
+.project-info-table td:nth-child(3) { width: 145px; }
+.project-info-table th:nth-child(4),
+.project-info-table td:nth-child(4) { width: 95px; }
+.project-info-table th:nth-child(5),
+.project-info-table td:nth-child(5) { width: 135px; }
+.project-info-table th:nth-child(n+6):nth-child(-n+19),
+.project-info-table td:nth-child(n+6):nth-child(-n+19) { width: 96px; }
+.project-info-table th:nth-child(20),
+.project-info-table td:nth-child(20) { width: 118px; }
+.project-info-table th:nth-child(n+21),
+.project-info-table td:nth-child(n+21) { width: 150px; }
+
+.project-info-table th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  padding: 11px 12px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #08786f, #2563eb);
+  background-clip: padding-box;
+  border-bottom: 0;
+  font-size: 0.72rem;
+  line-height: 1.25;
+}
+
+.project-info-table th:first-child,
+.project-info-table td:first-child {
+  left: 0;
+  position: sticky;
+  background-clip: padding-box;
+}
+
+.project-info-table th:first-child {
+  z-index: 8;
+  background: linear-gradient(135deg, #064b48, #08786f);
+  box-shadow: 10px 0 18px rgba(8, 45, 58, 0.12);
+}
+
+.project-info-table td:first-child {
+  z-index: 4;
+  background: #edfafa;
+  box-shadow: 10px 0 18px rgba(8, 45, 58, 0.08);
+}
+
+.project-info-table td {
+  height: 58px;
+  padding: 10px 12px;
+  vertical-align: middle;
+  background: #ffffff;
+  font-size: 0.84rem;
+  line-height: 1.35;
+}
+
+.project-info-text-cell {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-info-text-cell strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-info-table tbody tr:nth-child(odd) td {
+  background: #f8fbff;
+}
+
+.project-info-table tbody tr:nth-child(odd) td:first-child {
+  background: #e9f8f7;
+}
+
+.project-info-table tbody tr:hover td {
+  background: #eefdf7;
+}
+
+.project-info-table tbody tr:hover td:first-child {
+  background: #dff8f3;
+}
+
+.numeric-cell {
+  text-align: right;
+  white-space: nowrap;
+  color: #075e57;
+  font-weight: 800;
 }
 
 .import-grid label {
@@ -1480,6 +1696,13 @@ body.app-body {
   overflow-x: auto;
 }
 
+.sticky-table-wrap {
+  max-height: 68vh;
+  overflow: auto;
+  position: relative;
+  overscroll-behavior: contain;
+}
+
 table {
   width: 100%;
   min-width: 1040px;
@@ -1498,9 +1721,10 @@ td {
 th {
   position: sticky;
   top: 0;
-  z-index: 1;
+  z-index: 4;
   color: #475467;
   background: #f7fafc;
+  background-clip: padding-box;
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -5032,7 +5256,9 @@ body.app-body {
 }
 
 .action-plan-table-wrap {
-  overflow-x: auto;
+  max-height: 68vh;
+  overflow: auto;
+  position: relative;
 }
 
 .action-plan-table {
@@ -5049,7 +5275,18 @@ body.app-body {
 }
 
 .action-plan-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
   vertical-align: top;
+  background: #f7fafc;
+  background-clip: padding-box;
+}
+
+.action-plan-record-table thead th,
+.activity-summary-table thead th {
+  z-index: 5;
+  background-clip: padding-box;
 }
 
 .month-head {
@@ -6411,6 +6648,80 @@ body.app-body {
   font-size: 0.82rem;
 }
 
+.report-info-filter-toolbar .budget-utilization-filter-form {
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+}
+
+.report-info-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.report-info-section .table-heading {
+  background: linear-gradient(90deg, rgba(10, 111, 98, 0.08), rgba(255, 255, 255, 0));
+}
+
+.page-header:has(+ .table-panel.import-panel),
+.page-header:has(+ .toolbar) {
+  margin-bottom: 8px;
+}
+
+.import-panel .table-heading {
+  padding-bottom: 10px;
+}
+
+.import-panel .import-form {
+  padding-bottom: 0;
+}
+
+.table-panel + .toolbar,
+.toolbar + .table-panel,
+.metric-grid + .report-info-stack {
+  margin-top: 8px;
+}
+
+.project-info-sheet-panel .table-heading {
+  background: linear-gradient(90deg, rgba(8, 120, 111, 0.12), rgba(47, 111, 214, 0.08));
+}
+
+.report-info-section .responsive-table table {
+  min-width: 1280px;
+}
+
+.report-info-date-label {
+  display: block;
+  margin-bottom: 4px;
+  color: #5c7088;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.report-info-section .report-file-list {
+  min-width: 230px;
+}
+
+@media (max-width: 760px) {
+  .action-plan-filter-form,
+  .records-filter-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .records-filter-toolbar .toolbar-actions {
+    width: 100%;
+  }
+
+  .project-info-import-row {
+    grid-template-columns: 1fr;
+  }
+
+  .project-info-import-row .submit-plan-button,
+  .project-info-export-button {
+    width: 100%;
+  }
+}
+
 @media (max-width: 1120px) {
   .record-change-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -6712,5 +7023,36 @@ body.app-body {
   .panel-toggle-button {
     max-width: 100%;
     white-space: normal;
+  }
+}
+
+/* Vertical Action Plan Record toolbar: keep export button out of filter fields. */
+.records-filter-toolbar {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(190px, 240px);
+  align-items: end;
+  justify-content: stretch;
+  gap: 14px;
+}
+
+.records-filter-toolbar .action-plan-filter-form {
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: minmax(240px, 1.2fr) minmax(180px, 0.8fr) minmax(180px, 0.8fr);
+}
+
+.records-filter-toolbar .toolbar-actions,
+.records-filter-toolbar .secondary-button {
+  width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 980px) {
+  .records-filter-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .records-filter-toolbar .action-plan-filter-form {
+    grid-template-columns: 1fr;
   }
 }

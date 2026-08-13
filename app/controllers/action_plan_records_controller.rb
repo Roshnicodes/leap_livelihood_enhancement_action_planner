@@ -1,4 +1,6 @@
 class ActionPlanRecordsController < ApplicationController
+  require "csv"
+
   include ActionPlanPresenter
   include ActionPlanSubmitting
 
@@ -8,10 +10,24 @@ class ActionPlanRecordsController < ApplicationController
   def index
     @project_options = record_project_options
     @selected_project = params[:project].to_s.presence_in(@project_options)
+    @fco_options = record_filter_options(:user_name, :user_id)
+    @selected_fco_id = params[:fco_id].to_s.presence_in(@fco_options.map(&:last))
+    @to_options = record_filter_options(:to_name, :to_id, fco_id: @selected_fco_id)
+    @selected_to_id = params[:to_id].to_s.presence_in(@to_options.map(&:last))
     @record_groups = build_record_groups
     @filtered_record_groups = @selected_project.present? ? @record_groups.select { |record| record[:project_name] == @selected_project } : @record_groups
+    @filtered_record_groups = @filtered_record_groups.reject { |record| record[:rows].blank? }
     @overall_summary = overall_summary_for(@filtered_record_groups)
     @activity_summaries = activity_summaries_for(@filtered_record_groups)
+
+    respond_to do |format|
+      format.html
+      format.csv do
+        send_data action_plan_record_csv,
+          filename: "vertical_action_plan_records_#{Time.current.strftime("%Y%m%d_%H%M%S")}.csv",
+          type: "text/csv"
+      end
+    end
   end
 
   def create
@@ -121,9 +137,27 @@ class ActionPlanRecordsController < ApplicationController
   end
 
   def record_rows_for(project_name, submission)
-    return submission.scoped_action_plan_rows if submission&.vertical_plan?
+    rows = if submission&.vertical_plan?
+      submission.scoped_action_plan_rows
+    else
+      action_plan_rows_for(project_name, vertical_filter: vertical_filter_for_records?(project_name))
+    end
 
-    action_plan_rows_for(project_name, vertical_filter: vertical_filter_for_records?(project_name))
+    rows = rows.where(user_id: @selected_fco_id) if @selected_fco_id.present?
+    rows = rows.where(to_id: @selected_to_id) if @selected_to_id.present?
+    rows
+  end
+
+  def record_filter_options(label_attribute, value_attribute, fco_id: nil)
+    scope = ActionPlanRow.active_import.where(project_name: @selected_project.presence || @project_options)
+    scope = scope.where(user_id: fco_id) if fco_id.present?
+
+    scope
+      .where.not(value_attribute => [ nil, "" ])
+      .distinct
+      .reorder(label_attribute, value_attribute)
+      .pluck(label_attribute, value_attribute)
+      .map { |label, value| [ label.presence || value.to_s, value.to_s ] }
   end
 
   def default_record_plan_type_label(project_name)
@@ -261,5 +295,41 @@ class ActionPlanRecordsController < ApplicationController
     return if tally.empty?
 
     tally.min_by { |label, count| [ -count, label ] }.first
+  end
+
+  def action_plan_record_csv
+    CSV.generate(headers: true) do |csv|
+      csv << [
+        "Project",
+        "Plan Type",
+        "Status",
+        "Project ID",
+        "ASA Activity ID",
+        "ASA Activity",
+        "Project Theme",
+        "Unit Type",
+        "Planned Total",
+        *ActionPlanRow::MONTH_COLUMNS.map(&:upcase),
+        "Changed Total"
+      ]
+
+      @filtered_record_groups.each do |record|
+        record[:rows].each do |row|
+          csv << [
+            record[:project_name],
+            record[:plan_type_label],
+            record[:status_label],
+            row[:project_id],
+            ActionPlanRow.format_decimal_string(row[:asa_activity_id]),
+            row[:asa_activity_name].presence || row[:activity],
+            row[:theme],
+            row[:unit_type],
+            row[:planned_total],
+            *ActionPlanRow::MONTH_COLUMNS.map { |month| row[:month_amounts][month] },
+            row[:changed_total]
+          ]
+        end
+      end
+    end
   end
 end

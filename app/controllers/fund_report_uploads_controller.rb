@@ -69,11 +69,8 @@ class FundReportUploadsController < ApplicationController
   end
 
   def financial_year_options
-    current = FundReportUpload.financial_year_for
     saved = FundReportUpload.distinct.pluck(:financial_year)
-    future_start = current.split("-").first.to_i + 1
-    future = "#{future_start}-#{future_start + 1}"
-    (saved + [ current, future ]).compact_blank.uniq.sort.reverse
+    (ReportFinancialYear.options + saved).compact_blank.uniq.sort.reverse
   end
 
   def require_upload_access

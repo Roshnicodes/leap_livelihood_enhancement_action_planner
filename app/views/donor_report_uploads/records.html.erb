@@ -4,7 +4,6 @@
   <div>
     <p class="eyebrow">Reports</p>
     <h1>Donor Report Record</h1>
-    <p class="muted">Search, filter and download uploaded donor reports.</p>
   </div>
   <div class="header-card">
     <span>Reports</span>
@@ -40,6 +39,15 @@
         class: "select",
         onchange: "this.form.requestSubmit()" %>
     </label>
+
+    <label>
+      <span class="filter-label">FY</span>
+      <%= form.select :financial_year,
+        options_for_select([["All FY", ""]] + @financial_year_options.map { |year| [year, year] }, @selected_financial_year.to_s),
+        {},
+        class: "select",
+        onchange: "this.form.requestSubmit()" %>
+    </label>
   <% end %>
 </section>
 
@@ -47,7 +55,6 @@
   <div class="table-heading">
     <div>
       <h2>Uploaded donor reports</h2>
-      <p class="muted">Reports uploaded by PMC are available here for download.</p>
     </div>
     <div class="table-actions">
       <input type="search" class="table-search" placeholder="Search donor reports" data-table-search-input>
@@ -62,6 +69,7 @@
           <th>Project</th>
           <th>Reports Name</th>
           <th>Frequency</th>
+          <th>FY</th>
           <th>Submission Date</th>
           <th>Document Upload</th>
           <th>Email/Application Screenshot Upload</th>
@@ -76,6 +84,7 @@
               <td><strong><%= upload.project_name %></strong></td>
               <td><span class="code-pill"><%= upload.donor_report_type.name %></span></td>
               <td><span class="code-pill"><%= upload.frequency %></span></td>
+              <td><span class="code-pill"><%= upload.financial_year %></span></td>
               <td><%= upload.submission_date.strftime("%d %b %Y") %></td>
               <td>
                 <% document_attachment = upload.document_file.attached? ? upload.document_file : upload.file %>
@@ -91,12 +100,12 @@
                   ] %>
               </td>
               <td><%= upload.uploaded_by&.admin? ? "PMC" : upload.uploaded_by&.employee&.name || "-" %></td>
-              <td><%= upload.created_at.strftime("%d %b %Y %I:%M %p") %></td>
+              <td><%= format_record_datetime(upload.created_at) %></td>
             </tr>
           <% end %>
         <% else %>
           <tr>
-            <td colspan="8">No uploaded donor reports yet.</td>
+            <td colspan="9">No uploaded donor reports yet.</td>
           </tr>
         <% end %>
       </tbody>

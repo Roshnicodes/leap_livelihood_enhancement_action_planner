@@ -11,11 +11,26 @@
   </div>
 </section>
 
-<section class="toolbar vertical-filter-toolbar">
-  <%= form_with url: action_plan_records_path, method: :get, class: "filter-form" do |form| %>
-    <%= form.label :project, "Choose Project", class: "filter-label" %>
-    <%= form.select :project, options_for_select([["All Projects", ""]] + @project_options.map { |project| [project, project] }, @selected_project), {}, class: "select", onchange: "this.form.requestSubmit()" %>
+<section class="toolbar vertical-filter-toolbar records-filter-toolbar">
+  <%= form_with url: action_plan_records_path, method: :get, class: "filter-form action-plan-filter-form" do |form| %>
+    <label>
+      <span class="filter-label">Choose Project</span>
+      <%= form.select :project, options_for_select([["All Projects", ""]] + @project_options.map { |project| [project, project] }, @selected_project), {}, class: "select", onchange: "this.form.requestSubmit()" %>
+    </label>
+
+    <label>
+      <span class="filter-label">FCO</span>
+      <%= form.select :fco_id, options_for_select([["All FCO", ""]] + @fco_options, @selected_fco_id.to_s), {}, class: "select", onchange: "this.form.requestSubmit()" %>
+    </label>
+
+    <label>
+      <span class="filter-label">TO</span>
+      <%= form.select :to_id, options_for_select([["All TO", ""]] + @to_options, @selected_to_id.to_s), {}, class: "select", onchange: "this.form.requestSubmit()" %>
+    </label>
   <% end %>
+  <div class="toolbar-actions">
+    <%= link_to "Download Excel Sheet", action_plan_records_path(request.query_parameters.merge(format: :csv)), class: "secondary-button" %>
+  </div>
 </section>
 
 <% total_record_rows = @filtered_record_groups.sum { |record| record[:rows].size } %>
@@ -47,7 +62,7 @@
         <%= render "action_plans/status_trail", submission: record[:submission] %>
       <% end %>
 
-      <div class="responsive-table">
+      <div class="responsive-table sticky-table-wrap">
         <table class="action-plan-record-table">
           <thead>
             <tr>
@@ -104,7 +119,7 @@
       <strong><%= @overall_summary[:target_total] %></strong>
     </div>
 
-    <div class="responsive-table activity-summary-table">
+    <div class="responsive-table activity-summary-table sticky-table-wrap">
       <table>
         <thead>
           <tr>

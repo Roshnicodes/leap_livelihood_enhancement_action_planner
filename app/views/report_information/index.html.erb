@@ -1,0 +1,171 @@
+<% content_for :title, "Report Information | LEAP" %>
+
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Reports</p>
+    <h1>Report Information</h1>
+  </div>
+  <div class="header-card">
+    <span>Records</span>
+    <strong><%= @total_records %></strong>
+  </div>
+</section>
+
+<section class="toolbar report-info-filter-toolbar">
+  <%= form_with url: report_information_path, method: :get, class: "budget-utilization-filter-form", html: { autocomplete: "off" } do |form| %>
+    <label>
+      <span class="filter-label">Project</span>
+      <%= form.select :project,
+        options_for_select(@project_options.map { |project| [project, project] }, @selected_project.to_s),
+        { prompt: "Select Project" },
+        class: "select",
+        onchange: "this.form.requestSubmit()" %>
+    </label>
+
+    <label>
+      <span class="filter-label">FY</span>
+      <%= form.select :financial_year,
+        options_for_select(@financial_year_options.map { |year| [year, year] }, @selected_financial_year.to_s),
+        { prompt: "Select FY" },
+        class: "select",
+        onchange: "this.form.requestSubmit()" %>
+    </label>
+  <% end %>
+</section>
+
+<% if !@has_filters %>
+  <section class="empty-state">
+    <h2>Select project and FY</h2>
+    <p class="muted">Report information will appear after both filters are selected.</p>
+  </section>
+<% elsif @report_sections.any? %>
+  <section class="metric-grid metric-grid-compact">
+    <article class="metric metric-teal"><span>PIS Documents</span><strong><%= @pis_documents.size %></strong></article>
+    <article class="metric metric-blue"><span>Donor Reports</span><strong><%= @donor_reports.size %></strong></article>
+    <article class="metric metric-gold"><span>Fund Reports</span><strong><%= @fund_reports.size %></strong></article>
+    <article class="metric metric-purple"><span>Project Info</span><strong><%= @project_information_sheets.size %></strong></article>
+  </section>
+
+  <section class="report-info-stack">
+    <% if @project_information_sheets.any? %>
+      <article class="table-panel report-info-section" data-searchable-table>
+        <div class="table-heading">
+          <div>
+            <h2>Project Information Sheet</h2>
+          </div>
+          <div class="table-actions">
+            <span class="table-count"><%= @project_information_sheets.size %> projects</span>
+          </div>
+        </div>
+
+        <div class="responsive-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Project ID</th>
+                <th>Project Title</th>
+                <th>Donor</th>
+                <th>Category</th>
+                <th>FY Amount</th>
+                <th>Total</th>
+                <th>Project Period</th>
+                <th>Project Location</th>
+                <th>Donor Reporting Officer</th>
+                <th>FCO Name</th>
+                <th>PO</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @project_information_sheets.each do |sheet| %>
+                <tr>
+                  <td><span class="code-pill"><%= sheet.project_id %></span></td>
+                  <td><strong><%= sheet.project_title.presence || "-" %></strong></td>
+                  <td><%= sheet.donor.presence || "-" %></td>
+                  <td><span class="code-pill"><%= sheet.category.presence || "-" %></span></td>
+                  <td><strong><%= number_with_precision(sheet.amount_for(@selected_financial_year).to_d, precision: 0, delimiter: ",") %></strong></td>
+                  <td><strong><%= number_with_precision(sheet.total, precision: 0, delimiter: ",") %></strong></td>
+                  <td><%= sheet.project_period.presence || "-" %></td>
+                  <td><%= sheet.project_location.presence || "-" %></td>
+                  <td><%= sheet.donor_reporting_officer.presence || "-" %></td>
+                  <td><%= sheet.fco_name.presence || "-" %></td>
+                  <td><%= sheet.po.presence || "-" %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </article>
+    <% end %>
+
+    <% @report_sections.each do |section| %>
+      <article class="table-panel report-info-section" data-searchable-table>
+        <div class="table-heading">
+          <div>
+            <h2><%= section[:title] %></h2>
+          </div>
+          <div class="table-actions">
+            <span class="table-count"><%= section[:records].size %> records</span>
+          </div>
+        </div>
+
+        <div class="responsive-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Project</th>
+                <th>Report / Doc Name</th>
+                <th>FY</th>
+                <th>Date</th>
+                <th>Detail</th>
+                <th>Document Upload</th>
+                <th>Email/Application Screenshot Upload</th>
+                <th>Uploaded By</th>
+                <th>Uploaded At</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% section[:records].each do |record| %>
+                <tr>
+                  <td><strong><%= record[:project] %></strong></td>
+                  <td><span class="code-pill"><%= record[:name] %></span></td>
+                  <td><span class="code-pill"><%= record[:fy] %></span></td>
+                  <td>
+                    <span class="report-info-date-label"><%= record[:date_label] %></span>
+                    <strong><%= record[:date]&.strftime("%d %b %Y") || "-" %></strong>
+                  </td>
+                  <td>
+                    <% if record[:amount_label].present? %>
+                      <span class="report-info-date-label"><%= record[:amount_label] %></span>
+                      <strong><%= record[:amount] %></strong>
+                    <% else %>
+                      <span class="muted">-</span>
+                    <% end %>
+                  </td>
+                  <td>
+                    <%= render "shared/report_attachment_cards",
+                      attachments: [
+                        { label: record[:document_label], attachment: record[:document_attachment] }
+                      ] %>
+                  </td>
+                  <td>
+                    <%= render "shared/report_attachment_cards",
+                      attachments: [
+                        { label: "Email/Application Screenshot", attachment: record[:screenshot_attachment] }
+                      ] %>
+                  </td>
+                  <td><%= record[:uploaded_by] %></td>
+                  <td><%= format_record_datetime(record[:uploaded_at]) %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </article>
+    <% end %>
+  </section>
+<% else %>
+  <section class="empty-state">
+    <h2>No report information found</h2>
+    <p class="muted">No uploaded reports match the selected project and FY.</p>
+  </section>
+<% end %>

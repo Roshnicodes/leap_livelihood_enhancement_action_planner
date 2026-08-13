@@ -1,0 +1,132 @@
+<% content_for :title, "Project Information Sheet | LEAP" %>
+
+<section class="page-header project-info-page-header">
+  <div>
+    <p class="eyebrow">Reports</p>
+    <h1>Project Information Sheet</h1>
+  </div>
+  <div class="header-card">
+    <span>Projects</span>
+    <strong><%= @sheets.size %></strong>
+  </div>
+</section>
+
+<% if current_user.admin? %>
+  <section class="table-panel import-panel project-info-compact-panel">
+    <div class="table-heading">
+      <div>
+        <h2>Import project information</h2>
+      </div>
+    </div>
+
+    <%= form_with url: project_information_sheets_path, method: :post, multipart: true, class: "import-form" do |form| %>
+      <div class="project-info-import-row">
+        <label>
+          <span>Project Information File</span>
+          <%= file_field_tag :project_information_file, class: "input", accept: ".csv,.xlsx", required: true %>
+        </label>
+        <%= form.submit "Import", class: "submit-plan-button" %>
+        <%= link_to "Export CSV", project_information_sheets_path(request.query_parameters.merge(format: :csv)), class: "secondary-button project-info-export-button" %>
+      </div>
+    <% end %>
+  </section>
+<% end %>
+
+<section class="toolbar report-info-filter-toolbar project-info-filter-panel">
+  <%= form_with url: project_information_sheets_path, method: :get, class: "budget-utilization-filter-form", html: { autocomplete: "off" } do |form| %>
+    <label>
+      <span class="filter-label">Project</span>
+      <%= form.select :project,
+        options_for_select([["All Projects", ""]] + @project_options.map { |project| [project, project] }, @selected_project.to_s),
+        {},
+        class: "select",
+        onchange: "this.form.requestSubmit()" %>
+    </label>
+
+    <label>
+      <span class="filter-label">FY</span>
+      <%= form.select :financial_year,
+        options_for_select([["All FY", ""]] + @financial_year_options.map { |year| [year, year] }, @selected_financial_year.to_s),
+        {},
+        class: "select",
+        onchange: "this.form.requestSubmit()" %>
+    </label>
+  <% end %>
+</section>
+
+<section class="table-panel project-info-sheet-panel" data-searchable-table>
+  <div class="table-heading">
+    <div>
+      <h2>Imported project information</h2>
+    </div>
+    <div class="table-actions">
+      <input type="search" class="table-search" placeholder="Search project information" data-table-search-input>
+      <span class="table-count" data-filtered-count data-count-label="projects"><%= @sheets.size %> projects</span>
+    </div>
+  </div>
+
+  <div class="responsive-table project-info-table-wrap">
+    <table class="project-info-table">
+      <thead>
+        <tr>
+          <th>Project ID</th>
+          <th>Project Title</th>
+          <th>Donor</th>
+          <th>Category</th>
+          <th>Project Period</th>
+          <% @year_columns.each do |year| %>
+            <th><%= ReportFinancialYear.short_label(year) %></th>
+          <% end %>
+          <th>Total</th>
+          <th>Project Location</th>
+          <th>Project Area Map</th>
+          <th>Donor Reporting Officer</th>
+          <th>Start Date</th>
+          <th>End Date</th>
+          <th>Project Objectives</th>
+          <th>No. of HH To be Covered</th>
+          <th>FCO Name</th>
+          <th>PO</th>
+          <th>Reporting System</th>
+          <th>Physical</th>
+          <th>Financial</th>
+          <th>Annexure</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if @sheets.any? %>
+          <% @sheets.each do |sheet| %>
+            <tr>
+              <td><span class="code-pill"><%= sheet.project_id %></span></td>
+              <td class="project-info-text-cell" title="<%= sheet.project_title %>"><strong><%= sheet.project_title.presence || "-" %></strong></td>
+              <td class="project-info-text-cell" title="<%= sheet.donor %>"><%= sheet.donor.presence || "-" %></td>
+              <td><span class="code-pill"><%= sheet.category.presence || "-" %></span></td>
+              <td class="project-info-text-cell" title="<%= sheet.project_period %>"><%= sheet.project_period.presence || "-" %></td>
+              <% @year_columns.each do |year| %>
+                <td class="numeric-cell"><%= number_with_precision(sheet.amount_for(year).to_d, precision: 0, delimiter: ",") %></td>
+              <% end %>
+              <td class="numeric-cell"><strong><%= number_with_precision(sheet.total, precision: 0, delimiter: ",") %></strong></td>
+              <td class="project-info-text-cell" title="<%= sheet.project_location %>"><%= sheet.project_location.presence || "-" %></td>
+              <td class="project-info-text-cell" title="<%= sheet.project_area_map %>"><%= sheet.project_area_map.presence || "-" %></td>
+              <td class="project-info-text-cell" title="<%= sheet.donor_reporting_officer %>"><%= sheet.donor_reporting_officer.presence || "-" %></td>
+              <td><%= sheet.start_date&.strftime("%d %b %Y") || "-" %></td>
+              <td><%= sheet.end_date&.strftime("%d %b %Y") || "-" %></td>
+              <td class="project-info-text-cell" title="<%= sheet.project_objectives %>"><%= sheet.project_objectives.presence || "-" %></td>
+              <td><%= sheet.households_to_be_covered.presence || "-" %></td>
+              <td class="project-info-text-cell" title="<%= sheet.fco_name %>"><%= sheet.fco_name.presence || "-" %></td>
+              <td class="project-info-text-cell" title="<%= sheet.po %>"><%= sheet.po.presence || "-" %></td>
+              <td class="project-info-text-cell" title="<%= sheet.reporting_system %>"><%= sheet.reporting_system.presence || "-" %></td>
+              <td class="project-info-text-cell" title="<%= sheet.physical %>"><%= sheet.physical.presence || "-" %></td>
+              <td class="project-info-text-cell" title="<%= sheet.financial %>"><%= sheet.financial.presence || "-" %></td>
+              <td class="project-info-text-cell" title="<%= sheet.annexure %>"><%= sheet.annexure.presence || "-" %></td>
+            </tr>
+          <% end %>
+        <% else %>
+          <tr>
+            <td colspan="<%= 20 + @year_columns.size %>">No project information sheet records found.</td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>

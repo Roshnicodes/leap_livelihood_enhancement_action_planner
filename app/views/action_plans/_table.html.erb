@@ -1,4 +1,5 @@
 <% display_columns = ActionPlanRow.display_columns(admin: show_admin_columns) %>
+<% project_ownership_lookup = local_assigns.fetch(:project_ownership_lookup, {}) || {} %>
 
 <table class="action-plan-table">
   <thead>
@@ -24,10 +25,20 @@
   <tbody>
     <% rows.each do |row| %>
       <tr data-plan-row data-planned-total="<%= row.planned_total %>">
+        <% row_project_ownership = if show_admin_columns
+          project_ownership_lookup["po_project:#{row.po_id}:#{ProjectOwnership.normalize_project_key(row.project_name)}"] ||
+            project_ownership_lookup["po:#{row.po_id}"] ||
+            project_ownership_lookup["project:#{ProjectOwnership.normalize_project_key(row.project_name)}"]
+        end %>
         <% display_columns.each do |column| %>
           <td>
+            <% cell_value = if show_admin_columns && column[:attribute] == :project_owner
+              [row_project_ownership&.po_name, row_project_ownership&.project_owner_id].compact_blank.join(" / ").presence || row.project_owner
+            else
+              row.public_send(column[:attribute])
+            end %>
             <%= action_plan_cell(
-              row.public_send(column[:attribute]),
+              cell_value,
               pill: ActionPlanRow::PILL_ATTRIBUTES.include?(column[:attribute]),
               decimal: ActionPlanRow::DECIMAL_ATTRIBUTES.include?(column[:attribute])
             ) %>

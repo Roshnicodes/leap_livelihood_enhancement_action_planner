@@ -37,7 +37,7 @@
               <% admin_open = controller_path == "admin/employees" %>
               <% pb_controllers = %w[plan_submissions budget_utilizations budget_utilization_reports project_summary_records project_summary_approvals] %>
               <% ap_controllers = %w[action_plans vertical_action_plans action_plan_records achievement_approvals project_summary_approval_records] %>
-              <% report_controllers = %w[pis_report_uploads donor_report_uploads fund_report_uploads report_masters] %>
+              <% report_controllers = %w[pis_report_uploads donor_report_uploads fund_report_uploads report_masters report_information project_information_sheets] %>
               <% pb_open = pb_controllers.include?(controller_name) || controller_path == "admin/pb_imports" %>
               <% ap_open = ap_controllers.include?(controller_name) || controller_path == "admin/action_plan_imports" %>
               <% reports_open = report_controllers.include?(controller_name) %>
@@ -139,6 +139,14 @@
                   <span class="sidebar-section-caret" aria-hidden="true"></span>
                 </button>
                 <div class="sidebar-section-menu">
+                  <%= link_to report_information_path, class: controller_name == "report_information" ? "side-link active" : "side-link" do %>
+                    <span class="side-icon">I</span>
+                    <span>Report Information</span>
+                  <% end %>
+                  <%= link_to project_information_sheets_path, class: controller_name == "project_information_sheets" ? "side-link active" : "side-link" do %>
+                    <span class="side-icon">J</span>
+                    <span>Project Information Sheet</span>
+                  <% end %>
                   <%= link_to pis_report_uploads_path, class: controller_name == "pis_report_uploads" && action_name == "index" ? "side-link active" : "side-link" do %>
                     <span class="side-icon">P</span>
                     <span>PIS Report Upload</span>
@@ -172,7 +180,7 @@
             <% else %>
               <% pb_controllers = %w[plan_submissions budget_utilizations budget_utilization_reports project_summaries project_summary_records project_summary_approvals project_summary_approval_records] %>
               <% ap_controllers = %w[action_plans achievement_entries achievement_approvals vertical_action_plans action_plan_records action_plan_approvals] %>
-              <% report_controllers = %w[pis_report_uploads donor_report_uploads fund_report_uploads] %>
+              <% report_controllers = %w[pis_report_uploads donor_report_uploads fund_report_uploads report_information project_information_sheets] %>
               <% pb_open = pb_controllers.include?(controller_name) %>
               <% ap_open = ap_controllers.include?(controller_name) %>
               <% reports_open = report_controllers.include?(controller_name) %>
@@ -314,6 +322,18 @@
                     <span class="sidebar-section-caret" aria-hidden="true"></span>
                   </button>
                   <div class="sidebar-section-menu">
+                    <% if menu_show_report_information? %>
+                      <%= link_to report_information_path, class: controller_name == "report_information" ? "side-link active" : "side-link" do %>
+                        <span class="side-icon">I</span>
+                        <span>Report Information</span>
+                      <% end %>
+                    <% end %>
+                    <% if menu_show_project_information_sheet? %>
+                      <%= link_to project_information_sheets_path, class: controller_name == "project_information_sheets" ? "side-link active" : "side-link" do %>
+                        <span class="side-icon">J</span>
+                        <span>Project Information Sheet</span>
+                      <% end %>
+                    <% end %>
                     <% if menu_show_pis_report_upload? %>
                       <%= link_to pis_report_uploads_path, class: controller_name == "pis_report_uploads" && action_name == "index" ? "side-link active" : "side-link" do %>
                         <span class="side-icon">P</span>

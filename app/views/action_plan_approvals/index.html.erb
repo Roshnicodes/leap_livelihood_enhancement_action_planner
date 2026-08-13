@@ -69,7 +69,7 @@
                 <% end %>
               </td>
               <td><%= [submission.employee.employee_code, submission.employee.name].compact_blank.join(" - ") %></td>
-              <td><%= submission.submitted_at&.strftime("%d %b %Y %I:%M %p") %></td>
+              <td><%= format_record_datetime(submission.submitted_at) %></td>
               <td><span class="code-pill"><%= plan_summary[:row_count] %></span></td>
               <td class="money-cell"><%= plan_summary[:target_total] %></td>
               <td>

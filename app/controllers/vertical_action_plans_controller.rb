@@ -8,15 +8,21 @@ class VerticalActionPlansController < ApplicationController
 
   def index
     @project_options = vertical_project_options
-    @selected_project = params[:project].to_s.presence_in(@project_options)
+    @selected_project = params[:project].to_s.presence_in([ "all", *@project_options ])
+    @fco_options = action_plan_filter_options(@selected_project, :user_name, :user_id)
+    @selected_fco_id = params[:fco_id].to_s.presence_in(@fco_options.map(&:last))
+    @to_options = action_plan_filter_options(@selected_project, :to_name, :to_id, fco_id: @selected_fco_id)
+    @selected_to_id = params[:to_id].to_s.presence_in(@to_options.map(&:last))
     @vertical_labels = action_plan_vertical_names
-    @rows = action_plan_rows_for(@selected_project, vertical_filter: true)
+    @rows = action_plan_rows_for(@selected_project, vertical_filter: true, fco_id: @selected_fco_id, to_id: @selected_to_id)
+    @project_ownership = project_ownership_for(@selected_project) if @selected_project != "all"
+    @project_ownership_lookup = project_ownership_lookup_for(@rows) if current_user.admin?
     @theme_count = @rows.distinct.count(:theme) if @selected_project.present?
-    @existing_submission = existing_submission_for(@selected_project, plan_type: "vertical")
-    @balance_warning = unbalanced_rows_message(@rows) if @selected_project.present?
+    @existing_submission = existing_submission_for(@selected_project, plan_type: "vertical") if @selected_project != "all"
+    @balance_warning = unbalanced_rows_message(@rows) if @selected_project.present? && @selected_project != "all"
     @show_achievement = false
-    @show_submission = !current_user.admin?
-    @editable_targets = !current_user.admin?
+    @show_submission = !current_user.admin? && @selected_project != "all"
+    @editable_targets = !current_user.admin? && @selected_project != "all"
   end
 
   def update
@@ -95,6 +101,24 @@ class VerticalActionPlansController < ApplicationController
 
   def target_row_params
     params.fetch(:rows, {}).permit!.to_h
+  end
+
+  def project_ownership_lookup_for(rows)
+    po_ids = rows.reorder(nil).reselect(:po_id).distinct.pluck(:po_id).compact_blank
+    project_names = rows.reorder(nil).reselect(:project_name).distinct.pluck(:project_name).compact_blank
+    ownerships = []
+    ownerships.concat(ProjectOwnership.where(po_id: po_ids).to_a) if po_ids.any?
+    ownerships.concat(ProjectOwnership.where(project_name: project_names).to_a) if project_names.any?
+
+    ownerships.uniq.each_with_object({}) do |ownership, lookup|
+      lookup[project_ownership_lookup_key(ownership.po_id, ownership.project_name)] = ownership
+      lookup["po:#{ownership.po_id}"] ||= ownership
+      lookup["project:#{ProjectOwnership.normalize_project_key(ownership.project_name)}"] ||= ownership
+    end
+  end
+
+  def project_ownership_lookup_key(po_id, project_name)
+    "po_project:#{po_id}:#{ProjectOwnership.normalize_project_key(project_name)}"
   end
 
   def integer_value(raw)

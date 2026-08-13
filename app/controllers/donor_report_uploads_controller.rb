@@ -34,7 +34,7 @@ class DonorReportUploadsController < ApplicationController
   private
 
   def upload_params
-    params.require(:donor_report_upload).permit(:project_name, :donor_report_type_id, :frequency, :submission_date, :document_file, :screenshot_file)
+    params.require(:donor_report_upload).permit(:project_name, :donor_report_type_id, :frequency, :financial_year, :submission_date, :document_file, :screenshot_file)
   end
 
   def load_workspace
@@ -42,11 +42,14 @@ class DonorReportUploadsController < ApplicationController
     @project_options = project_options
     @report_types = DonorReportType.active.ordered
     @frequency_options = DonorReportUpload::FREQUENCIES
+    @financial_year_options = financial_year_options
     @selected_project = params[:project].presence_in(@project_options)
     @selected_frequency = params[:frequency].presence_in(@frequency_options)
+    @selected_financial_year = params[:financial_year].presence_in(@financial_year_options)
     @selected_report_type_id = params[:report_type_id].to_s.presence
     @uploads = DonorReportUpload.recent
       .for_project(@selected_project)
+      .for_financial_year(@selected_financial_year)
       .for_frequency(@selected_frequency)
       .for_report_type(@selected_report_type_id)
   end
@@ -56,6 +59,12 @@ class DonorReportUploadsController < ApplicationController
       BliActivity.where.not(project_name: [ nil, "" ]).distinct.pluck(:project_name) +
       ProjectOwnership.where.not(project_name: [ nil, "" ]).distinct.pluck(:project_name)
     ).compact_blank.uniq.sort
+  end
+
+  def financial_year_options
+    saved = DonorReportUpload.distinct.pluck(:financial_year)
+
+    (ReportFinancialYear.options + saved).compact_blank.uniq.sort.reverse
   end
 
   def require_upload_access

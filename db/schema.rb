@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_12_133000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_13_113000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -369,6 +369,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_12_133000) do
   create_table "donor_report_uploads", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "donor_report_type_id", null: false
+    t.string "financial_year", default: "2026-2027", null: false
     t.string "frequency", null: false
     t.string "project_name", null: false
     t.date "submission_date", null: false
@@ -377,6 +378,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_12_133000) do
     t.index ["created_at", "id"], name: "idx_donor_uploads_recent_order"
     t.index ["donor_report_type_id"], name: "index_donor_report_uploads_on_donor_report_type_id"
     t.index ["frequency"], name: "index_donor_report_uploads_on_frequency"
+    t.index ["project_name", "financial_year", "donor_report_type_id", "frequency", "created_at"], name: "idx_donor_uploads_project_year_type_frequency_recent"
     t.index ["project_name", "frequency", "donor_report_type_id", "created_at"], name: "idx_donor_uploads_filters_recent"
     t.index ["project_name"], name: "index_donor_report_uploads_on_project_name"
     t.index ["submission_date"], name: "index_donor_report_uploads_on_submission_date"
@@ -543,6 +545,37 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_12_133000) do
     t.index ["submitted_at"], name: "index_plan_submissions_on_submitted_at"
   end
 
+  create_table "project_information_sheets", force: :cascade do |t|
+    t.string "annexure"
+    t.string "category"
+    t.datetime "created_at", null: false
+    t.string "donor"
+    t.string "donor_reporting_officer"
+    t.date "end_date"
+    t.string "fco_name"
+    t.string "financial"
+    t.string "households_to_be_covered"
+    t.string "physical"
+    t.string "po"
+    t.string "project_area_map"
+    t.string "project_id", null: false
+    t.text "project_location"
+    t.text "project_objectives"
+    t.text "project_period"
+    t.string "project_title"
+    t.string "reporting_system"
+    t.date "start_date"
+    t.decimal "total", precision: 18, scale: 2, default: "0.0", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "uploaded_by_id"
+    t.jsonb "yearly_amounts", default: {}, null: false
+    t.index ["donor"], name: "index_project_information_sheets_on_donor"
+    t.index ["project_id"], name: "index_project_information_sheets_on_project_id", unique: true
+    t.index ["project_title"], name: "index_project_information_sheets_on_project_title"
+    t.index ["updated_at"], name: "index_project_information_sheets_on_updated_at"
+    t.index ["uploaded_by_id"], name: "index_project_information_sheets_on_uploaded_by_id"
+  end
+
   create_table "project_ownerships", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "email_id"
@@ -683,6 +716,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_12_133000) do
   add_foreign_key "plan_submission_items", "bli_activities"
   add_foreign_key "plan_submission_items", "plan_submissions"
   add_foreign_key "plan_submissions", "employees"
+  add_foreign_key "project_information_sheets", "users", column: "uploaded_by_id"
   add_foreign_key "project_summary_submission_items", "project_summary_submissions"
   add_foreign_key "project_summary_submissions", "employees"
   add_foreign_key "project_summary_submissions", "employees", column: "approver_id"

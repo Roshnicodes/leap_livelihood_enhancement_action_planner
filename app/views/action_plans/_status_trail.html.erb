@@ -10,9 +10,9 @@
     <% end %>
 
     <p>
-      Submitted <%= submission.submitted_at.strftime("%d %b %Y, %I:%M %p") %>
+      Submitted <%= format_record_datetime(submission.submitted_at) %>
       <% if action_plan_last_reviewed_at(submission).present? %>
-        • Reviewed <%= action_plan_last_reviewed_at(submission).strftime("%d %b %Y, %I:%M %p") %>
+        • Reviewed <%= format_record_datetime(action_plan_last_reviewed_at(submission)) %>
       <% end %>
     </p>
 

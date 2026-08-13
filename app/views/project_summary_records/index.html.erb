@@ -53,7 +53,7 @@
           <h2><%= record[:project_name].presence || "Project Summary" %></h2>
           <p class="muted">
             <%= record[:employee].name %>
-            <% if record[:submitted_at] %> • <%= record[:submitted_at].strftime("%d %b %Y, %I:%M %p") %><% end %>
+            <% if record[:submitted_at] %> • <%= format_record_datetime(record[:submitted_at]) %><% end %>
             <% if editable %> • Editable<% end %>
           </p>
         </div>

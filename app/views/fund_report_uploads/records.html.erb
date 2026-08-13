@@ -4,7 +4,6 @@
   <div>
     <p class="eyebrow">Reports</p>
     <h1>Fund Report Record</h1>
-    <p class="muted">Search, filter and download uploaded fund reports.</p>
   </div>
   <div class="header-card">
     <span>Reports</span>
@@ -47,7 +46,6 @@
   <div class="table-heading">
     <div>
       <h2>Uploaded fund reports</h2>
-      <p class="muted">Reports uploaded by PMC are available here for download.</p>
     </div>
     <div class="table-actions">
       <input type="search" class="table-search" placeholder="Search fund reports" data-table-search-input>
@@ -96,7 +94,7 @@
                   ] %>
               </td>
               <td><%= upload.uploaded_by&.admin? ? "PMC" : upload.uploaded_by&.employee&.name || "-" %></td>
-              <td><%= upload.created_at.strftime("%d %b %Y %I:%M %p") %></td>
+              <td><%= format_record_datetime(upload.created_at) %></td>
             </tr>
           <% end %>
         <% else %>

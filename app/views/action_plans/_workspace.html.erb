@@ -1,4 +1,11 @@
 <% submit_with_targets = local_assigns.fetch(:submit_with_targets, false) %>
+<% fco_options = local_assigns.fetch(:fco_options, []) %>
+<% selected_fco_id = local_assigns[:selected_fco_id] %>
+<% to_options = local_assigns.fetch(:to_options, []) %>
+<% selected_to_id = local_assigns[:selected_to_id] %>
+<% allow_all_projects = local_assigns.fetch(:allow_all_projects, false) %>
+<% download_path = local_assigns[:download_path] %>
+<% project_ownership_lookup = local_assigns.fetch(:project_ownership_lookup, {}) || {} %>
 
 <section class="page-header">
   <div>
@@ -11,10 +18,29 @@
   </div>
 </section>
 
-<section class="toolbar">
-  <%= form_with url: form_path, method: :get, class: "filter-form" do |form| %>
-    <%= form.label :project, "Choose Project", class: "filter-label" %>
-    <%= form.select :project, options_for_select(project_options.map { |project| [project, project] }, selected_project), { prompt: "Select Project" }, class: "select", onchange: "this.form.requestSubmit()" %>
+<section class="toolbar <%= "records-filter-toolbar" if download_path.present? %>">
+  <%= form_with url: form_path, method: :get, class: "filter-form action-plan-filter-form" do |form| %>
+    <label>
+      <span class="filter-label">Choose Project</span>
+      <% project_select_options = project_options.map { |project| [project, project] } %>
+      <% project_select_options.unshift(["All Projects", "all"]) if allow_all_projects %>
+      <%= form.select :project, options_for_select(project_select_options, selected_project), { prompt: "Select Project" }, class: "select", onchange: "this.form.requestSubmit()" %>
+    </label>
+
+    <label>
+      <span class="filter-label">FCO</span>
+      <%= form.select :fco_id, options_for_select([["All FCO", ""]] + fco_options, selected_fco_id.to_s), {}, class: "select", onchange: "this.form.requestSubmit()" %>
+    </label>
+
+    <label>
+      <span class="filter-label">TO</span>
+      <%= form.select :to_id, options_for_select([["All TO", ""]] + to_options, selected_to_id.to_s), {}, class: "select", onchange: "this.form.requestSubmit()" %>
+    </label>
+  <% end %>
+  <% if download_path.present? %>
+    <div class="toolbar-actions">
+      <%= link_to "Download Excel Sheet", download_path, class: "secondary-button" %>
+    </div>
   <% end %>
 </section>
 
@@ -23,7 +49,9 @@
   <% current_total = rows.sum(&:monthly_total) %>
 
   <section class="metric-grid metric-grid-compact">
-    <% if show_admin_columns %>
+    <% if selected_project == "all" %>
+      <article class="metric metric-teal"><span>Projects</span><strong><%= rows.distinct.count(:project_name) %></strong></article>
+    <% elsif show_admin_columns %>
       <article class="metric metric-teal"><span>PO ID</span><strong><%= rows.first&.po_id %></strong></article>
     <% else %>
       <article class="metric metric-teal"><span>Project ID</span><strong><%= rows.first&.project_id %></strong></article>
@@ -38,7 +66,7 @@
   <section class="table-panel submission-panel" data-searchable-table data-balance-panel>
     <div class="table-heading">
       <div>
-        <h2><%= selected_project %></h2>
+        <h2><%= selected_project == "all" ? "All Projects" : selected_project %></h2>
         <% if show_admin_columns && project_ownership.present? %>
           <p class="muted">
             Project Owner:
@@ -82,9 +110,12 @@
       <% submit_locked = existing_submission&.approved? %>
       <%= form_with url: update_form_path, method: :patch, class: "action-plan-target-form" do |form| %>
         <%= hidden_field_tag :project, selected_project %>
+        <%= hidden_field_tag :fco_id, selected_fco_id if selected_fco_id.present? %>
+        <%= hidden_field_tag :to_id, selected_to_id if selected_to_id.present? %>
         <div class="responsive-table action-plan-table-wrap">
           <%= render "action_plans/table",
             rows: rows,
+            project_ownership_lookup: project_ownership_lookup,
             show_admin_columns: show_admin_columns,
             editable_targets: true,
             show_achievement: show_achievement %>
@@ -113,6 +144,7 @@
       <div class="responsive-table action-plan-table-wrap">
         <%= render "action_plans/table",
           rows: rows,
+          project_ownership_lookup: project_ownership_lookup,
           show_admin_columns: show_admin_columns,
           editable_targets: false,
           show_achievement: show_achievement %>

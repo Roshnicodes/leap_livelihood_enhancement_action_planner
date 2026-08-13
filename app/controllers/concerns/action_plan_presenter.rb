@@ -47,23 +47,48 @@ module ActionPlanPresenter
     return if project_name.blank?
 
     row = ActionPlanRow.active_import.find_by(project_name: project_name)
+    return ProjectOwnership.find_by(po_id: row&.po_id, project_name: project_name) ||
+      ProjectOwnership.find_by(po_id: row&.po_id) ||
+      ProjectOwnership.find_by(project_name: project_name) if current_user.admin?
+
     ProjectOwnership.find_owned_for(current_user.employee, project_name: project_name, po_id: row&.po_id)
   end
 
-  def action_plan_rows_for(project_name, vertical_filter: false)
+  def action_plan_rows_for(project_name, vertical_filter: false, fco_id: nil, to_id: nil)
     return ActionPlanRow.none if project_name.blank?
 
-    po_id = project_po_id_for(project_name)
-    return ActionPlanRow.none if po_id.blank?
+    rows = if project_name == "all"
+      ActionPlanRow.active_import.where(project_name: project_options_for_action_plan_scope(vertical_filter: vertical_filter))
+    else
+      po_id = project_po_id_for(project_name)
+      return ActionPlanRow.none if po_id.blank?
 
-    rows = ActionPlanRow.active_import.where(po_id: po_id)
+      ActionPlanRow.active_import.where(po_id: po_id)
+    end
+
     if vertical_filter && !current_user.admin?
       mappings = action_plan_vertical_mappings
       rows = mappings.present? ? rows.matching_action_plan_vertical_mappings(mappings) : rows.matching_verticals(action_plan_vertical_names)
-    elsif fco_scoped_action_plan?(project_name)
+    elsif project_name != "all" && fco_scoped_action_plan?(project_name)
       rows = rows.where(user_id: action_plan_fco_ids)
     end
+
+    rows = rows.where(user_id: fco_id) if fco_id.present?
+    rows = rows.where(to_id: to_id) if to_id.present?
+
     rows.order(:id)
+  end
+
+  def action_plan_filter_options(project_name, label_attribute, value_attribute, fco_id: nil)
+    rows = action_plan_rows_for(project_name.presence || "all", vertical_filter: controller_name == "vertical_action_plans")
+    rows = rows.where(user_id: fco_id) if fco_id.present?
+
+    rows
+      .where.not(value_attribute => [ nil, "" ])
+      .distinct
+      .reorder(label_attribute, value_attribute)
+      .pluck(label_attribute, value_attribute)
+      .map { |label, value| [ label.presence || value.to_s, value.to_s ] }
   end
 
   def project_options_for_viewer
@@ -99,6 +124,14 @@ module ActionPlanPresenter
 
   def all_project_options
     ActionPlanRow.active_import.distinct.order(:project_name).pluck(:project_name)
+  end
+
+  def project_options_for_action_plan_scope(vertical_filter:)
+    if vertical_filter
+      vertical_project_options
+    else
+      project_options_for_viewer
+    end
   end
 
   def project_po_id_for(project_name)

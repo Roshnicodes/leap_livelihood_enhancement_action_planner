@@ -9,7 +9,7 @@ class ApplicationController < ActionController::Base
     :menu_show_vertical_action_plan?, :menu_show_vertical_action_plan_record?,
     :menu_show_pis_report_upload?, :menu_show_donor_report_upload?, :menu_show_fund_report_upload?,
     :menu_show_pis_report_records?, :menu_show_donor_report_records?, :menu_show_fund_report_records?,
-    :menu_show_report_masters?, :menu_show_action_plan_approval?, :menu_show_pb_section?,
+    :menu_show_report_information?, :menu_show_project_information_sheet?, :menu_show_report_masters?, :menu_show_action_plan_approval?, :menu_show_pb_section?,
     :menu_show_action_plan_section?, :menu_show_reports_section?, :menu_show_masters_section?
 
   # Changes to the importmap will invalidate the etag for HTML responses
@@ -192,6 +192,14 @@ class ApplicationController < ActionController::Base
     current_user.present?
   end
 
+  def menu_show_report_information?
+    current_user.present?
+  end
+
+  def menu_show_project_information_sheet?
+    current_user.present?
+  end
+
   def menu_show_report_masters?
     current_user&.admin?
   end
@@ -214,7 +222,8 @@ class ApplicationController < ActionController::Base
 
   def menu_show_reports_section?
     menu_show_pis_report_upload? || menu_show_donor_report_upload? || menu_show_fund_report_upload? ||
-      menu_show_pis_report_records? || menu_show_donor_report_records? || menu_show_fund_report_records?
+      menu_show_pis_report_records? || menu_show_donor_report_records? || menu_show_fund_report_records? ||
+      menu_show_report_information? || menu_show_project_information_sheet?
   end
 
   def menu_show_masters_section?

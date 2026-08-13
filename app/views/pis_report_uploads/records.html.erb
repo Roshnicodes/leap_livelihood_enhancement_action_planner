@@ -4,7 +4,6 @@
   <div>
     <p class="eyebrow">Reports</p>
     <h1>PIS Report Record</h1>
-    <p class="muted">Search, filter and download uploaded PIS documents.</p>
   </div>
   <div class="header-card">
     <span>Documents</span>
@@ -47,7 +46,6 @@
   <div class="table-heading">
     <div>
       <h2>Uploaded PIS documents</h2>
-      <p class="muted">Documents uploaded by PMC are available here for download.</p>
     </div>
     <div class="table-actions">
       <input type="search" class="table-search" placeholder="Search documents" data-table-search-input>
@@ -90,7 +88,7 @@
                   ] %>
               </td>
               <td><%= document.uploaded_by&.admin? ? "PMC" : document.uploaded_by&.employee&.name || "-" %></td>
-              <td><%= document.created_at.strftime("%d %b %Y %I:%M %p") %></td>
+              <td><%= format_record_datetime(document.created_at) %></td>
             </tr>
           <% end %>
         <% else %>

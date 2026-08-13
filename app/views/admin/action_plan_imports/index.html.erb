@@ -48,7 +48,7 @@
     <div class="submit-panel">
       <p>
         Latest action plan import:
-        <strong><%= @latest_action_plan_imported_at&.strftime("%d %b %Y %I:%M %p") || "Not imported yet" %></strong>
+        <strong><%= format_record_datetime(@latest_action_plan_imported_at) || "Not imported yet" %></strong>
       </p>
       <%= form.submit "Import Action Plan", class: "submit-plan-button" %>
     </div>
@@ -104,7 +104,7 @@
                 <td><%= import_file.uploaded_by&.admin? ? "PMC" : import_file.uploaded_by&.employee&.name || "-" %></td>
                 <td><%= import_file.row_count || "-" %></td>
                 <td><span class="status-badge status-<%= import_file.status == "failed" ? "returned" : "approved" %>"><%= import_file.status.titleize %></span></td>
-                <td><%= import_file.imported_at.strftime("%d %b %Y %I:%M %p") %></td>
+                <td><%= format_record_datetime(import_file.imported_at) %></td>
                 <td>
                   <% if import_file.file_available? %>
                     <%= link_to "Download", download_file_admin_action_plan_import_path(import_file), class: "approval-review-button" %>
