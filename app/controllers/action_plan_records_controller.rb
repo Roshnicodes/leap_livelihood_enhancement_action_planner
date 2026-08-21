@@ -27,6 +27,11 @@ class ActionPlanRecordsController < ApplicationController
           filename: "vertical_action_plan_records_#{Time.current.strftime("%Y%m%d_%H%M%S")}.csv",
           type: "text/csv"
       end
+      format.xlsx do
+        send_data XlsxWorkbook.from_csv(action_plan_record_csv, title: "Vertical Action Plan Records", sheet_name: "Records"),
+          filename: "vertical_action_plan_records_#{Time.current.strftime("%Y%m%d_%H%M%S")}.xlsx",
+          type: XlsxWorkbook::CONTENT_TYPE
+      end
     end
   end
 
@@ -143,14 +148,16 @@ class ActionPlanRecordsController < ApplicationController
       action_plan_rows_for(project_name, vertical_filter: vertical_filter_for_records?(project_name))
     end
 
-    rows = rows.where(user_id: @selected_fco_id) if @selected_fco_id.present?
+    rows = rows.where(user_id: fco_filter_ids(@selected_fco_id)) if @selected_fco_id.present?
     rows = rows.where(to_id: @selected_to_id) if @selected_to_id.present?
     rows
   end
 
   def record_filter_options(label_attribute, value_attribute, fco_id: nil)
     scope = ActionPlanRow.active_import.where(project_name: @selected_project.presence || @project_options)
-    scope = scope.where(user_id: fco_id) if fco_id.present?
+    scope = scope.where(user_id: fco_filter_ids(fco_id)) if fco_id.present?
+
+    return fco_filter_options_for(scope) if value_attribute.to_sym == :user_id
 
     scope
       .where.not(value_attribute => [ nil, "" ])

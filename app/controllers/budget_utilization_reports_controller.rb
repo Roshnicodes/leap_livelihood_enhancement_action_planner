@@ -1,3 +1,5 @@
+require "csv"
+
 class BudgetUtilizationReportsController < ApplicationController
   before_action :require_login
 
@@ -10,6 +12,20 @@ class BudgetUtilizationReportsController < ApplicationController
     @project_total = @rows.sum { |row| row[:total_allocated].to_d }
     @expenditure_total = @rows.sum { |row| row[:total_expenditure].to_d }
     @remaining_total = @project_total - @expenditure_total
+
+    respond_to do |format|
+      format.html
+      format.csv do
+        send_data budget_report_csv,
+          filename: "budget_utilization_report_#{Time.current.strftime("%Y%m%d_%H%M%S")}.csv",
+          type: "text/csv; charset=utf-8"
+      end
+      format.xlsx do
+        send_data XlsxWorkbook.from_csv(budget_report_csv, title: "Budget Utilization Report", sheet_name: "Budget Report"),
+          filename: "budget_utilization_report_#{Time.current.strftime("%Y%m%d_%H%M%S")}.xlsx",
+          type: XlsxWorkbook::CONTENT_TYPE
+      end
+    end
   end
 
   private
@@ -54,5 +70,28 @@ class BudgetUtilizationReportsController < ApplicationController
       total_expenditure: total_expenditure,
       total_remaining: total_allocated - total_expenditure
     }
+  end
+
+  def budget_report_csv
+    CSV.generate(headers: true) do |csv|
+      csv << [ "S.No.", "Project", "Total Allocated Budget", "Total Expenditure", "Total Remaining Budget", *@report_columns.map { |column| column[:label] } ]
+
+      @rows.each_with_index do |row, index|
+        csv << [
+          index + 1,
+          row[:project_name],
+          row[:total_allocated],
+          row[:total_expenditure],
+          row[:total_remaining],
+          *@report_columns.map do |column|
+            if column[:type] == :month
+              row[:month_utilized][column[:key]].to_d
+            else
+              column[:months].sum { |month| row[:month_utilized][month].to_d }
+            end
+          end
+        ]
+      end
+    end
   end
 end

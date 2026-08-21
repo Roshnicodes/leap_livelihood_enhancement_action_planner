@@ -35,9 +35,10 @@ class ActionPlansController < ApplicationController
     selected_to_id = params[:to_id].to_s.presence_in(to_options.map(&:last))
     rows = action_plan_rows_for(selected_project, fco_id: selected_fco_id, to_id: selected_to_id)
 
-    send_data project_action_plan_csv(rows),
-      filename: "project_action_plan_#{Time.current.strftime("%Y%m%d_%H%M%S")}.csv",
-      type: "text/csv; charset=utf-8"
+    csv = project_action_plan_csv(rows)
+    send_data XlsxWorkbook.from_csv(csv, title: "Project Action Plan", sheet_name: "Action Plan"),
+      filename: "project_action_plan_#{Time.current.strftime("%Y%m%d_%H%M%S")}.xlsx",
+      type: XlsxWorkbook::CONTENT_TYPE
   end
 
   def create

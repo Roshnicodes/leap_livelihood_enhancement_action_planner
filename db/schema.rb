@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_13_113000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_21_102000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -117,6 +117,32 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_13_113000) do
     t.index ["status"], name: "index_action_plan_import_files_on_status"
     t.index ["storage_path"], name: "index_action_plan_import_files_on_storage_path", unique: true
     t.index ["uploaded_by_id"], name: "index_action_plan_import_files_on_uploaded_by_id"
+  end
+
+  create_table "action_plan_month_changes", force: :cascade do |t|
+    t.bigint "action_plan_submission_id"
+    t.string "asa_activity_id"
+    t.string "asa_theme_id"
+    t.bigint "changed_by_id"
+    t.integer "changed_value", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "last_applied_at"
+    t.datetime "merged_at"
+    t.string "month", null: false
+    t.integer "original_value", default: 0, null: false
+    t.string "po_id", null: false
+    t.string "project_name", null: false
+    t.string "source", default: "user_edit", null: false
+    t.string "statte"
+    t.string "status", default: "pending", null: false
+    t.string "to_id"
+    t.datetime "updated_at", null: false
+    t.string "user_id"
+    t.index ["action_plan_submission_id"], name: "index_action_plan_month_changes_on_action_plan_submission_id"
+    t.index ["changed_by_id"], name: "index_action_plan_month_changes_on_changed_by_id"
+    t.index ["po_id", "project_name", "statte", "user_id", "to_id", "asa_theme_id", "asa_activity_id", "month"], name: "idx_action_plan_month_changes_identity", unique: true
+    t.index ["project_name", "status"], name: "idx_action_plan_month_changes_project_status"
+    t.index ["status", "updated_at"], name: "idx_action_plan_month_changes_status"
   end
 
   create_table "action_plan_rows", force: :cascade do |t|
@@ -690,6 +716,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_13_113000) do
   add_foreign_key "achievement_submissions", "employees", column: "vertical_approver_id"
   add_foreign_key "action_plan_fco_mappings", "employees"
   add_foreign_key "action_plan_import_files", "users", column: "uploaded_by_id"
+  add_foreign_key "action_plan_month_changes", "action_plan_submissions"
+  add_foreign_key "action_plan_month_changes", "users", column: "changed_by_id"
   add_foreign_key "action_plan_submissions", "employees"
   add_foreign_key "action_plan_submissions", "employees", column: "coo_approver_id"
   add_foreign_key "action_plan_submissions", "employees", column: "director_approver_id"

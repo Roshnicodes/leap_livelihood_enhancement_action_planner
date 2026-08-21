@@ -40,6 +40,7 @@
         </p>
       </div>
       <div class="table-actions">
+        <%= link_to "Download Excel Sheet", budget_utilization_reports_path(format: :xlsx), class: "secondary-button" %>
         <input type="search" class="table-search" placeholder="Search projects" data-table-search-input>
         <span class="table-count" data-filtered-count data-count-label="projects"><%= @rows.size %> projects</span>
       </div>

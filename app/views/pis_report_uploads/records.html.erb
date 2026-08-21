@@ -11,7 +11,7 @@
   </div>
 </section>
 
-<section class="toolbar pis-report-filter-toolbar">
+<section class="toolbar pis-report-filter-toolbar records-filter-toolbar">
   <%= form_with url: pis_report_records_path, method: :get, class: "budget-utilization-filter-form", html: { autocomplete: "off" } do |form| %>
     <label>
       <span class="filter-label">Project</span>
@@ -40,6 +40,9 @@
         onchange: "this.form.requestSubmit()" %>
     </label>
   <% end %>
+  <div class="toolbar-actions">
+    <%= link_to "Download Excel Sheet", pis_report_records_path(request.query_parameters.merge(format: :xlsx)), class: "secondary-button" %>
+  </div>
 </section>
 
 <section class="table-panel import-history-panel" data-searchable-table>

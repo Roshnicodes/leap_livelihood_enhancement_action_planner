@@ -1,3 +1,5 @@
+Mime::Type.register XlsxWorkbook::CONTENT_TYPE, :xlsx unless Mime::Type.lookup_by_extension(:xlsx)
+
 class ApplicationController < ActionController::Base
   helper_method :current_user, :pending_project_summary_approval_count, :pending_action_plan_approval_count,
     :action_plan_stage_access?, :achievement_stage_access?, :pending_achievement_approval_count,

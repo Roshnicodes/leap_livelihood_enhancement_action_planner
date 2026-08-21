@@ -73,7 +73,7 @@ module ActionPlanPresenter
       rows = rows.where(user_id: action_plan_fco_ids)
     end
 
-    rows = rows.where(user_id: fco_id) if fco_id.present?
+    rows = rows.where(user_id: fco_filter_ids(fco_id)) if fco_id.present?
     rows = rows.where(to_id: to_id) if to_id.present?
 
     rows.order(:id)
@@ -81,7 +81,9 @@ module ActionPlanPresenter
 
   def action_plan_filter_options(project_name, label_attribute, value_attribute, fco_id: nil)
     rows = action_plan_rows_for(project_name.presence || "all", vertical_filter: controller_name == "vertical_action_plans")
-    rows = rows.where(user_id: fco_id) if fco_id.present?
+    rows = rows.where(user_id: fco_filter_ids(fco_id)) if fco_id.present?
+
+    return fco_filter_options_for(rows) if value_attribute.to_sym == :user_id
 
     rows
       .where.not(value_attribute => [ nil, "" ])
@@ -111,6 +113,32 @@ module ActionPlanPresenter
 
   def action_plan_fco_ids
     @action_plan_fco_ids ||= ActionPlanFcoMapping.ensure_for_employee(current_user.employee).pluck(:fco_id)
+  end
+
+  def fco_filter_ids(fco_id)
+    fco_id.to_s.split(",").map(&:squish).compact_blank
+  end
+
+  def fco_filter_options_for(rows)
+    options = rows
+      .where.not(user_id: [ nil, "" ])
+      .distinct
+      .reorder(:user_name, :user_id)
+      .pluck(:user_name, :user_id)
+      .map { |label, value| [ label.presence || value.to_s, value.to_s ] }
+
+    return options unless pritesh_jain_fco_grouping?
+
+    grouped_ids = %w[16 17]
+    grouped_options = options.select { |(_label, value)| value.in?(grouped_ids) }
+    return options if grouped_options.empty?
+
+    remaining_options = options.reject { |(_label, value)| value.in?(grouped_ids) }
+    ([ [ "Jobat - FCO", grouped_ids.join(",") ] ] + remaining_options).sort_by(&:first)
+  end
+
+  def pritesh_jain_fco_grouping?
+    current_user.employee&.employee_code.to_s == "25"
   end
 
   # FCO viewers who do not own the project only see their own FCO target rows.

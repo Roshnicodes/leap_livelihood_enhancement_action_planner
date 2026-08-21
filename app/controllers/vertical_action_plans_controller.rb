@@ -1,3 +1,5 @@
+require "csv"
+
 class VerticalActionPlansController < ApplicationController
   include ActionPlanPresenter
   include ActionPlanSubmitting
@@ -25,6 +27,21 @@ class VerticalActionPlansController < ApplicationController
     @editable_targets = !current_user.admin? && @selected_project != "all"
   end
 
+  def download
+    project_options = vertical_project_options
+    selected_project = params[:project].to_s.presence_in([ "all", *project_options ])
+    fco_options = action_plan_filter_options(selected_project, :user_name, :user_id)
+    selected_fco_id = params[:fco_id].to_s.presence_in(fco_options.map(&:last))
+    to_options = action_plan_filter_options(selected_project, :to_name, :to_id, fco_id: selected_fco_id)
+    selected_to_id = params[:to_id].to_s.presence_in(to_options.map(&:last))
+    rows = action_plan_rows_for(selected_project, vertical_filter: true, fco_id: selected_fco_id, to_id: selected_to_id)
+
+    csv = vertical_action_plan_csv(rows)
+    send_data XlsxWorkbook.from_csv(csv, title: "Vertical Action Plan", sheet_name: "Vertical Plan"),
+      filename: "vertical_action_plan_#{Time.current.strftime("%Y%m%d_%H%M%S")}.xlsx",
+      type: XlsxWorkbook::CONTENT_TYPE
+  end
+
   def update
     project_name = params[:project].to_s
     unless project_name.in?(vertical_project_options)
@@ -45,6 +62,7 @@ class VerticalActionPlansController < ApplicationController
         end
 
         row.save!
+        ActionPlanMonthChange.capture_row_deltas!(row, changed_by: current_user)
         updated_count += 1
       end
     end
@@ -119,6 +137,26 @@ class VerticalActionPlansController < ApplicationController
 
   def project_ownership_lookup_key(po_id, project_name)
     "po_project:#{po_id}:#{ProjectOwnership.normalize_project_key(project_name)}"
+  end
+
+  def vertical_action_plan_csv(rows)
+    CSV.generate(headers: true) do |csv|
+      csv << [
+        *ActionPlanRow.display_columns(admin: current_user.admin?).map { |column| column[:header] },
+        *ActionPlanRow::MONTH_DISPLAY_PAIRS.flat_map { |pair| [ pair[:target_label], pair[:achievement_label] ] },
+        "Total Target",
+        "Total Achievement"
+      ]
+
+      rows.each do |row|
+        csv << [
+          *ActionPlanRow.display_columns(admin: current_user.admin?).map { |column| row.public_send(column[:attribute]) },
+          *ActionPlanRow::MONTH_DISPLAY_PAIRS.flat_map { |pair| [ row.public_send(pair[:target_column]), row.public_send(pair[:achievement_column]) ] },
+          row.monthly_total,
+          row.target_total
+        ]
+      end
+    end
   end
 
   def integer_value(raw)

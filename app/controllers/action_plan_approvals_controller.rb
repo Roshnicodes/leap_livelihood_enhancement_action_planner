@@ -1,3 +1,5 @@
+require "csv"
+
 class ActionPlanApprovalsController < ApplicationController
   before_action :require_login
   before_action :set_stage
@@ -12,10 +14,25 @@ class ActionPlanApprovalsController < ApplicationController
       .order(submitted_at: :desc)
       .to_a
     @pending_submissions = @submissions.select { |submission| awaiting_this_stage?(submission) }
+
+    respond_to do |format|
+      format.html
+      format.csv do
+        send_data action_plan_approvals_csv,
+          filename: "action_plan_#{@stage}_approvals_#{Time.current.strftime("%Y%m%d_%H%M%S")}.csv",
+          type: "text/csv; charset=utf-8"
+      end
+      format.xlsx do
+        send_data XlsxWorkbook.from_csv(action_plan_approvals_csv, title: "Action Plan #{@stage.titleize} Approvals", sheet_name: "Approvals"),
+          filename: "action_plan_#{@stage}_approvals_#{Time.current.strftime("%Y%m%d_%H%M%S")}.xlsx",
+          type: XlsxWorkbook::CONTENT_TYPE
+      end
+    end
   end
 
   def approve
     @submission.update!(approval_attributes)
+    ActionPlanMonthChange.mark_submission_rows!(@submission, status: "approved") if @submission.approved?
     redirect_to action_plan_approvals_path(stage: @stage), notice: "Action plan approved successfully."
   end
 
@@ -156,6 +173,31 @@ class ActionPlanApprovalsController < ApplicationController
       submission.coo_approver_id == current_user.employee&.id
     else
       false
+    end
+  end
+
+  def action_plan_approvals_csv
+    CSV.generate(headers: true) do |csv|
+      csv << [ "Project", "Plan Type", "Project Owner", "Submitted By", "Submitted At", "No of Activity", "Total Target", "Month Changes", "Current Stage", "PO Approval", "COO Approval", "Director View", "Remark" ]
+
+      @submissions.each do |submission|
+        summary = submission_action_plan_summary(submission)
+        csv << [
+          submission.project_name,
+          submission.plan_type_label,
+          submission.project_ownership&.po_name.presence || helpers.action_plan_stage_actor(submission, "po"),
+          [ submission.employee.employee_code, submission.employee.name ].compact_blank.join(" - "),
+          helpers.format_record_datetime(submission.submitted_at),
+          summary[:row_count],
+          summary[:target_total],
+          summary[:changed_month_count],
+          submission.status_label,
+          helpers.action_plan_stage_status(submission, "po")[:label],
+          helpers.action_plan_stage_status(submission, "coo")[:label],
+          helpers.action_plan_stage_status(submission, "director")[:label],
+          submission.submission_remark
+        ]
+      end
     end
   end
 

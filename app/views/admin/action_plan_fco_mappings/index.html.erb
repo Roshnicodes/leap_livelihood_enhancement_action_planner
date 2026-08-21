@@ -1,0 +1,187 @@
+<% content_for :title, "FCO Access Mapping | LEAP" %>
+
+<section class="page-header">
+  <div>
+    <p class="eyebrow">PMC workspace</p>
+    <h1>FCO Access Mapping</h1>
+    <p class="muted">Assign one or more Action Plan FCO offices to an employee login.</p>
+  </div>
+  <div class="header-card">
+    <span>Mapped Employees</span>
+    <strong><%= @mapped_employees.size %></strong>
+  </div>
+</section>
+
+<section class="metric-grid metric-grid-compact">
+  <article class="metric metric-teal"><span>Available FCO</span><strong><%= @fco_options.size %></strong></article>
+  <article class="metric metric-blue"><span>Mapped Employees</span><strong><%= @mapped_employees.size %></strong></article>
+  <article class="metric metric-gold"><span>Total Mappings</span><strong><%= @mapping_rows.size %></strong></article>
+</section>
+
+<section class="table-panel import-panel">
+  <div class="table-heading">
+    <div>
+        <h2>Choose employee</h2>
+        <p class="muted">Mapped FCO rows control what an FCO login can see in Action Plan and Achievement screens.</p>
+      </div>
+      <div class="table-actions">
+        <%= link_to "Download Mapping List", admin_action_plan_fco_mapping_path(format: :xlsx), class: "secondary-button" %>
+      </div>
+    </div>
+
+  <%= form_with url: admin_action_plan_fco_mapping_path, method: :get, class: "filter-form action-plan-filter-form" do |form| %>
+    <label>
+      <span class="filter-label">Employee</span>
+      <%= form.select :employee_id,
+        options_from_collection_for_select(@employees, :id, ->(employee) { "#{employee.employee_code} - #{employee.name}" }, @selected_employee&.id),
+        {},
+        class: "select",
+        onchange: "this.form.requestSubmit()" %>
+    </label>
+  <% end %>
+</section>
+
+<section class="table-panel import-panel">
+  <div class="table-heading">
+    <div>
+      <h2>Import FCO mapping</h2>
+      <p class="muted">Upload CSV/XLSX with columns: Employee Code, FCO ID, FCO Name. Import adds or updates listed mappings only; old mappings remain safe.</p>
+    </div>
+  </div>
+
+  <%= form_with url: admin_import_action_plan_fco_mapping_path, method: :post, multipart: true, class: "import-form" do |form| %>
+    <div class="import-grid pis-master-grid">
+      <label>
+        <span>FCO mapping file</span>
+        <%= form.file_field :mapping_file, accept: ".csv,.xlsx", class: "input" %>
+      </label>
+    </div>
+    <div class="submit-panel">
+      <p>Existing employee mappings will not be deleted by import. Use manual checkboxes when you need to remove access.</p>
+      <%= form.submit "Import FCO Mapping", class: "submit-plan-button" %>
+    </div>
+  <% end %>
+</section>
+
+<% if @selected_employee %>
+  <section class="table-panel">
+    <div class="table-heading">
+      <div>
+        <h2><%= @selected_employee.name %></h2>
+        <p class="muted">Employee ID: <%= @selected_employee.employee_code %>. Current saved mapping is shown selected below.</p>
+      </div>
+      <div class="table-actions">
+        <span class="table-count"><%= @selected_fco_ids.size %> mapped</span>
+      </div>
+    </div>
+
+    <%= form_with url: admin_action_plan_fco_mapping_path, method: :patch, class: "import-form" do %>
+      <%= hidden_field_tag :employee_id, @selected_employee.id %>
+      <div class="responsive-table">
+        <table>
+          <thead>
+            <tr>
+              <th>Access</th>
+              <th>FCO ID</th>
+              <th>FCO Name</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @fco_options.each do |fco| %>
+              <tr>
+                <td>
+                  <%= check_box_tag "fco_ids[]", fco[:fco_id], @selected_fco_ids.include?(fco[:fco_id]), id: "fco_id_#{fco[:fco_id]}" %>
+                </td>
+                <td><span class="code-pill"><%= fco[:fco_id] %></span></td>
+                <td><label for="fco_id_<%= fco[:fco_id] %>"><%= fco[:fco_name] %></label></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="submit-panel">
+        <p>Only this employee's FCO access will change after save. Other employees' existing mappings stay unchanged.</p>
+        <%= submit_tag "Save FCO Access", class: "submit-plan-button" %>
+      </div>
+    <% end %>
+  </section>
+<% end %>
+
+<section class="table-panel" data-searchable-table>
+  <div class="table-heading">
+    <div>
+      <h2>Mapped employees</h2>
+      <p class="muted">Current FCO access assignments.</p>
+    </div>
+    <div class="table-actions">
+      <input type="search" class="table-search" placeholder="Search mappings" data-table-search-input>
+      <span class="table-count" data-filtered-count data-count-label="employees"><%= @mapped_employees.size %> employees</span>
+    </div>
+  </div>
+
+  <div class="responsive-table">
+    <table>
+      <thead>
+        <tr>
+          <th>Employee ID</th>
+          <th>Name</th>
+          <th>Mapped FCO</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @mapped_employees.each do |employee| %>
+          <tr>
+            <td><span class="code-pill"><%= employee.employee_code %></span></td>
+            <td><%= employee.name %></td>
+            <td><%= employee.action_plan_fco_mappings.order(:fco_name).map { |mapping| "#{mapping.fco_id} - #{mapping.fco_name}" }.join(", ") %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="table-panel" data-searchable-table>
+  <div class="table-heading">
+    <div>
+      <h2>Mapping detail</h2>
+      <p class="muted">One row per employee and FCO office.</p>
+    </div>
+    <div class="table-actions">
+      <input type="search" class="table-search" placeholder="Search detail" data-table-search-input>
+      <span class="table-count" data-filtered-count data-count-label="mappings"><%= @mapping_rows.size %> mappings</span>
+    </div>
+  </div>
+
+  <div class="responsive-table">
+    <table>
+      <thead>
+        <tr>
+          <th>Employee ID</th>
+          <th>Name</th>
+          <th>FCO ID</th>
+          <th>FCO Name</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @mapping_rows.each do |mapping| %>
+          <tr>
+            <td><span class="code-pill"><%= mapping.employee_code %></span></td>
+            <td><%= mapping.employee&.name %></td>
+            <td><span class="code-pill"><%= mapping.fco_id %></span></td>
+            <td><%= mapping.fco_name %></td>
+            <td>
+              <%= button_to "Remove",
+                admin_destroy_action_plan_fco_mapping_path(mapping),
+                method: :delete,
+                class: "return-button fco-remove-button",
+                form: { data: { turbo_confirm: "Remove #{mapping.fco_name} access from #{mapping.employee&.name}?" } } %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>

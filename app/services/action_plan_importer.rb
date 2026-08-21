@@ -1,19 +1,28 @@
 class ActionPlanImporter
   MONTH_COLUMNS = %w[apr may jun jul aug sep oct nov dec jan feb mar].freeze
   TARGET_MONTH_COLUMNS = MONTH_COLUMNS.map { |month| "#{month}_t" }.freeze
+  # The admin UI currently forces "append" so imports only insert new rows.
+  # Keep replace/update modes available here for the future mode-wise workflow.
+  ACTION_PLAN_IMPORT_MODES = %w[replace append update].freeze
 
-  def initialize(project_file: nil, action_plan_file: nil, vertical_mapping_file: nil)
+  def initialize(project_file: nil, action_plan_file: nil, vertical_mapping_file: nil, action_plan_import_mode: "replace", uploaded_by: nil)
     @project_file = project_file
     @action_plan_file = action_plan_file
     @vertical_mapping_file = vertical_mapping_file
+    @action_plan_import_mode = action_plan_import_mode.to_s.presence_in(ACTION_PLAN_IMPORT_MODES) || "replace"
+    @uploaded_by = uploaded_by
   end
 
   def import!
-    result = { project_ownerships: nil, action_plan_rows: nil, vertical_mappings: nil, vertical_logins: nil }
+    result = { project_ownerships: nil, action_plan_rows: nil, vertical_mappings: nil, vertical_logins: nil, preserved_changes: nil, reapplied_changes: nil }
 
     ActiveRecord::Base.transaction do
       result[:project_ownerships] = import_project_ownerships! if @project_file.present?
-      result[:action_plan_rows] = import_action_plan_rows! if @action_plan_file.present?
+      if @action_plan_file.present?
+        result[:action_plan_rows] = import_action_plan_rows!
+        result[:preserved_changes] = @last_action_plan_change_result[:preserved_changes]
+        result[:reapplied_changes] = @last_action_plan_change_result[:reapplied_changes]
+      end
 
       if @vertical_mapping_file.present?
         result[:vertical_mappings] = import_vertical_mappings!
@@ -130,9 +139,37 @@ class ActionPlanImporter
 
   def import_action_plan_rows!
     imported_at = Time.current
+    rows = action_plan_rows_from_file(imported_at)
 
-    rows = SpreadsheetRows.read(file_path(@action_plan_file), sheet: :first).filter_map do |row|
-      po_id = value(row, "PO_ID")
+    raise_empty_action_plan_import! if rows.empty?
+
+    preserved_changes = ActionPlanMonthChange.capture_active_deltas!(
+      source: "before_import",
+      status: "pending",
+      changed_by: @uploaded_by
+    )
+
+    imported_count = case @action_plan_import_mode
+    when "append"
+      append_new_action_plan_rows!(rows)
+    when "update"
+      update_existing_action_plan_rows!(rows)
+    else
+      replace_action_plan_rows!(rows)
+    end
+
+    reapplied_changes = ActionPlanMonthChange.apply_active_overlays!
+    @last_action_plan_change_result = {
+      preserved_changes: preserved_changes,
+      reapplied_changes: reapplied_changes
+    }
+
+    imported_count
+  end
+
+  def action_plan_rows_from_file(imported_at)
+    SpreadsheetRows.read(file_path(@action_plan_file), sheet: :first).filter_map do |row|
+      po_id = value(row, "PO_ID").presence || value(row, "Project_ID", "Project ID")
       project_name = value(row, "Project")
       next if po_id.blank? || project_name.blank?
 
@@ -176,10 +213,46 @@ class ActionPlanImporter
         **target_values
       }
     end
+  end
 
+  def replace_action_plan_rows!(rows)
     ActionPlanRow.active_import.update_all(import_flag: 1, updated_at: Time.current)
-    ActionPlanRow.insert_all!(rows) if rows.any?
+    ActionPlanRow.insert_all!(rows)
     rows.size
+  end
+
+  def append_new_action_plan_rows!(rows)
+    existing_keys = action_plan_rows_by_identity(ActionPlanRow.active_import).keys.index_with(true)
+    new_rows = rows.reject { |row| existing_keys[action_plan_identity_key(row)] }
+    ActionPlanRow.insert_all!(new_rows) if new_rows.any?
+    new_rows.size
+  end
+
+  def update_existing_action_plan_rows!(rows)
+    active_rows = action_plan_rows_by_identity(ActionPlanRow.active_import)
+    updated_count = 0
+
+    rows.each do |attributes|
+      matches = active_rows[action_plan_identity_key(attributes)] || []
+      next unless matches.size == 1
+
+      row = matches.first
+      row.assign_attributes(attributes.except(:id, :created_at, :import_flag))
+      row.import_flag = 0
+      row.save!
+      updated_count += 1
+    end
+
+    updated_count
+  end
+
+  def raise_empty_action_plan_import!
+    row = ActionPlanRow.new
+    row.errors.add(
+      :base,
+      "No action plan rows found. Check that the file has PO_ID and Project columns with values."
+    )
+    raise ActiveRecord::RecordInvalid, row
   end
 
   def import_vertical_mappings!
@@ -228,5 +301,23 @@ class ActionPlanImporter
 
   def original_month_values(month_values)
     month_values.transform_keys { |month| "original_#{month}" }
+  end
+
+  def action_plan_rows_by_identity(scope)
+    scope.to_a.group_by { |row| action_plan_identity_key(row) }
+  end
+
+  def action_plan_identity_key(row)
+    reader = row.is_a?(Hash) ? ->(attribute) { row[attribute] } : ->(attribute) { row.public_send(attribute) }
+
+    [
+      ActionPlanText.normalize(reader.call(:po_id)).to_s,
+      ActionPlanText.normalize(reader.call(:project_name)).to_s,
+      ActionPlanText.normalize(reader.call(:statte)).to_s,
+      ActionPlanText.normalize(reader.call(:user_id)).to_s,
+      ActionPlanText.normalize(reader.call(:to_id)).to_s,
+      ActionPlanRow.format_decimal_string(ActionPlanText.normalize(reader.call(:asa_theme_id)).to_s),
+      ActionPlanRow.format_decimal_string(ActionPlanText.normalize(reader.call(:asa_activity_id)).to_s)
+    ]
   end
 end

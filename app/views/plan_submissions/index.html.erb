@@ -2,6 +2,8 @@
 
 <% total_rows = @record_groups.values.sum(&:size) %>
 <% employee = current_user.employee unless current_user.admin? || ProjectSummarySubmission.summary_access?(current_user.employee) %>
+<% project_count = @record_groups.keys.compact_blank.size %>
+<% vertical_count = @activities.map(&:vertical_name).compact_blank.uniq.size %>
 
 <section class="page-header">
   <div>
@@ -39,15 +41,20 @@
   </section>
 <% end %>
 
-<section class="toolbar">
+<section class="toolbar records-filter-toolbar">
   <%= form_with url: plan_submissions_path, method: :get, class: "filter-form" do |form| %>
     <%= form.label :project, "Choose Project", class: "filter-label" %>
     <%= form.select :project, options_for_select([["All Projects", ""]] + @project_options.map { |project| [project, project] }, @selected_project), {}, class: "select", onchange: "this.form.requestSubmit()" %>
   <% end %>
+  <div class="toolbar-actions">
+    <%= link_to "Download Excel Sheet", plan_submissions_path(request.query_parameters.merge(format: :xlsx)), class: "secondary-button" %>
+  </div>
 </section>
 
 <section class="metric-grid metric-grid-compact">
   <article class="metric metric-teal"><span>No of Activity</span><strong><%= total_rows %></strong></article>
+  <article class="metric metric-ink"><span>Projects</span><strong><%= project_count %></strong></article>
+  <article class="metric metric-rose"><span>Verticals</span><strong><%= vertical_count %></strong></article>
   <article class="metric metric-blue"><span>Allocated Total</span><strong><%= currency(@activities.sum(&:allocated_fund)) %></strong></article>
 </section>
 

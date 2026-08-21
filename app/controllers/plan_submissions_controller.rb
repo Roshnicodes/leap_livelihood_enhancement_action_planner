@@ -1,3 +1,5 @@
+require "csv"
+
 class PlanSubmissionsController < ApplicationController
   before_action :require_login
   before_action :require_employee_budget_edit_access, only: :create
@@ -8,6 +10,20 @@ class PlanSubmissionsController < ApplicationController
     @selected_project = params[:project].presence_in(@project_options)
     @activities = @activities.select { |activity| activity.project_name == @selected_project } if @selected_project.present?
     @record_groups = @activities.group_by(&:project_name)
+
+    respond_to do |format|
+      format.html
+      format.csv do
+        send_data allocated_pb_csv,
+          filename: "allocated_pb_#{Time.current.strftime("%Y%m%d_%H%M%S")}.csv",
+          type: "text/csv; charset=utf-8"
+      end
+      format.xlsx do
+        send_data XlsxWorkbook.from_csv(allocated_pb_csv, title: "Allocated P&B", sheet_name: "Allocated PB"),
+          filename: "allocated_pb_#{Time.current.strftime("%Y%m%d_%H%M%S")}.xlsx",
+          type: XlsxWorkbook::CONTENT_TYPE
+      end
+    end
   end
 
   def create
@@ -79,5 +95,15 @@ class PlanSubmissionsController < ApplicationController
     return if current_user.employee.present? && !current_user.admin?
 
     redirect_to plan_submissions_path, alert: "PMC can view records but cannot edit."
+  end
+
+  def allocated_pb_csv
+    CSV.generate(headers: true) do |csv|
+      csv << [ "Project BLI Code", "Project", "Project BLI", "ASA BLI", "Allocated Budget" ]
+
+      @activities.each do |activity|
+        csv << [ activity.bli_code, activity.project_name, activity.name, activity.activity_name, activity.allocated_fund ]
+      end
+    end
   end
 end

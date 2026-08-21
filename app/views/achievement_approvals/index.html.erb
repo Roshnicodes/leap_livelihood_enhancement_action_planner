@@ -41,6 +41,7 @@
         <p class="muted">Flow: Vertical approval → Project Owner → COO (final). Director is view only. Activities are locked after vertical approval.</p>
       </div>
       <div class="table-actions">
+        <%= link_to "Download Excel Sheet", achievement_approvals_path(stage: @stage, format: :xlsx), class: "secondary-button" %>
         <input type="search" class="table-search" placeholder="Search achievements" data-table-search-input>
         <span class="table-count" data-filtered-count data-count-label="activities"><%= @submissions.size %> activities</span>
       </div>

@@ -1,3 +1,5 @@
+require "csv"
+
 class AchievementApprovalsController < ApplicationController
   before_action :require_login
   before_action :set_stage
@@ -12,6 +14,20 @@ class AchievementApprovalsController < ApplicationController
       .order(submitted_at: :desc)
       .to_a
     @pending_submissions = @submissions.select { |submission| awaiting_this_stage?(submission) }
+
+    respond_to do |format|
+      format.html
+      format.csv do
+        send_data achievement_approvals_csv,
+          filename: "achievement_#{@stage}_approvals_#{Time.current.strftime("%Y%m%d_%H%M%S")}.csv",
+          type: "text/csv; charset=utf-8"
+      end
+      format.xlsx do
+        send_data XlsxWorkbook.from_csv(achievement_approvals_csv, title: "Achievement #{@stage.titleize} Approvals", sheet_name: "Approvals"),
+          filename: "achievement_#{@stage}_approvals_#{Time.current.strftime("%Y%m%d_%H%M%S")}.xlsx",
+          type: XlsxWorkbook::CONTENT_TYPE
+      end
+    end
   end
 
   def approve
@@ -153,6 +169,33 @@ class AchievementApprovalsController < ApplicationController
         remark: detail&.remark,
         files: detail&.files
       }
+    end
+  end
+
+  def achievement_approvals_csv
+    CSV.generate(headers: true) do |csv|
+      csv << [ "Project", "FCO", "FCO ID", "TO", "Vertical", "Month", "No of Activity", "Target", "Achievement", "Current Stage", "Vertical Approval", "PO Approval", "COO Approval", "Director View", "Remark" ]
+
+      @submissions.each do |submission|
+        rows = achievement_submission_rows(submission)
+        csv << [
+          submission.project_name,
+          submission.fco_name,
+          submission.fco_id,
+          submission.to_name,
+          "#{submission.state_code} / #{submission.theme_label}",
+          submission.month.capitalize,
+          rows.size,
+          rows.sum { |item| item[:target_value] },
+          rows.sum { |item| item[:achievement_value] },
+          submission.status_label,
+          achievement_stage_status(submission, "vertical")[:label],
+          achievement_stage_status(submission, "po")[:label],
+          achievement_stage_status(submission, "coo")[:label],
+          achievement_stage_status(submission, "director")[:label],
+          submission.submission_remark
+        ]
+      end
     end
   end
 end

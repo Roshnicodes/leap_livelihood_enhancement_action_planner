@@ -1,3 +1,5 @@
+require "csv"
+
 class FundReportUploadsController < ApplicationController
   before_action :require_login
   before_action :require_upload_access, only: %i[create create_report_type]
@@ -8,6 +10,20 @@ class FundReportUploadsController < ApplicationController
 
   def records
     load_workspace
+
+    respond_to do |format|
+      format.html
+      format.csv do
+        send_data records_csv,
+          filename: "fund_report_records_#{Time.current.strftime("%Y%m%d_%H%M%S")}.csv",
+          type: "text/csv; charset=utf-8"
+      end
+      format.xlsx do
+        send_data XlsxWorkbook.from_csv(records_csv, title: "Fund Report Records", sheet_name: "Fund Records"),
+          filename: "fund_report_records_#{Time.current.strftime("%Y%m%d_%H%M%S")}.xlsx",
+          type: XlsxWorkbook::CONTENT_TYPE
+      end
+    end
   end
 
   def create
@@ -77,5 +93,27 @@ class FundReportUploadsController < ApplicationController
     return if current_user&.admin?
 
     redirect_to fund_report_uploads_path, alert: "PMC access required to upload fund reports."
+  end
+
+  def records_csv
+    CSV.generate(headers: true) do |csv|
+      csv << [ "Project", "Reports Name", "FY", "Letter Date", "Letter Amount", "Receipt Date", "Receipt Amount", "Document", "Email/Application Screenshot", "Uploaded By", "Uploaded At" ]
+
+      @uploads.each do |upload|
+        csv << [
+          upload.project_name,
+          upload.fund_report_type.name,
+          upload.financial_year,
+          upload.submission_letter_date,
+          upload.submission_letter_amount,
+          upload.submission_receipt_date,
+          upload.submission_receipt_amount,
+          upload.document_file.attached? ? upload.document_file.filename.to_s : nil,
+          upload.screenshot_file.attached? ? upload.screenshot_file.filename.to_s : nil,
+          upload.uploaded_by&.admin? ? "PMC" : upload.uploaded_by&.employee&.name,
+          helpers.format_record_datetime(upload.created_at)
+        ]
+      end
+    end
   end
 end

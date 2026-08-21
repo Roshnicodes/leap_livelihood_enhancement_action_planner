@@ -9,21 +9,21 @@
   </div>
   <div class="header-card">
     <span>FCO</span>
-    <strong><%= @fco_mappings.size %></strong>
+    <strong><%= @fco_display_mappings.size %></strong>
   </div>
 </section>
 
 <section class="achievement-context">
-  <% @fco_mappings.each do |mapping| %>
+  <% @fco_display_mappings.each do |mapping| %>
     <article>
       <span>Mapped FCO</span>
-      <strong><%= mapping.fco_name %></strong>
-      <small>ID <%= mapping.fco_id %></small>
+      <strong><%= mapping[:fco_name] %></strong>
+      <small>ID <%= mapping[:fco_id] %></small>
     </article>
   <% end %>
 </section>
 
-<section class="toolbar achievement-toolbar">
+<section class="toolbar achievement-toolbar records-filter-toolbar">
   <%= form_with url: achievement_entry_path,
         method: :get,
         local: true,
@@ -58,6 +58,11 @@
         autocomplete: "off",
         data: { filter: "month" } %>
     </label>
+  <% end %>
+  <% if @rows.present? %>
+    <div class="toolbar-actions">
+      <%= link_to "Download Excel Sheet", achievement_entry_path(request.query_parameters.merge(format: :xlsx)), class: "secondary-button" %>
+    </div>
   <% end %>
 </section>
 

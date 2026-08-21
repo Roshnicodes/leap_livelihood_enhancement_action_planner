@@ -14,6 +14,11 @@ class ProjectInformationSheetsController < ApplicationController
           filename: "project_information_sheet_#{Time.current.strftime("%Y%m%d_%H%M%S")}.csv",
           type: "text/csv"
       end
+      format.xlsx do
+        send_data XlsxWorkbook.from_csv(export_csv, title: "Project Information Sheet", sheet_name: "Project Info"),
+          filename: "project_information_sheet_#{Time.current.strftime("%Y%m%d_%H%M%S")}.xlsx",
+          type: XlsxWorkbook::CONTENT_TYPE
+      end
     end
   end
 

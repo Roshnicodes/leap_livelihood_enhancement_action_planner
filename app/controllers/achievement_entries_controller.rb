@@ -1,3 +1,5 @@
+require "csv"
+
 class AchievementEntriesController < ApplicationController
   before_action :require_login
   before_action :set_fco_context
@@ -15,6 +17,20 @@ class AchievementEntriesController < ApplicationController
     end
 
     load_selection
+
+    respond_to do |format|
+      format.html
+      format.csv do
+        send_data achievement_entry_csv,
+          filename: "achievement_entry_#{Time.current.strftime("%Y%m%d_%H%M%S")}.csv",
+          type: "text/csv; charset=utf-8"
+      end
+      format.xlsx do
+        send_data XlsxWorkbook.from_csv(achievement_entry_csv, title: "Achievement Entry", sheet_name: "Achievement Entry"),
+          filename: "achievement_entry_#{Time.current.strftime("%Y%m%d_%H%M%S")}.xlsx",
+          type: XlsxWorkbook::CONTENT_TYPE
+      end
+    end
   end
 
   def update
@@ -86,10 +102,22 @@ class AchievementEntriesController < ApplicationController
   def set_fco_context
     @employee = current_user.employee
     @fco_mappings = ActionPlanFcoMapping.ensure_for_employee(@employee).order(:fco_name)
+    @fco_display_mappings = fco_display_mappings
 
     return if @fco_mappings.exists?
 
     redirect_to dashboard_path, alert: "No action plan FCO mapping found for this login."
+  end
+
+  def fco_display_mappings
+    mappings = @fco_mappings.to_a
+    return mappings.map { |mapping| { fco_name: mapping.fco_name, fco_id: mapping.fco_id } } unless @employee&.employee_code.to_s == "25"
+
+    grouped = []
+    jobat_mappings = mappings.select { |mapping| mapping.fco_id.in?(%w[16 17]) }
+    grouped << { fco_name: "Jobat - FCO", fco_id: jobat_mappings.map(&:fco_id).sort.join(", ") } if jobat_mappings.any?
+
+    grouped + mappings.reject { |mapping| mapping.fco_id.in?(%w[16 17]) }.map { |mapping| { fco_name: mapping.fco_name, fco_id: mapping.fco_id } }
   end
 
   def load_selection
@@ -326,5 +354,29 @@ class AchievementEntriesController < ApplicationController
 
   def selected_rows_locked?
     @rows.present? && AchievementSubmission.locked_for_rows(@rows.map(&:id), @selected_month).exists?
+  end
+
+  def achievement_entry_csv
+    CSV.generate(headers: true) do |csv|
+      csv << [ "Project", "TO ID", "TO Name", "ASA Theme ID", "ASA Theme", "ASA Activity ID", "ASA Activity", "Project Activity", "Unit", "#{@selected_month.to_s.capitalize} Target", "#{@selected_month.to_s.capitalize} Achievement", "Remark" ]
+
+      @rows.each do |row|
+        detail = @entry_details_by_row_id[row.id]
+        csv << [
+          row.project_name,
+          row.to_id,
+          row.to_name,
+          ActionPlanRow.format_decimal_string(row.asa_theme_id),
+          row.asa_theme,
+          ActionPlanRow.format_decimal_string(row.asa_activity_id),
+          row.asa_activity_name,
+          row.activity.presence || row.activity_id,
+          row.unit_type,
+          @selected_month.present? ? row.public_send(@selected_month).to_i : nil,
+          @selected_month.present? ? row.public_send("#{@selected_month}_t").to_i : nil,
+          detail&.remark
+        ]
+      end
+    end
   end
 end

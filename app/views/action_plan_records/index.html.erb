@@ -29,7 +29,7 @@
     </label>
   <% end %>
   <div class="toolbar-actions">
-    <%= link_to "Download Excel Sheet", action_plan_records_path(request.query_parameters.merge(format: :csv)), class: "secondary-button" %>
+    <%= link_to "Download Excel Sheet", action_plan_records_path(request.query_parameters.merge(format: :xlsx)), class: "secondary-button" %>
   </div>
 </section>
 

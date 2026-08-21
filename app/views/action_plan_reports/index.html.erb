@@ -1,0 +1,269 @@
+<% content_for :title, "Action Plan Reports | LEAP" %>
+
+<section class="page-header">
+  <div>
+    <p class="eyebrow">PMC Reports</p>
+    <h1>Action Plan Status Reports</h1>
+    <p class="muted">Track who submitted, who approved, and what is pending across action plan and achievement flows.</p>
+  </div>
+  <div class="header-card">
+    <span>Pending</span>
+    <strong><%= @achievement_detail_rows.count { |row| row[:status].to_s.start_with?("Pending") } + @action_plan_detail_rows.count { |row| row[:status].to_s.start_with?("Pending") } %></strong>
+  </div>
+</section>
+
+<section class="toolbar records-filter-toolbar">
+  <div class="filter-form">
+    <label>
+      <span class="filter-label">Report</span>
+      <span class="select">All Status</span>
+    </label>
+  </div>
+  <div class="toolbar-actions">
+    <%= link_to "Download Excel Sheet", action_plan_reports_path(format: :xlsx), class: "secondary-button" %>
+  </div>
+</section>
+
+<section class="metric-grid metric-grid-compact">
+  <article class="metric metric-teal"><span>FCO</span><strong><%= @fco_submission_rows.size %></strong></article>
+  <article class="metric metric-blue"><span>Verticals</span><strong><%= @vertical_summary_rows.size %></strong></article>
+  <article class="metric"><span>Action Plans</span><strong><%= @action_plan_detail_rows.size %></strong></article>
+  <article class="metric metric-gold"><span>Achievements</span><strong><%= @achievement_detail_rows.size %></strong></article>
+</section>
+
+<section class="table-panel approval-records-panel" data-searchable-table>
+  <div class="table-heading">
+    <div>
+      <p class="eyebrow">FCO Wise Summary</p>
+      <h2>Achievement Submitted Status</h2>
+    </div>
+    <div class="table-actions">
+      <input type="search" class="table-search" placeholder="Search FCO" data-table-search-input>
+      <span class="table-count" data-filtered-count data-count-label="FCO"><%= @fco_submission_rows.size %> FCO</span>
+    </div>
+  </div>
+
+  <div class="responsive-table sticky-table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>State</th>
+          <th>FCO</th>
+          <% ActionPlanStatusReport::MONTHS.each do |month| %>
+            <th><%= month.capitalize %></th>
+          <% end %>
+          <th>Total Submitted</th>
+          <th>Total Pending</th>
+          <th>Total Approved</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @fco_submission_rows.each do |row| %>
+          <tr>
+            <td><%= row[:state].presence || "-" %></td>
+            <td><strong><%= row[:fco_name] %></strong><div class="muted"><%= row[:fco_id] %></div></td>
+            <% ActionPlanStatusReport::MONTHS.each do |month| %>
+              <td><span class="status-badge status-<%= row[:statuses][month] == "Yes" ? "approved" : "not_submitted" %>"><%= row[:statuses][month] %></span></td>
+            <% end %>
+            <td><span class="code-pill"><%= row[:total_submitted] %></span></td>
+            <td><span class="code-pill"><%= row[:total_pending] %></span></td>
+            <td><span class="code-pill"><%= row[:total_approved] %></span></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="table-panel approval-records-panel" data-searchable-table>
+  <div class="table-heading">
+    <div>
+      <p class="eyebrow">FCO Wise Summary</p>
+      <h2>Achievement Approval Status</h2>
+    </div>
+    <div class="table-actions">
+      <input type="search" class="table-search" placeholder="Search status" data-table-search-input>
+      <span class="table-count" data-filtered-count data-count-label="FCO"><%= @fco_approval_rows.size %> FCO</span>
+    </div>
+  </div>
+
+  <div class="responsive-table sticky-table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>State</th>
+          <th>FCO</th>
+          <% ActionPlanStatusReport::MONTHS.each do |month| %>
+            <th><%= month.capitalize %></th>
+          <% end %>
+          <th>Total Pending</th>
+          <th>Total Approved</th>
+          <th>Total Returned</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @fco_approval_rows.each do |row| %>
+          <tr>
+            <td><%= row[:state].presence || "-" %></td>
+            <td><strong><%= row[:fco_name] %></strong><div class="muted"><%= row[:fco_id] %></div></td>
+            <% ActionPlanStatusReport::MONTHS.each do |month| %>
+              <% status = row[:statuses][month] %>
+              <td><span class="status-badge status-<%= status == "Approved" ? "approved" : status == "Returned" ? "returned" : status.start_with?("Pending") ? "pending" : "not_submitted" %>"><%= status %></span></td>
+            <% end %>
+            <td><span class="code-pill"><%= row[:total_pending] %></span></td>
+            <td><span class="code-pill"><%= row[:total_approved] %></span></td>
+            <td><span class="code-pill"><%= row[:total_returned] %></span></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="table-panel approval-records-panel" data-searchable-table>
+  <div class="table-heading">
+    <div>
+      <p class="eyebrow">Verticals Wise Summary</p>
+      <h2>Approval ownership</h2>
+    </div>
+    <div class="table-actions">
+      <input type="search" class="table-search" placeholder="Search verticals" data-table-search-input>
+      <span class="table-count" data-filtered-count data-count-label="verticals"><%= @vertical_summary_rows.size %> verticals</span>
+    </div>
+  </div>
+
+  <div class="responsive-table">
+    <table>
+      <thead>
+        <tr>
+          <th>Vertical Name</th>
+          <th>State</th>
+          <th>ASA Theme ID</th>
+          <th>Approver</th>
+          <th>Total FCO</th>
+          <th>No. of FCO Pending for Approval</th>
+          <th>No. of FCO Approved</th>
+          <th>No. of FCO Returned</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @vertical_summary_rows.each do |row| %>
+          <tr>
+            <td><strong><%= row[:vertical_name] %></strong></td>
+            <td><%= row[:state] %></td>
+            <td><span class="code-pill"><%= row[:asa_theme_id] %></span></td>
+            <td><%= row[:approver] %></td>
+            <td><span class="code-pill"><%= row[:total_fco] %></span></td>
+            <td><span class="code-pill"><%= row[:pending_fco] %></span></td>
+            <td><span class="code-pill"><%= row[:approved_fco] %></span></td>
+            <td><span class="code-pill"><%= row[:returned_fco] %></span></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="table-panel approval-records-panel" data-searchable-table>
+  <div class="table-heading">
+    <div>
+      <p class="eyebrow">Details</p>
+      <h2>Action Plan Status</h2>
+    </div>
+    <div class="table-actions">
+      <input type="search" class="table-search" placeholder="Search action plans" data-table-search-input>
+      <span class="table-count" data-filtered-count data-count-label="plans"><%= @action_plan_detail_rows.size %> plans</span>
+    </div>
+  </div>
+
+  <div class="responsive-table">
+    <table>
+      <thead>
+        <tr>
+          <th>Project</th>
+          <th>Plan Type</th>
+          <th>Submitted By</th>
+          <th>Submitted At</th>
+          <th>Status</th>
+          <th>PO Approver</th>
+          <th>PO Status</th>
+          <th>COO Approver</th>
+          <th>COO Status</th>
+          <th>Director View</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @action_plan_detail_rows.each do |row| %>
+          <tr>
+            <td><strong><%= row[:project] %></strong></td>
+            <td><span class="code-pill"><%= row[:plan_type] %></span></td>
+            <td><%= row[:submitted_by] %></td>
+            <td><%= row[:submitted_at] %></td>
+            <td><span class="status-badge status-<%= row[:status] == "Approved" ? "approved" : row[:status] == "Returned" ? "returned" : "pending" %>"><%= row[:status] %></span></td>
+            <td><%= row[:po_approver] %></td>
+            <td><%= row[:po_status] %></td>
+            <td><%= row[:coo_approver] %></td>
+            <td><%= row[:coo_status] %></td>
+            <td><%= row[:director_view] %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="table-panel approval-records-panel" data-searchable-table>
+  <div class="table-heading">
+    <div>
+      <p class="eyebrow">Details</p>
+      <h2>Achievement Status</h2>
+    </div>
+    <div class="table-actions">
+      <input type="search" class="table-search" placeholder="Search achievements" data-table-search-input>
+      <span class="table-count" data-filtered-count data-count-label="achievements"><%= @achievement_detail_rows.size %> achievements</span>
+    </div>
+  </div>
+
+  <div class="responsive-table">
+    <table>
+      <thead>
+        <tr>
+          <th>Project</th>
+          <th>FCO / TO</th>
+          <th>Vertical</th>
+          <th>Month</th>
+          <th>Submitted By</th>
+          <th>Submitted At</th>
+          <th>Status</th>
+          <th>Vertical Approver</th>
+          <th>Vertical Status</th>
+          <th>PO Approver</th>
+          <th>PO Status</th>
+          <th>COO Approver</th>
+          <th>COO Status</th>
+          <th>Director View</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @achievement_detail_rows.each do |row| %>
+          <tr>
+            <td><strong><%= row[:project] %></strong><div class="muted"><%= row[:state] %></div></td>
+            <td><%= row[:fco] %><div class="muted"><%= row[:to] %></div></td>
+            <td><%= row[:vertical] %></td>
+            <td><span class="code-pill"><%= row[:month] %></span></td>
+            <td><%= row[:submitted_by] %></td>
+            <td><%= row[:submitted_at] %></td>
+            <td><span class="status-badge status-<%= row[:status] == "Approved" ? "approved" : row[:status] == "Returned" ? "returned" : "pending" %>"><%= row[:status] %></span></td>
+            <td><%= row[:vertical_approver] %></td>
+            <td><%= row[:vertical_status] %></td>
+            <td><%= row[:po_approver] %></td>
+            <td><%= row[:po_status] %></td>
+            <td><%= row[:coo_approver] %></td>
+            <td><%= row[:coo_status] %></td>
+            <td><%= row[:director_view] %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>

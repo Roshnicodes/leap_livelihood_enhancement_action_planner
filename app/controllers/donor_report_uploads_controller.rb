@@ -1,3 +1,5 @@
+require "csv"
+
 class DonorReportUploadsController < ApplicationController
   before_action :require_login
   before_action :require_upload_access, only: %i[create create_report_type]
@@ -8,6 +10,20 @@ class DonorReportUploadsController < ApplicationController
 
   def records
     load_workspace
+
+    respond_to do |format|
+      format.html
+      format.csv do
+        send_data records_csv,
+          filename: "donor_report_records_#{Time.current.strftime("%Y%m%d_%H%M%S")}.csv",
+          type: "text/csv; charset=utf-8"
+      end
+      format.xlsx do
+        send_data XlsxWorkbook.from_csv(records_csv, title: "Donor Report Records", sheet_name: "Donor Records"),
+          filename: "donor_report_records_#{Time.current.strftime("%Y%m%d_%H%M%S")}.xlsx",
+          type: XlsxWorkbook::CONTENT_TYPE
+      end
+    end
   end
 
   def create
@@ -71,5 +87,26 @@ class DonorReportUploadsController < ApplicationController
     return if current_user&.admin?
 
     redirect_to donor_report_uploads_path, alert: "PMC access required to upload donor reports."
+  end
+
+  def records_csv
+    CSV.generate(headers: true) do |csv|
+      csv << [ "Project", "Reports Name", "Frequency", "FY", "Submission Date", "Document", "Email/Application Screenshot", "Uploaded By", "Uploaded At" ]
+
+      @uploads.each do |upload|
+        document_attachment = upload.document_file.attached? ? upload.document_file : upload.file
+        csv << [
+          upload.project_name,
+          upload.donor_report_type.name,
+          upload.frequency,
+          upload.financial_year,
+          upload.submission_date,
+          document_attachment&.attached? ? document_attachment.filename.to_s : nil,
+          upload.screenshot_file.attached? ? upload.screenshot_file.filename.to_s : nil,
+          upload.uploaded_by&.admin? ? "PMC" : upload.uploaded_by&.employee&.name,
+          helpers.format_record_datetime(upload.created_at)
+        ]
+      end
+    end
   end
 end

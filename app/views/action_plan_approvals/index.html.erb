@@ -31,6 +31,7 @@
         </p>
       </div>
       <div class="table-actions">
+        <%= link_to "Download Excel Sheet", action_plan_approvals_path(stage: @stage, format: :xlsx), class: "secondary-button" %>
         <input type="search" class="table-search" placeholder="Search submissions" data-table-search-input>
         <span class="table-count" data-filtered-count data-count-label="activities"><%= @submissions.size %> activities</span>
       </div>

@@ -1,3 +1,5 @@
+require "csv"
+
 class ProjectSummaryRecordsController < ApplicationController
   before_action :require_login
   before_action :require_employee_budget_edit_access, only: %i[update bulk_update]
@@ -19,6 +21,20 @@ class ProjectSummaryRecordsController < ApplicationController
     @total_records = @record_groups.size
     @overall_summary = overall_record_summary(@record_groups)
     @activity_summaries = activity_summaries_for(@record_groups)
+
+    respond_to do |format|
+      format.html
+      format.csv do
+        send_data project_summary_records_csv,
+          filename: "project_summary_records_#{Time.current.strftime("%Y%m%d_%H%M%S")}.csv",
+          type: "text/csv; charset=utf-8"
+      end
+      format.xlsx do
+        send_data XlsxWorkbook.from_csv(project_summary_records_csv, title: "Project Summary Records", sheet_name: "Summary Records"),
+          filename: "project_summary_records_#{Time.current.strftime("%Y%m%d_%H%M%S")}.xlsx",
+          type: XlsxWorkbook::CONTENT_TYPE
+      end
+    end
   end
 
   def update
@@ -441,5 +457,41 @@ class ProjectSummaryRecordsController < ApplicationController
       .order(submitted_at: :desc)
       .distinct
       .first_or_initialize
+  end
+
+  def project_summary_records_csv
+    CSV.generate(headers: true) do |csv|
+      csv << [
+        "Project",
+        "Employee",
+        "Status",
+        "Submitted At",
+        "Project BLI Code",
+        "ASA Activity",
+        "Project P&B",
+        "Total Amount",
+        *VerticalPercent::MONTH_COLUMNS.map { |month| month.to_s.titleize },
+        "Changed Total",
+        "Remark"
+      ]
+
+      @record_groups.each do |record|
+        record[:rows].each do |row|
+          csv << [
+            record[:project_name],
+            record[:employee].name,
+            record[:status_label],
+            helpers.format_record_datetime(record[:submitted_at]),
+            row[:bli_code],
+            row[:activity_name],
+            row[:vertical_name],
+            row[:total_amount],
+            *VerticalPercent::MONTH_COLUMNS.map { |month| row[:month_amounts][month] },
+            row[:changed_total],
+            row[:remark]
+          ]
+        end
+      end
+    end
   end
 end

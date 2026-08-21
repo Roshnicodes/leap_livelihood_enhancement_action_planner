@@ -34,9 +34,9 @@
 
           <nav class="sidebar-nav" data-sidebar-nav>
             <% if current_user.admin? %>
-              <% admin_open = controller_path == "admin/employees" %>
+              <% admin_open = controller_path.in?(%w[admin/employees admin/action_plan_fco_mappings]) %>
               <% pb_controllers = %w[plan_submissions budget_utilizations budget_utilization_reports project_summary_records project_summary_approvals] %>
-              <% ap_controllers = %w[action_plans vertical_action_plans action_plan_records achievement_approvals project_summary_approval_records] %>
+              <% ap_controllers = %w[action_plans vertical_action_plans action_plan_records action_plan_reports achievement_approvals project_summary_approval_records] %>
               <% report_controllers = %w[pis_report_uploads donor_report_uploads fund_report_uploads report_masters report_information project_information_sheets] %>
               <% pb_open = pb_controllers.include?(controller_name) || controller_path == "admin/pb_imports" %>
               <% ap_open = ap_controllers.include?(controller_name) || controller_path == "admin/action_plan_imports" %>
@@ -52,6 +52,10 @@
                   <%= link_to admin_employees_path, class: controller_path == "admin/employees" ? "side-link active" : "side-link" do %>
                     <span class="side-icon">E</span>
                     <span>Employees</span>
+                  <% end %>
+                  <%= link_to admin_action_plan_fco_mapping_path, class: controller_path == "admin/action_plan_fco_mappings" ? "side-link active" : "side-link" do %>
+                    <span class="side-icon">F</span>
+                    <span>FCO Access</span>
                   <% end %>
                 </div>
               </div>
@@ -129,6 +133,10 @@
                     <% if action_record_pending.positive? %>
                       <span class="nav-alert-badge"><%= action_record_pending %></span>
                     <% end %>
+                  <% end %>
+                  <%= link_to action_plan_reports_path, class: controller_name == "action_plan_reports" ? "side-link active" : "side-link" do %>
+                    <span class="side-icon">X</span>
+                    <span>Action Plan Reports</span>
                   <% end %>
                 </div>
               </div>

@@ -50,6 +50,7 @@
         Latest action plan import:
         <strong><%= format_record_datetime(@latest_action_plan_imported_at) || "Not imported yet" %></strong>
       </p>
+      <p>Project BLI mapping import adds new rows only. Existing action plan data will not be updated or replaced.</p>
       <%= form.submit "Import Action Plan", class: "submit-plan-button" %>
     </div>
   <% end %>

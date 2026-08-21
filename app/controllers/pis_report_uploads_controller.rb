@@ -1,3 +1,5 @@
+require "csv"
+
 class PisReportUploadsController < ApplicationController
   before_action :require_login
   before_action :require_upload_access, only: %i[create create_document_type]
@@ -8,6 +10,20 @@ class PisReportUploadsController < ApplicationController
 
   def records
     load_workspace
+
+    respond_to do |format|
+      format.html
+      format.csv do
+        send_data records_csv,
+          filename: "pis_report_records_#{Time.current.strftime("%Y%m%d_%H%M%S")}.csv",
+          type: "text/csv; charset=utf-8"
+      end
+      format.xlsx do
+        send_data XlsxWorkbook.from_csv(records_csv, title: "PIS Report Records", sheet_name: "PIS Records"),
+          filename: "pis_report_records_#{Time.current.strftime("%Y%m%d_%H%M%S")}.xlsx",
+          type: XlsxWorkbook::CONTENT_TYPE
+      end
+    end
   end
 
   def create
@@ -67,5 +83,24 @@ class PisReportUploadsController < ApplicationController
     return if current_user&.admin?
 
     redirect_to pis_report_uploads_path, alert: "PMC access required to upload documents."
+  end
+
+  def records_csv
+    CSV.generate(headers: true) do |csv|
+      csv << [ "Project", "Doc Name", "FY", "Submission Date", "Document", "Email/Application Screenshot", "Uploaded By", "Uploaded At" ]
+
+      @documents.each do |document|
+        csv << [
+          document.project_name,
+          document.pis_document_type.name,
+          document.financial_year,
+          document.submission_date,
+          document.file.attached? ? document.file.filename.to_s : nil,
+          document.screenshot_file.attached? ? document.screenshot_file.filename.to_s : nil,
+          document.uploaded_by&.admin? ? "PMC" : document.uploaded_by&.employee&.name,
+          helpers.format_record_datetime(document.created_at)
+        ]
+      end
+    end
   end
 end

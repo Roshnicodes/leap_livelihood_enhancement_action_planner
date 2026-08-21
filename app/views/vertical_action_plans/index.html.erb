@@ -34,6 +34,7 @@
     editable_targets: @editable_targets,
     show_admin_columns: current_user.admin?,
     allow_all_projects: true,
+    download_path: download_vertical_action_plans_path(request.query_parameters),
     submit_with_targets: true,
     existing_submission: @existing_submission,
     balance_warning: @balance_warning,

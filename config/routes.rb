@@ -48,10 +48,13 @@ Rails.application.routes.draw do
   get "achievement_approvals/:stage" => "achievement_approvals#index", as: :achievement_approvals
   patch "achievement_approvals/:stage/:id/approve" => "achievement_approvals#approve", as: :approve_achievement
   patch "achievement_approvals/:stage/:id/return" => "achievement_approvals#return_submission", as: :return_achievement
-  resources :vertical_action_plans, only: %i[index create]
+  resources :vertical_action_plans, only: %i[index create] do
+    get :download, on: :collection
+  end
   patch "vertical_action_plans" => "vertical_action_plans#update"
   get "action_plan_records" => "action_plan_records#index"
   post "action_plan_records" => "action_plan_records#create"
+  get "action_plan_reports" => "action_plan_reports#index"
   get "action_plan_approvals/:stage" => "action_plan_approvals#index", as: :action_plan_approvals
   patch "action_plan_approvals/:stage/:id/approve" => "action_plan_approvals#approve", as: :approve_action_plan
   patch "action_plan_approvals/:stage/:id/return" => "action_plan_approvals#return_plan", as: :return_action_plan
@@ -69,6 +72,10 @@ Rails.application.routes.draw do
 
   namespace :admin do
     resources :employees, only: :index
+    get "action_plan_fco_mapping" => "action_plan_fco_mappings#index", as: :action_plan_fco_mapping
+    patch "action_plan_fco_mapping" => "action_plan_fco_mappings#update"
+    post "action_plan_fco_mapping/import" => "action_plan_fco_mappings#import", as: :import_action_plan_fco_mapping
+    delete "action_plan_fco_mapping/:id" => "action_plan_fco_mappings#destroy", as: :destroy_action_plan_fco_mapping
     resources :pb_imports, only: %i[index create] do
       get :download, on: :collection
       get :download_file, on: :member

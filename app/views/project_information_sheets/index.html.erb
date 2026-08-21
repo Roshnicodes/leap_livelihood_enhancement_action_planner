@@ -26,13 +26,13 @@
           <%= file_field_tag :project_information_file, class: "input", accept: ".csv,.xlsx", required: true %>
         </label>
         <%= form.submit "Import", class: "submit-plan-button" %>
-        <%= link_to "Export CSV", project_information_sheets_path(request.query_parameters.merge(format: :csv)), class: "secondary-button project-info-export-button" %>
+        <%= link_to "Download Excel Sheet", project_information_sheets_path(request.query_parameters.merge(format: :xlsx)), class: "secondary-button project-info-export-button" %>
       </div>
     <% end %>
   </section>
 <% end %>
 
-<section class="toolbar report-info-filter-toolbar project-info-filter-panel">
+<section class="toolbar report-info-filter-toolbar project-info-filter-panel records-filter-toolbar">
   <%= form_with url: project_information_sheets_path, method: :get, class: "budget-utilization-filter-form", html: { autocomplete: "off" } do |form| %>
     <label>
       <span class="filter-label">Project</span>
@@ -51,6 +51,11 @@
         class: "select",
         onchange: "this.form.requestSubmit()" %>
     </label>
+  <% end %>
+  <% unless current_user.admin? %>
+    <div class="toolbar-actions">
+      <%= link_to "Download Excel Sheet", project_information_sheets_path(request.query_parameters.merge(format: :xlsx)), class: "secondary-button" %>
+    </div>
   <% end %>
 </section>
 

@@ -19,10 +19,10 @@ module Admin
     end
 
     def download
-      filename = "action_plan_#{Time.current.strftime("%Y%m%d_%H%M%S")}.csv"
-      send_data ActionPlanExporter.active_csv,
+      filename = "action_plan_#{Time.current.strftime("%Y%m%d_%H%M%S")}.xlsx"
+      send_data XlsxWorkbook.from_csv(ActionPlanExporter.active_csv, title: "Action Plan", sheet_name: "Action Plan"),
         filename: filename,
-        type: "text/csv; charset=utf-8"
+        type: XlsxWorkbook::CONTENT_TYPE
     end
 
     def download_file
@@ -51,7 +51,9 @@ module Admin
       result = ActionPlanImporter.new(
         project_file: saved_files[:project_file]&.absolute_path,
         action_plan_file: saved_files[:action_plan_file]&.absolute_path,
-        vertical_mapping_file: saved_files[:vertical_mapping_file]&.absolute_path
+        vertical_mapping_file: saved_files[:vertical_mapping_file]&.absolute_path,
+        action_plan_import_mode: "append",
+        uploaded_by: current_user
       ).import!
 
       mark_saved_files_imported!(saved_files, result)
@@ -64,6 +66,12 @@ module Admin
       if result[:action_plan_rows]
         id_count = ActionPlanRow.active_import.where.not(id_new: [ nil, "" ]).count
         messages << "#{id_count} rows with ID_New"
+        messages << "#{result[:preserved_changes]} pending month changes preserved"
+        if result[:reapplied_changes]
+          messages << "#{result[:reapplied_changes][:applied_cells]} month changes reapplied"
+          messages << "#{result[:reapplied_changes][:skipped_cells]} unmatched month changes" if result[:reapplied_changes][:skipped_cells].positive?
+          messages << "#{result[:reapplied_changes][:merged_cells]} month changes already merged" if result[:reapplied_changes][:merged_cells].positive?
+        end
       end
 
       redirect_to admin_action_plan_imports_path, notice: messages.join(", ").presence || "Action plan import completed."
