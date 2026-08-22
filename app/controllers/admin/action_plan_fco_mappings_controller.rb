@@ -40,6 +40,8 @@ module Admin
             mapping.fco_name = fco[:fco_name]
           end
         end
+
+        ActionPlanFcoMapping.enable_login_for!(@selected_employee) if selected_fco_ids.any?
       end
 
       redirect_to admin_action_plan_fco_mapping_path(employee_id: @selected_employee.id),

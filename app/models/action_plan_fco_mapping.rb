@@ -23,8 +23,8 @@ class ActionPlanFcoMapping < ApplicationRecord
     result = { imported: 0, skipped: [] }
 
     transaction do
-      SpreadsheetRows.read(path, sheet: :first).each_with_index do |row, index|
-        row_number = index + 2
+      SpreadsheetRows.read(path, sheet: :first, header_match: [ "Employee Code", "FCO ID" ]).each_with_index do |row, index|
+        row_number = index + 1
         employee_code = normalize_code(value(row, "Employee Code", "Employee ID", "Emp ID", "emp_id"))
         fco_id = ActionPlanText.normalize(value(row, "FCO ID", "FCO_ID", "User ID", "User_Id")).to_s
         fco_name = ActionPlanText.normalize(value(row, "FCO Name", "FCO_Name", "User Name", "User_Name")).to_s
@@ -50,11 +50,19 @@ class ActionPlanFcoMapping < ApplicationRecord
         mapping.employee_code = employee.employee_code
         mapping.fco_name = fco&.fetch(:fco_name) || fco_name
         mapping.save!
+        enable_login_for!(employee)
         result[:imported] += 1
       end
     end
 
     result
+  end
+
+  def self.enable_login_for!(employee)
+    return if employee.blank?
+
+    employee.update!(active: true) unless employee.active?
+    User.ensure_login_for(employee)
   end
 
   def self.action_plan_fcos

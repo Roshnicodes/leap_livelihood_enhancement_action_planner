@@ -3,13 +3,14 @@ require "rexml/document"
 require "zip"
 
 class SpreadsheetRows
-  def self.read(path, sheet: :all)
-    new(path, sheet: sheet).read
+  def self.read(path, sheet: :all, header_match: nil)
+    new(path, sheet: sheet, header_match: header_match).read
   end
 
-  def initialize(path, sheet: :all)
+  def initialize(path, sheet: :all, header_match: nil)
     @path = path
     @sheet = sheet
+    @header_match = Array(header_match).map { |header| normalize_header(header) }
   end
 
   def read
@@ -56,8 +57,11 @@ class SpreadsheetRows
       rows << values
     end
 
-    headers = unique_headers(rows.shift.to_a.map { |header| header.to_s.squish })
-    rows.map { |values| headers.zip(values).to_h }
+    header_index = header_row_index(rows)
+    return [] if header_index.nil?
+
+    headers = unique_headers(rows[header_index].to_a.map { |header| header.to_s.squish })
+    rows[(header_index + 1)..].to_a.map { |values| headers.zip(values).to_h }
   end
 
   def unique_headers(headers)
@@ -98,5 +102,18 @@ class SpreadsheetRows
     return text if text.blank?
 
     ActionPlanRow.format_decimal_string(text)
+  end
+
+  def header_row_index(rows)
+    return 0 if @header_match.blank?
+
+    rows.index do |values|
+      normalized_values = values.to_a.map { |value| normalize_header(value) }
+      @header_match.all? { |required_header| normalized_values.include?(required_header) }
+    end
+  end
+
+  def normalize_header(value)
+    value.to_s.squish.downcase
   end
 end
