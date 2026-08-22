@@ -1,5 +1,6 @@
 <% display_columns = ActionPlanRow.display_columns(admin: show_admin_columns) %>
 <% project_ownership_lookup = local_assigns.fetch(:project_ownership_lookup, {}) || {} %>
+<% month_display_pairs = local_assigns.fetch(:month_display_pairs, ActionPlanRow::MONTH_DISPLAY_PAIRS) %>
 
 <table class="action-plan-table">
   <thead>
@@ -7,7 +8,7 @@
       <% display_columns.each do |column| %>
         <th><%= column[:header] %></th>
       <% end %>
-      <% ActionPlanRow::MONTH_DISPLAY_PAIRS.each do |pair| %>
+      <% month_display_pairs.each do |pair| %>
         <th class="month-col"><%= month_column_header(pair[:month_label], "Target") %></th>
         <% if show_achievement %>
           <th class="month-col"><%= month_column_header(pair[:month_label], "Achievement") %></th>
@@ -24,7 +25,10 @@
   </thead>
   <tbody>
     <% rows.each do |row| %>
-      <tr data-plan-row data-planned-total="<%= row.planned_total %>">
+      <% visible_target_total = month_display_pairs.sum { |pair| row.public_send(pair[:target_column]).to_i } %>
+      <% visible_planned_total = month_display_pairs.sum { |pair| row.public_send("original_#{pair[:target_column]}").to_i } %>
+      <% visible_achievement_total = month_display_pairs.sum { |pair| row.public_send(pair[:achievement_column]).to_i } %>
+      <tr data-plan-row data-planned-total="<%= visible_planned_total %>">
         <% row_project_ownership = if show_admin_columns
           project_ownership_lookup["po_project:#{row.po_id}:#{ProjectOwnership.normalize_project_key(row.project_name)}"] ||
             project_ownership_lookup["po:#{row.po_id}"] ||
@@ -34,6 +38,8 @@
           <td>
             <% cell_value = if show_admin_columns && column[:attribute] == :project_owner
               [row_project_ownership&.po_name, row_project_ownership&.project_owner_id].compact_blank.join(" / ").presence || row.project_owner
+            elsif column[:attribute] == :user_name
+              ActionPlanFcoGroup.name_for(row.user_id, row.user_name)
             else
               row.public_send(column[:attribute])
             end %>
@@ -44,7 +50,7 @@
             ) %>
           </td>
         <% end %>
-        <% ActionPlanRow::MONTH_DISPLAY_PAIRS.each do |pair| %>
+        <% month_display_pairs.each do |pair| %>
           <td class="month-col">
             <% if editable_targets %>
               <%= number_field_tag "rows[#{row.id}][#{pair[:target_column]}]", row.public_send(pair[:target_column]), min: 0, step: 1, class: "action-plan-month-input", data: { target_input: true }, aria: { label: "#{pair[:target_label]} for #{row.activity}" } %>
@@ -57,15 +63,15 @@
           <% end %>
         <% end %>
         <td class="month-col total-col">
-          <strong data-row-total><%= row.monthly_total %></strong>
+          <strong data-row-total><%= visible_target_total %></strong>
         </td>
         <% if show_achievement %>
-          <td class="month-col total-col"><strong><%= row.target_total %></strong></td>
+          <td class="month-col total-col"><strong><%= visible_achievement_total %></strong></td>
         <% end %>
         <% if editable_targets %>
           <td>
-            <span class="summary-status <%= row.balanced? ? "is-balanced" : "is-warning" %>" data-row-status>
-              <%= row.balanced? ? "Matched" : "Diff #{signed_number(row.monthly_total - row.planned_total)}" %>
+            <span class="summary-status <%= visible_target_total == visible_planned_total ? "is-balanced" : "is-warning" %>" data-row-status>
+              <%= visible_target_total == visible_planned_total ? "Matched" : "Diff #{signed_number(visible_target_total - visible_planned_total)}" %>
             </span>
           </td>
         <% end %>

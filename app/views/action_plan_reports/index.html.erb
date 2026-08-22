@@ -7,8 +7,8 @@
     <p class="muted">Track who submitted, who approved, and what is pending across action plan and achievement flows.</p>
   </div>
   <div class="header-card">
-    <span>Pending</span>
-    <strong><%= @achievement_detail_rows.count { |row| row[:status].to_s.start_with?("Pending") } + @action_plan_detail_rows.count { |row| row[:status].to_s.start_with?("Pending") } %></strong>
+    <span>Not Submitted</span>
+    <strong><%= @summary_totals[:not_submitted] %></strong>
   </div>
 </section>
 
@@ -24,14 +24,14 @@
   </div>
 </section>
 
-<section class="metric-grid metric-grid-compact">
+<section class="metric-grid metric-grid-compact status-report-summary">
   <article class="metric metric-teal"><span>FCO</span><strong><%= @fco_submission_rows.size %></strong></article>
-  <article class="metric metric-blue"><span>Verticals</span><strong><%= @vertical_summary_rows.size %></strong></article>
-  <article class="metric"><span>Action Plans</span><strong><%= @action_plan_detail_rows.size %></strong></article>
-  <article class="metric metric-gold"><span>Achievements</span><strong><%= @achievement_detail_rows.size %></strong></article>
+  <article class="metric metric-blue"><span>Total Submitted</span><strong><%= @summary_totals[:submitted] %></strong></article>
+  <article class="metric"><span>Total Approved</span><strong><%= @summary_totals[:approved] %></strong></article>
+  <article class="metric metric-gold"><span>Total Pending</span><strong><%= @summary_totals[:pending] %></strong></article>
 </section>
 
-<section class="table-panel approval-records-panel" data-searchable-table>
+<section class="table-panel status-report-panel" data-searchable-table>
   <div class="table-heading">
     <div>
       <p class="eyebrow">FCO Wise Summary</p>
@@ -53,7 +53,8 @@
             <th><%= month.capitalize %></th>
           <% end %>
           <th>Total Submitted</th>
-          <th>Total Pending</th>
+          <th>Total Not Submitted</th>
+          <th>Total Pending Approval</th>
           <th>Total Approved</th>
         </tr>
       </thead>
@@ -61,11 +62,35 @@
         <% @fco_submission_rows.each do |row| %>
           <tr>
             <td><%= row[:state].presence || "-" %></td>
-            <td><strong><%= row[:fco_name] %></strong><div class="muted"><%= row[:fco_id] %></div></td>
+            <td>
+              <div class="fco-report-cell">
+                <span class="fco-report-avatar"><%= row[:fco_name].to_s.first.presence || "F" %></span>
+                <div>
+                  <strong><%= row[:fco_name].presence || "FCO" %></strong>
+                  <small>ID: <%= row[:fco_ids].join(", ") %></small>
+                </div>
+              </div>
+            </td>
             <% ActionPlanStatusReport::MONTHS.each do |month| %>
-              <td><span class="status-badge status-<%= row[:statuses][month] == "Yes" ? "approved" : "not_submitted" %>"><%= row[:statuses][month] %></span></td>
+              <% detail = row[:month_details][month] %>
+              <% status_class = detail[:status] == "Submitted" ? "approved" : detail[:status] == "Partial" ? "pending" : "not_submitted" %>
+              <td class="month-submission-cell">
+                <span class="status-badge status-<%= status_class %>">
+                  <%= detail[:status] %>
+                  <% if detail[:expected_count].positive? %>
+                    <small><%= detail[:submitted_count] %>/<%= detail[:expected_count] %></small>
+                  <% end %>
+                </span>
+                <% if detail[:not_submitted_projects].present? %>
+                  <div class="missing-projects">
+                    <span><%= detail[:not_submitted_count] %> not submitted</span>
+                    <%= detail[:not_submitted_projects].join(", ") %>
+                  </div>
+                <% end %>
+              </td>
             <% end %>
             <td><span class="code-pill"><%= row[:total_submitted] %></span></td>
+            <td><span class="code-pill code-pill-alert"><%= row[:total_not_submitted] %></span></td>
             <td><span class="code-pill"><%= row[:total_pending] %></span></td>
             <td><span class="code-pill"><%= row[:total_approved] %></span></td>
           </tr>
@@ -75,7 +100,7 @@
   </div>
 </section>
 
-<section class="table-panel approval-records-panel" data-searchable-table>
+<section class="table-panel status-report-panel" data-searchable-table>
   <div class="table-heading">
     <div>
       <p class="eyebrow">FCO Wise Summary</p>
@@ -105,7 +130,15 @@
         <% @fco_approval_rows.each do |row| %>
           <tr>
             <td><%= row[:state].presence || "-" %></td>
-            <td><strong><%= row[:fco_name] %></strong><div class="muted"><%= row[:fco_id] %></div></td>
+            <td>
+              <div class="fco-report-cell">
+                <span class="fco-report-avatar"><%= row[:fco_name].to_s.first.presence || "F" %></span>
+                <div>
+                  <strong><%= row[:fco_name].presence || "FCO" %></strong>
+                  <small>ID: <%= row[:fco_ids].join(", ") %></small>
+                </div>
+              </div>
+            </td>
             <% ActionPlanStatusReport::MONTHS.each do |month| %>
               <% status = row[:statuses][month] %>
               <td><span class="status-badge status-<%= status == "Approved" ? "approved" : status == "Returned" ? "returned" : status.start_with?("Pending") ? "pending" : "not_submitted" %>"><%= status %></span></td>
@@ -120,7 +153,7 @@
   </div>
 </section>
 
-<section class="table-panel approval-records-panel" data-searchable-table>
+<section class="table-panel status-report-panel" data-searchable-table>
   <div class="table-heading">
     <div>
       <p class="eyebrow">Verticals Wise Summary</p>
@@ -164,7 +197,7 @@
   </div>
 </section>
 
-<section class="table-panel approval-records-panel" data-searchable-table>
+<section class="table-panel status-report-panel" data-searchable-table>
   <div class="table-heading">
     <div>
       <p class="eyebrow">Details</p>
@@ -212,7 +245,7 @@
   </div>
 </section>
 
-<section class="table-panel approval-records-panel" data-searchable-table>
+<section class="table-panel status-report-panel" data-searchable-table>
   <div class="table-heading">
     <div>
       <p class="eyebrow">Details</p>

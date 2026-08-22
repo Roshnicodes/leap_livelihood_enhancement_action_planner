@@ -111,18 +111,14 @@ class AchievementEntriesController < ApplicationController
 
   def fco_display_mappings
     mappings = @fco_mappings.to_a
-    return mappings.map { |mapping| { fco_name: mapping.fco_name, fco_id: mapping.fco_id } } unless @employee&.employee_code.to_s == "25"
-
-    grouped = []
-    jobat_mappings = mappings.select { |mapping| mapping.fco_id.in?(%w[16 17]) }
-    grouped << { fco_name: "Jobat - FCO", fco_id: jobat_mappings.map(&:fco_id).sort.join(", ") } if jobat_mappings.any?
-
-    grouped + mappings.reject { |mapping| mapping.fco_id.in?(%w[16 17]) }.map { |mapping| { fco_name: mapping.fco_name, fco_id: mapping.fco_id } }
+    ActionPlanFcoGroup
+      .group_options(mappings.map { |mapping| [ mapping.fco_name, mapping.fco_id ] })
+      .map { |name, ids| { fco_name: name, fco_id: ids } }
   end
 
   def load_selection
     @month_options = MONTH_OPTIONS
-    @fco_ids = @fco_mappings.pluck(:fco_id)
+    @fco_ids = @fco_mappings.pluck(:fco_id).flat_map { |fco_id| ActionPlanFcoGroup.ids_for(fco_id) }.uniq
     @scoped_rows = ActionPlanRow.active_import.where(user_id: @fco_ids)
 
     @to_options = @scoped_rows
@@ -314,7 +310,7 @@ class AchievementEntriesController < ApplicationController
         submission = AchievementSubmission.create!(
           employee: @employee,
           fco_id: sample.user_id,
-          fco_name: sample.user_name,
+          fco_name: ActionPlanFcoGroup.name_for(sample.user_id, sample.user_name),
           to_id: sample.to_id,
           to_name: sample.to_name,
           project_name: project_name,

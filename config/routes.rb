@@ -45,6 +45,7 @@ Rails.application.routes.draw do
   resource :achievement_entry, only: %i[show update] do
     post :submit
   end
+  get "achievement_entry_records" => "achievement_entry_records#index"
   get "achievement_approvals/:stage" => "achievement_approvals#index", as: :achievement_approvals
   patch "achievement_approvals/:stage/:id/approve" => "achievement_approvals#approve", as: :approve_achievement
   patch "achievement_approvals/:stage/:id/return" => "achievement_approvals#return_submission", as: :return_achievement

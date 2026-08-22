@@ -220,12 +220,14 @@ body.app-body {
 
 .action-plan-filter-form {
   display: grid;
-  grid-template-columns: minmax(260px, 1.4fr) minmax(180px, 0.8fr) minmax(180px, 0.8fr);
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  gap: 8px;
   width: 100%;
 }
 
 .action-plan-filter-form label {
+  display: grid;
+  gap: 4px;
   min-width: 0;
 }
 
@@ -2224,6 +2226,123 @@ tbody tr:hover td {
 
 .approval-records-panel.table-panel {
   padding: 12px 14px 14px;
+}
+
+.status-report-summary.metric-grid-compact {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.status-report-panel {
+  margin-bottom: 16px;
+  border: 1px solid #dce7ee;
+  background: #ffffff;
+}
+
+.status-report-panel .table-heading {
+  display: flex;
+}
+
+.status-report-panel .sticky-table-wrap {
+  max-height: 72vh;
+}
+
+.status-report-panel table {
+  min-width: 1680px;
+}
+
+.status-report-panel th,
+.status-report-panel td {
+  vertical-align: middle;
+}
+
+.status-report-panel th:first-child,
+.status-report-panel td:first-child {
+  width: 72px;
+}
+
+.status-report-panel th:nth-child(2),
+.status-report-panel td:nth-child(2) {
+  width: 240px;
+}
+
+.fco-report-cell {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-width: 210px;
+}
+
+.fco-report-avatar {
+  display: inline-grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 12px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #08786f, #1d4ed8);
+  font-size: 0.95rem;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.fco-report-cell strong,
+.fco-report-cell small {
+  display: block;
+}
+
+.fco-report-cell strong {
+  color: #102035;
+  font-size: 0.92rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.fco-report-cell small {
+  margin-top: 4px;
+  color: #66748a;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.month-submission-cell {
+  min-width: 118px;
+}
+
+.month-submission-cell .status-badge {
+  gap: 6px;
+  min-height: 32px;
+  padding: 7px 10px;
+  border-radius: 10px;
+}
+
+.month-submission-cell .status-badge small {
+  padding-left: 6px;
+  border-left: 1px solid currentColor;
+  font-size: 0.72rem;
+  line-height: 1;
+  opacity: 0.78;
+}
+
+.missing-projects {
+  max-width: 180px;
+  margin-top: 7px;
+  color: #475467;
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.missing-projects span {
+  display: block;
+  margin-bottom: 2px;
+  color: #92400e;
+  font-weight: 950;
+}
+
+.code-pill-alert {
+  color: #92400e;
+  background: #fff7ed;
 }
 
 .approval-records-table td,
@@ -7029,16 +7148,52 @@ body.app-body {
 /* Vertical Action Plan Record toolbar: keep export button out of filter fields. */
 .records-filter-toolbar {
   display: grid !important;
-  grid-template-columns: minmax(0, 1fr) minmax(190px, 240px);
+  grid-template-columns: minmax(0, 1fr) minmax(170px, 220px);
   align-items: end;
   justify-content: stretch;
   gap: 14px;
 }
 
-.records-filter-toolbar .action-plan-filter-form {
+.records-filter-toolbar .action-plan-filter-form,
+.records-filter-toolbar .achievement-record-filter-form,
+.records-filter-toolbar .approval-records-filter {
+  display: grid;
   width: 100%;
   min-width: 0;
-  grid-template-columns: minmax(240px, 1.2fr) minmax(180px, 0.8fr) minmax(180px, 0.8fr);
+  grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
+  gap: 7px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.records-filter-toolbar .action-plan-filter-form label,
+.records-filter-toolbar .achievement-record-filter-form label,
+.records-filter-toolbar .approval-records-filter-field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  flex: initial;
+}
+
+.records-filter-toolbar .action-plan-filter-form .filter-label,
+.records-filter-toolbar .achievement-record-filter-form .filter-label,
+.records-filter-toolbar .approval-records-filter .filter-label {
+  font-size: 0.64rem;
+  letter-spacing: 0.06em;
+}
+
+.records-filter-toolbar .action-plan-filter-form .select,
+.records-filter-toolbar .achievement-record-filter-form .select,
+.records-filter-toolbar .approval-records-filter .select {
+  min-height: 38px;
+  height: 37px;
+  padding: 7px 24px 7px 10px;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  background-color: #ffffff;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.03);
 }
 
 .records-filter-toolbar .toolbar-actions,
@@ -7047,12 +7202,92 @@ body.app-body {
   min-width: 0;
 }
 
+.records-filter-toolbar .secondary-button {
+  min-height: 38px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.toolbar .action-plan-filter-form,
+.toolbar .achievement-record-filter-form,
+.toolbar .approval-records-filter {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+  gap: 7px;
+  align-items: end;
+  width: 100%;
+  min-width: 0;
+}
+
+.toolbar .action-plan-filter-form label,
+.toolbar .achievement-record-filter-form label,
+.toolbar .approval-records-filter-field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  flex: initial;
+}
+
+.toolbar .action-plan-filter-form .filter-label,
+.toolbar .achievement-record-filter-form .filter-label,
+.toolbar .approval-records-filter .filter-label {
+  margin: 0 0 0 3px;
+  font-size: 0.63rem;
+  letter-spacing: 0.06em;
+}
+
+.toolbar .action-plan-filter-form .select,
+.toolbar .achievement-record-filter-form .select,
+.toolbar .approval-records-filter .select {
+  min-height: 37px;
+  height: 37px;
+  padding: 7px 24px 7px 10px;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  background-color: #ffffff;
+}
+
+.toolbar .action-plan-filter-form .select:focus,
+.toolbar .achievement-record-filter-form .select:focus,
+.toolbar .approval-records-filter .select:focus {
+  border-color: #20c7b2;
+  box-shadow: 0 0 0 3px rgba(32, 199, 178, 0.14), 0 8px 18px rgba(15, 23, 42, 0.05);
+}
+
+.select.is-placeholder {
+  color: #66748a;
+}
+
 @media (max-width: 980px) {
   .records-filter-toolbar {
     grid-template-columns: 1fr;
   }
 
-  .records-filter-toolbar .action-plan-filter-form {
+  .records-filter-toolbar .action-plan-filter-form,
+  .records-filter-toolbar .achievement-record-filter-form,
+  .records-filter-toolbar .approval-records-filter {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .records-filter-toolbar .action-plan-filter-form,
+  .records-filter-toolbar .achievement-record-filter-form,
+  .records-filter-toolbar .approval-records-filter {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 980px) {
+  .status-report-summary.metric-grid-compact {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .status-report-summary.metric-grid-compact {
     grid-template-columns: 1fr;
   }
 }

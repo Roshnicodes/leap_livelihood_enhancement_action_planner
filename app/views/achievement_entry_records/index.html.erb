@@ -1,0 +1,140 @@
+<% content_for :title, "Achievement Entry Record | LEAP" %>
+
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Records</p>
+    <h1>Achievement Entry Record</h1>
+    <p class="muted">Saved and submitted achievement entries across projects, FCOs and months.</p>
+  </div>
+  <div class="header-card">
+    <span>Total Records</span>
+    <strong><%= @records.size %></strong>
+  </div>
+</section>
+
+<section class="toolbar records-filter-toolbar">
+  <%= form_with url: achievement_entry_records_path, method: :get, class: "filter-form achievement-record-filter-form" do |form| %>
+    <label>
+      <span class="filter-label">Project</span>
+      <%= form.select :project, options_for_select([["All Projects", ""]] + @project_options, @selected_project.to_s), {}, class: "select", onchange: "this.form.requestSubmit()" %>
+    </label>
+    <label>
+      <span class="filter-label">State</span>
+      <%= form.select :state, options_for_select([["All State", ""]] + @state_options, @selected_state.to_s), {}, class: "select", onchange: "this.form.requestSubmit()" %>
+    </label>
+    <label>
+      <span class="filter-label">Vertical</span>
+      <%= form.select :vertical, options_for_select([["All Vertical", ""]] + @vertical_options, @selected_vertical.to_s), {}, class: "select", onchange: "this.form.requestSubmit()" %>
+    </label>
+    <label>
+      <span class="filter-label">FCO</span>
+      <%= form.select :fco_id, options_for_select([["All FCO", ""]] + @fco_options, @selected_fco_id.to_s), {}, class: "select", onchange: "this.form.requestSubmit()" %>
+    </label>
+    <label>
+      <span class="filter-label">TO</span>
+      <%= form.select :to_id, options_for_select([["All TO", ""]] + @to_options, @selected_to_id.to_s), {}, class: "select", onchange: "this.form.requestSubmit()" %>
+    </label>
+    <label>
+      <span class="filter-label">Period</span>
+      <%= form.select :period, options_for_select(@period_options, @selected_period), {}, class: "select", onchange: "this.form.requestSubmit()" %>
+    </label>
+    <label>
+      <span class="filter-label">Month</span>
+      <%= form.select :period_month, options_for_select(@month_options, @selected_period_month), {}, class: "select", onchange: "this.form.requestSubmit()" %>
+    </label>
+    <label>
+      <span class="filter-label">Status</span>
+      <%= form.select :status, options_for_select(@status_options, @selected_status.to_s), {}, class: "select", onchange: "this.form.requestSubmit()" %>
+    </label>
+  <% end %>
+  <div class="toolbar-actions">
+    <%= link_to "Download Excel Sheet", achievement_entry_records_path(request.query_parameters.merge(format: :xlsx)), class: "secondary-button" %>
+  </div>
+</section>
+
+<section class="metric-grid metric-grid-compact">
+  <article class="metric metric-teal"><span>Projects</span><strong><%= @records.map { |record| record[:row].project_name }.uniq.size %></strong></article>
+  <article class="metric metric-blue"><span>FCO</span><strong><%= @records.map { |record| record[:row].user_id }.uniq.size %></strong></article>
+  <article class="metric"><span>Achievement</span><strong><%= whole_number(@records.sum { |record| record[:achievement_value].to_i }) %></strong></article>
+  <article class="metric metric-gold"><span>Submitted</span><strong><%= @records.count { |record| record[:submission].present? } %></strong></article>
+</section>
+
+<section class="table-panel" data-searchable-table>
+  <div class="table-heading">
+    <div>
+      <h2>Achievement Entries</h2>
+      <p class="muted">Draft rows are saved entries that have not been submitted for approval yet.</p>
+    </div>
+    <div class="table-actions">
+      <input type="search" class="table-search" placeholder="Search records" data-table-search-input>
+      <span class="table-count" data-filtered-count data-count-label="records"><%= @records.size %> records</span>
+    </div>
+  </div>
+
+  <% if @records.present? %>
+    <div class="responsive-table achievement-record-table-wrap">
+      <table class="action-plan-table achievement-record-table">
+        <thead>
+          <tr>
+            <th>Project</th>
+            <th>State</th>
+            <th>FCO</th>
+            <th>TO</th>
+            <th>Vertical</th>
+            <th>Activity</th>
+            <th>Month</th>
+            <th class="month-col">Target</th>
+            <th class="month-col">Achievement</th>
+            <th>Status</th>
+            <th>Submitted</th>
+            <th>Remark / Files</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @records.each do |record| %>
+            <% row = record[:row] %>
+            <% detail = record[:detail] %>
+            <% submission = record[:submission] %>
+            <tr>
+              <td><strong><%= row.project_name %></strong></td>
+              <td><%= action_plan_cell(row.statte, pill: true) %></td>
+              <td><%= [ActionPlanFcoGroup.name_for(row.user_id, row.user_name), ActionPlanFcoGroup.display_id_for(row.user_id)].compact_blank.join(" / ") %></td>
+              <td><%= [row.to_name, row.to_id].compact_blank.join(" / ") %></td>
+              <td>
+                <strong><%= row.asa_theme.presence || "-" %></strong><br>
+                <span class="muted">Theme <%= ActionPlanRow.format_decimal_string(row.asa_theme_id).presence || "-" %></span>
+              </td>
+              <td>
+                <strong><%= row.asa_activity_name.presence || row.activity.presence || "-" %></strong><br>
+                <span class="muted">ASA <%= ActionPlanRow.format_decimal_string(row.asa_activity_id).presence || "-" %></span>
+              </td>
+              <td><%= record[:month].capitalize %></td>
+              <td class="month-col"><strong><%= whole_number(record[:target_value]) %></strong></td>
+              <td class="month-col"><strong><%= whole_number(record[:achievement_value]) %></strong></td>
+              <td><span class="summary-status achievement-status-<%= record[:status_key] %>"><%= record[:status_label] %></span></td>
+              <td>
+                <% if submission.present? %>
+                  <strong><%= submission.employee&.name %></strong><br>
+                  <span class="muted"><%= submission.submitted_at&.in_time_zone("Asia/Kolkata")&.strftime("%d %b %Y, %I:%M %p") %></span>
+                <% else %>
+                  <span class="muted">Not submitted</span>
+                <% end %>
+              </td>
+              <td class="achievement-record-files">
+                <%= simple_format(detail&.remark.presence || "-", class: "muted") %>
+                <%= render "shared/attachment_previews", attachments: detail&.files&.attachments, removable: false if detail&.files&.attached? %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% else %>
+    <div class="empty-state">
+      <h2>No achievement entries</h2>
+      <p class="muted">Change filters or save achievement entries to see records here.</p>
+    </div>
+  <% end %>
+</section>
+
+<%= render "shared/file_preview_modal" %>

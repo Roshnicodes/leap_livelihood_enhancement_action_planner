@@ -187,7 +187,7 @@
               </div>
             <% else %>
               <% pb_controllers = %w[plan_submissions budget_utilizations budget_utilization_reports project_summaries project_summary_records project_summary_approvals project_summary_approval_records] %>
-              <% ap_controllers = %w[action_plans achievement_entries achievement_approvals vertical_action_plans action_plan_records action_plan_approvals] %>
+              <% ap_controllers = %w[action_plans achievement_entries achievement_entry_records achievement_approvals vertical_action_plans action_plan_records action_plan_approvals] %>
               <% report_controllers = %w[pis_report_uploads donor_report_uploads fund_report_uploads report_information project_information_sheets] %>
               <% pb_open = pb_controllers.include?(controller_name) %>
               <% ap_open = ap_controllers.include?(controller_name) %>
@@ -268,6 +268,12 @@
                       <%= link_to achievement_entry_path, class: controller_name == "achievement_entries" ? "side-link active" : "side-link", data: { turbo: false } do %>
                         <span class="side-icon">E</span>
                         <span>Achievement Entry</span>
+                      <% end %>
+                    <% end %>
+                    <% if menu_show_achievement_entry_record? %>
+                      <%= link_to achievement_entry_records_path, class: controller_name == "achievement_entry_records" ? "side-link active" : "side-link" do %>
+                        <span class="side-icon">N</span>
+                        <span>Achievement Entry Record</span>
                       <% end %>
                     <% end %>
                     <% if menu_show_achievement_approvals? %>
@@ -581,6 +587,92 @@
         }
 
         document.querySelectorAll("[data-sidebar-nav]").forEach(bindSidebarSections);
+
+        function bindFilterPlaceholders() {
+          const labelOverrides = new Map([
+            ["choose project", "Project"],
+            ["project", "Project"],
+            ["choose month", "Month"],
+            ["month", "Month"],
+            ["period", "Period"],
+            ["state", "State"],
+            ["vertical", "Vertical"],
+            ["fco", "FCO"],
+            ["to", "TO"],
+            ["choose to", "TO"],
+            ["status", "Status"],
+            ["fy", "FY"],
+            ["doc name", "Doc Name"],
+            ["reports name", "Report"],
+            ["frequency", "Frequency"],
+            ["employee", "Employee"],
+            ["p&b vertical", "Vertical"]
+          ]);
+
+          function placeholderFor(select) {
+            const label = select.closest("label")?.querySelector(".filter-label") ||
+              select.closest(".approval-records-filter-field")?.querySelector(".filter-label") ||
+              document.querySelector(`label[for="${select.id}"]`);
+            const rawText = (label?.textContent || select.name || "Option").trim().toLowerCase();
+            const cleaned = rawText.replace(/\s+/g, " ");
+            return `Select ${labelOverrides.get(cleaned) || cleaned.replace(/^choose\s+/, "").replace(/\b\w/g, (char) => char.toUpperCase())}`;
+          }
+
+          document.querySelectorAll(".toolbar select.select, .filter-form select.select").forEach((select) => {
+            const options = [...select.options];
+            const firstBlankOption = options.find((option) => option.value === "");
+            if (!firstBlankOption) return;
+
+            const placeholderText = placeholderFor(select);
+            const firstBlankText = firstBlankOption.textContent.trim().toLowerCase();
+            const hasSelectPlaceholder = firstBlankText.startsWith("select ");
+            const paramName = select.name;
+            const params = new URLSearchParams(window.location.search);
+            const placeholderValue = `__placeholder_${paramName || "filter"}__`;
+
+            if (!hasSelectPlaceholder && !options.some((option) => option.value === placeholderValue)) {
+              const placeholderOption = new Option(placeholderText, placeholderValue, true, !params.has(paramName));
+              placeholderOption.disabled = true;
+              select.insertBefore(placeholderOption, firstBlankOption);
+            } else if (hasSelectPlaceholder) {
+              firstBlankOption.textContent = placeholderText;
+            }
+
+            select.classList.toggle("is-placeholder", select.value === placeholderValue || (hasSelectPlaceholder && select.value === ""));
+            select.addEventListener("change", () => {
+              select.classList.toggle("is-placeholder", select.value === placeholderValue || (hasSelectPlaceholder && select.value === ""));
+            });
+          });
+
+          document.querySelectorAll("form").forEach((form) => {
+            form.addEventListener("submit", () => {
+              form.querySelectorAll("select.select").forEach((select) => {
+                if (!select.value.startsWith("__placeholder_")) return;
+
+                const allOption = [...select.options].find((option) => option.value === "");
+                if (allOption) select.value = "";
+              });
+            });
+          });
+        }
+
+        bindFilterPlaceholders();
+
+        function bindPeriodMonthFilters() {
+          document.querySelectorAll("form").forEach((form) => {
+            const periodSelect = form.querySelector('select[name="period"]');
+            const monthSelect = form.querySelector('select[name="period_month"]');
+            if (!periodSelect || !monthSelect) return;
+
+            monthSelect.addEventListener("change", () => {
+              if (monthSelect.value && periodSelect.querySelector('option[value="monthly"]')) {
+                periodSelect.value = "monthly";
+              }
+            }, true);
+          });
+        }
+
+        bindPeriodMonthFilters();
 
         function bindFilePreview() {
           const modal = document.querySelector("[data-file-preview-modal]");

@@ -34,7 +34,7 @@
     <% end %>
   </nav>
 
-  <section class="toolbar approval-records-toolbar">
+  <section class="toolbar approval-records-toolbar records-filter-toolbar">
     <%= form_with url: project_summary_approval_records_path, method: :get, class: "filter-form approval-records-filter" do |form| %>
       <%= form.hidden_field :record_type, value: @selected_record_type %>
       <% vertical_select_options = [["All Verticals", ""]] + @vertical_options.map { |vertical| [vertical, vertical] } %>
@@ -49,6 +49,9 @@
         <%= form.select :status, options_for_select(@status_options, @selected_status), {}, class: "select", onchange: "this.form.requestSubmit()" %>
       </div>
     <% end %>
+    <div class="toolbar-actions">
+      <%= link_to "Download Excel Sheet", project_summary_approval_records_path(request.query_parameters.merge(format: :xlsx)), class: "secondary-button" %>
+    </div>
   </section>
 
   <% if @record_entries.any? %>

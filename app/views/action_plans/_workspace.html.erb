@@ -6,6 +6,17 @@
 <% allow_all_projects = local_assigns.fetch(:allow_all_projects, false) %>
 <% download_path = local_assigns[:download_path] %>
 <% project_ownership_lookup = local_assigns.fetch(:project_ownership_lookup, {}) || {} %>
+<% period_options = local_assigns.fetch(:period_options, []) %>
+<% selected_period = local_assigns[:selected_period] %>
+<% selected_period_month = local_assigns[:selected_period_month] %>
+<% month_display_pairs = local_assigns.fetch(:month_display_pairs, ActionPlanRow::MONTH_DISPLAY_PAIRS) %>
+<% state_options = local_assigns.fetch(:state_options, []) %>
+<% selected_state = local_assigns[:selected_state] %>
+<% vertical_options = local_assigns.fetch(:vertical_options, []) %>
+<% selected_vertical = local_assigns[:selected_vertical] %>
+<% filter_selected_project = params[:project].to_s.presence_in([ "all", *project_options ]) %>
+<% filter_selected_period = params[:period].to_s.presence_in(period_options.map(&:last)) %>
+<% filter_selected_period_month = params[:period_month].to_s.presence_in(ActionPlanRow::MONTH_COLUMNS) %>
 
 <section class="page-header">
   <div>
@@ -24,7 +35,27 @@
       <span class="filter-label">Choose Project</span>
       <% project_select_options = project_options.map { |project| [project, project] } %>
       <% project_select_options.unshift(["All Projects", "all"]) if allow_all_projects %>
-      <%= form.select :project, options_for_select(project_select_options, selected_project), { prompt: "Select Project" }, class: "select", onchange: "this.form.requestSubmit()" %>
+      <%= form.select :project, options_for_select(project_select_options, filter_selected_project), { prompt: "Select Project" }, class: "select", onchange: "this.form.requestSubmit()" %>
+    </label>
+
+    <label>
+      <span class="filter-label">Period</span>
+      <%= form.select :period, options_for_select(period_options, filter_selected_period), { prompt: "Select Period" }, class: "select", onchange: "this.form.requestSubmit()" %>
+    </label>
+
+    <label>
+      <span class="filter-label">Month</span>
+      <%= form.select :period_month, options_for_select(ActionPlanRow::MONTH_COLUMNS.map { |month| [month.capitalize, month] }, filter_selected_period_month), { prompt: "Select Month" }, class: "select", onchange: "this.form.requestSubmit()" %>
+    </label>
+
+    <label>
+      <span class="filter-label">State</span>
+      <%= form.select :state, options_for_select([["All State", ""]] + state_options, selected_state.to_s), {}, class: "select", onchange: "this.form.requestSubmit()" %>
+    </label>
+
+    <label>
+      <span class="filter-label">Vertical</span>
+      <%= form.select :vertical, options_for_select([["All Vertical", ""]] + vertical_options, selected_vertical.to_s), {}, class: "select", onchange: "this.form.requestSubmit()" %>
     </label>
 
     <label>
@@ -45,8 +76,9 @@
 </section>
 
 <% if selected_project.present? %>
-  <% planned_total = rows.sum(&:planned_total) %>
-  <% current_total = rows.sum(&:monthly_total) %>
+  <% planned_total = rows.sum { |row| month_display_pairs.sum { |pair| row.public_send("original_#{pair[:target_column]}").to_i } } %>
+  <% current_total = rows.sum { |row| month_display_pairs.sum { |pair| row.public_send(pair[:target_column]).to_i } } %>
+  <% achievement_total = rows.sum { |row| month_display_pairs.sum { |pair| row.public_send(pair[:achievement_column]).to_i } } %>
 
   <section class="metric-grid metric-grid-compact">
     <% if selected_project == "all" %>
@@ -59,7 +91,7 @@
     <article class="metric metric-blue"><span>Activities</span><strong><%= rows.size %></strong></article>
     <article class="metric"><span>Themes</span><strong><%= theme_count %></strong></article>
     <% if show_achievement %>
-      <article class="metric metric-rose"><span>Achievement Total</span><strong><%= rows.sum(&:target_total) %></strong></article>
+      <article class="metric metric-rose"><span>Achievement Total</span><strong><%= achievement_total %></strong></article>
     <% end %>
   </section>
 
@@ -112,13 +144,18 @@
         <%= hidden_field_tag :project, selected_project %>
         <%= hidden_field_tag :fco_id, selected_fco_id if selected_fco_id.present? %>
         <%= hidden_field_tag :to_id, selected_to_id if selected_to_id.present? %>
+        <%= hidden_field_tag :state, selected_state if selected_state.present? %>
+        <%= hidden_field_tag :vertical, selected_vertical if selected_vertical.present? %>
+        <%= hidden_field_tag :period, selected_period if selected_period.present? %>
+        <%= hidden_field_tag :period_month, selected_period_month if selected_period_month.present? %>
         <div class="responsive-table action-plan-table-wrap">
           <%= render "action_plans/table",
             rows: rows,
             project_ownership_lookup: project_ownership_lookup,
             show_admin_columns: show_admin_columns,
             editable_targets: true,
-            show_achievement: show_achievement %>
+            show_achievement: show_achievement,
+            month_display_pairs: month_display_pairs %>
         </div>
         <div class="submit-panel">
           <% if submit_with_targets && show_submission %>
@@ -147,7 +184,8 @@
           project_ownership_lookup: project_ownership_lookup,
           show_admin_columns: show_admin_columns,
           editable_targets: false,
-          show_achievement: show_achievement %>
+          show_achievement: show_achievement,
+          month_display_pairs: month_display_pairs %>
       </div>
     <% end %>
   </section>

@@ -180,7 +180,7 @@ class AchievementApprovalsController < ApplicationController
         rows = achievement_submission_rows(submission)
         csv << [
           submission.project_name,
-          submission.fco_name,
+          ActionPlanFcoGroup.name_for(submission.fco_id, submission.fco_name),
           submission.fco_id,
           submission.to_name,
           "#{submission.state_code} / #{submission.theme_label}",

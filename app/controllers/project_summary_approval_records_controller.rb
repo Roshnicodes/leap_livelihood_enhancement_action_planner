@@ -1,3 +1,5 @@
+require "csv"
+
 class ProjectSummaryApprovalRecordsController < ApplicationController
   include ProjectSummaryReviewPresenter
 
@@ -41,6 +43,20 @@ class ProjectSummaryApprovalRecordsController < ApplicationController
     @record_entries = selected_record_entries
     @total_records = @pnb_record_count + @action_plan_record_count
     @filtered_count = @record_entries.size
+
+    respond_to do |format|
+      format.html
+      format.csv do
+        send_data approval_records_csv,
+          filename: "approval_records_#{@selected_record_type}_#{Time.current.strftime("%Y%m%d_%H%M%S")}.csv",
+          type: "text/csv; charset=utf-8"
+      end
+      format.xlsx do
+        send_data XlsxWorkbook.from_csv(approval_records_csv, title: "#{@selected_record_type == 'action_plan' ? 'Action Plan' : 'P&B'} Approval Records", sheet_name: "Approval Records"),
+          filename: "approval_records_#{@selected_record_type}_#{Time.current.strftime("%Y%m%d_%H%M%S")}.xlsx",
+          type: XlsxWorkbook::CONTENT_TYPE
+      end
+    end
   end
 
   private
@@ -195,5 +211,54 @@ class ProjectSummaryApprovalRecordsController < ApplicationController
 
   def status_sort(status)
     { "pending" => 3, "returned" => 2, "approved" => 1 }.fetch(status.to_s, 0)
+  end
+
+  def approval_records_csv
+    @selected_record_type == "action_plan" ? action_plan_approval_records_csv : pnb_approval_records_csv
+  end
+
+  def pnb_approval_records_csv
+    CSV.generate(headers: true) do |csv|
+      csv << [ "S.No.", "Record Type", "Vertical", "Submitted By", "Total Budget", "COO Approval", "Director Approval", "Status", "Submitted At", "Remark" ]
+
+      @record_entries.each_with_index do |record, index|
+        csv << [
+          index + 1,
+          record[:record_type],
+          record[:scope_label],
+          record[:submitted_by],
+          record[:total_amount],
+          record[:coo_approval_label],
+          record[:director_approval_label],
+          record[:status].to_s.titleize,
+          record[:submitted_at]&.in_time_zone("Asia/Kolkata")&.strftime("%d %b %Y, %I:%M %p"),
+          record[:remark]
+        ]
+      end
+    end
+  end
+
+  def action_plan_approval_records_csv
+    CSV.generate(headers: true) do |csv|
+      csv << [ "S.No.", "Record Type", "Project", "Submitted By", "Activities", "Changed Months", "Total Target", "PO Approval", "COO Approval", "Director Approval", "Status", "Submitted At", "Remark" ]
+
+      @record_entries.each_with_index do |record, index|
+        csv << [
+          index + 1,
+          record[:record_type],
+          record[:scope_label],
+          record[:submitted_by],
+          record[:row_count],
+          record[:changed_month_count],
+          record[:total_amount],
+          record[:po_approval_label],
+          record[:coo_approval_label],
+          record[:director_approval_label],
+          record[:status].to_s.titleize,
+          record[:submitted_at]&.in_time_zone("Asia/Kolkata")&.strftime("%d %b %Y, %I:%M %p"),
+          record[:remark]
+        ]
+      end
+    end
   end
 end

@@ -11,12 +11,21 @@ class VerticalActionPlansController < ApplicationController
   def index
     @project_options = vertical_project_options
     @selected_project = params[:project].to_s.presence_in([ "all", *@project_options ])
-    @fco_options = action_plan_filter_options(@selected_project, :user_name, :user_id)
+    @selected_project ||= "all" if @project_options.any?
+    @period_options = action_plan_period_options
+    @selected_period = selected_period
+    @selected_period_month = selected_period_month
+    @month_display_pairs = action_plan_month_pairs_for(@selected_period, @selected_period_month)
+    @state_options = action_plan_filter_options(@selected_project, :statte, :statte)
+    @selected_state = params[:state].to_s.presence_in(@state_options.map(&:last))
+    @vertical_options = action_plan_filter_options(@selected_project, :asa_theme, :asa_theme, state_code: @selected_state)
+    @selected_vertical = params[:vertical].to_s.presence_in(@vertical_options.map(&:last))
+    @fco_options = action_plan_filter_options(@selected_project, :user_name, :user_id, state_code: @selected_state, vertical_name: @selected_vertical)
     @selected_fco_id = params[:fco_id].to_s.presence_in(@fco_options.map(&:last))
-    @to_options = action_plan_filter_options(@selected_project, :to_name, :to_id, fco_id: @selected_fco_id)
+    @to_options = action_plan_filter_options(@selected_project, :to_name, :to_id, fco_id: @selected_fco_id, state_code: @selected_state, vertical_name: @selected_vertical)
     @selected_to_id = params[:to_id].to_s.presence_in(@to_options.map(&:last))
     @vertical_labels = action_plan_vertical_names
-    @rows = action_plan_rows_for(@selected_project, vertical_filter: true, fco_id: @selected_fco_id, to_id: @selected_to_id)
+    @rows = action_plan_rows_for(@selected_project, vertical_filter: true, fco_id: @selected_fco_id, to_id: @selected_to_id, state_code: @selected_state, vertical_name: @selected_vertical)
     @project_ownership = project_ownership_for(@selected_project) if @selected_project != "all"
     @project_ownership_lookup = project_ownership_lookup_for(@rows) if current_user.admin?
     @theme_count = @rows.distinct.count(:theme) if @selected_project.present?
@@ -30,13 +39,18 @@ class VerticalActionPlansController < ApplicationController
   def download
     project_options = vertical_project_options
     selected_project = params[:project].to_s.presence_in([ "all", *project_options ])
-    fco_options = action_plan_filter_options(selected_project, :user_name, :user_id)
+    state_options = action_plan_filter_options(selected_project, :statte, :statte)
+    selected_state = params[:state].to_s.presence_in(state_options.map(&:last))
+    vertical_options = action_plan_filter_options(selected_project, :asa_theme, :asa_theme, state_code: selected_state)
+    selected_vertical = params[:vertical].to_s.presence_in(vertical_options.map(&:last))
+    fco_options = action_plan_filter_options(selected_project, :user_name, :user_id, state_code: selected_state, vertical_name: selected_vertical)
     selected_fco_id = params[:fco_id].to_s.presence_in(fco_options.map(&:last))
-    to_options = action_plan_filter_options(selected_project, :to_name, :to_id, fco_id: selected_fco_id)
+    to_options = action_plan_filter_options(selected_project, :to_name, :to_id, fco_id: selected_fco_id, state_code: selected_state, vertical_name: selected_vertical)
     selected_to_id = params[:to_id].to_s.presence_in(to_options.map(&:last))
-    rows = action_plan_rows_for(selected_project, vertical_filter: true, fco_id: selected_fco_id, to_id: selected_to_id)
+    rows = action_plan_rows_for(selected_project, vertical_filter: true, fco_id: selected_fco_id, to_id: selected_to_id, state_code: selected_state, vertical_name: selected_vertical)
 
-    csv = vertical_action_plan_csv(rows)
+    month_pairs = action_plan_month_pairs_for(selected_period, selected_period_month)
+    csv = vertical_action_plan_csv(rows, month_pairs: month_pairs)
     send_data XlsxWorkbook.from_csv(csv, title: "Vertical Action Plan", sheet_name: "Vertical Plan"),
       filename: "vertical_action_plan_#{Time.current.strftime("%Y%m%d_%H%M%S")}.xlsx",
       type: XlsxWorkbook::CONTENT_TYPE
@@ -57,7 +71,9 @@ class VerticalActionPlansController < ApplicationController
         row = allowed_rows[row_id.to_i]
         next unless row
 
-        ActionPlanRow::MONTH_COLUMNS.each do |month|
+        months.each_key do |month|
+          next unless ActionPlanRow::MONTH_COLUMNS.include?(month.to_s)
+
           row.public_send("#{month}=", integer_value(months[month.to_s]))
         end
 
@@ -72,12 +88,12 @@ class VerticalActionPlansController < ApplicationController
       return
     end
 
-    redirect_to vertical_action_plans_path(project: project_name),
+    redirect_to vertical_action_plans_path(action_plan_filter_redirect_params.merge(project: project_name)),
       notice: save_notice(project_name, updated_count)
   rescue ArgumentError
-    redirect_to vertical_action_plans_path(project: project_name), alert: "Invalid target value."
+    redirect_to vertical_action_plans_path(action_plan_filter_redirect_params.merge(project: project_name)), alert: "Invalid target value."
   rescue ActiveRecord::RecordInvalid => error
-    redirect_to vertical_action_plans_path(project: project_name), alert: error.record.errors.full_messages.to_sentence
+    redirect_to vertical_action_plans_path(action_plan_filter_redirect_params.merge(project: project_name)), alert: error.record.errors.full_messages.to_sentence
   end
 
   def create
@@ -121,6 +137,10 @@ class VerticalActionPlansController < ApplicationController
     params.fetch(:rows, {}).permit!.to_h
   end
 
+  def action_plan_filter_redirect_params
+    params.permit(:fco_id, :to_id, :state, :vertical, :period, :period_month).to_h.compact_blank
+  end
+
   def project_ownership_lookup_for(rows)
     po_ids = rows.reorder(nil).reselect(:po_id).distinct.pluck(:po_id).compact_blank
     project_names = rows.reorder(nil).reselect(:project_name).distinct.pluck(:project_name).compact_blank
@@ -139,11 +159,11 @@ class VerticalActionPlansController < ApplicationController
     "po_project:#{po_id}:#{ProjectOwnership.normalize_project_key(project_name)}"
   end
 
-  def vertical_action_plan_csv(rows)
+  def vertical_action_plan_csv(rows, month_pairs: ActionPlanRow::MONTH_DISPLAY_PAIRS)
     CSV.generate(headers: true) do |csv|
       csv << [
         *ActionPlanRow.display_columns(admin: current_user.admin?).map { |column| column[:header] },
-        *ActionPlanRow::MONTH_DISPLAY_PAIRS.flat_map { |pair| [ pair[:target_label], pair[:achievement_label] ] },
+        *month_pairs.flat_map { |pair| [ pair[:target_label], pair[:achievement_label] ] },
         "Total Target",
         "Total Achievement"
       ]
@@ -151,9 +171,9 @@ class VerticalActionPlansController < ApplicationController
       rows.each do |row|
         csv << [
           *ActionPlanRow.display_columns(admin: current_user.admin?).map { |column| row.public_send(column[:attribute]) },
-          *ActionPlanRow::MONTH_DISPLAY_PAIRS.flat_map { |pair| [ row.public_send(pair[:target_column]), row.public_send(pair[:achievement_column]) ] },
-          row.monthly_total,
-          row.target_total
+          *month_pairs.flat_map { |pair| [ row.public_send(pair[:target_column]), row.public_send(pair[:achievement_column]) ] },
+          month_pairs.sum { |pair| row.public_send(pair[:target_column]).to_i },
+          month_pairs.sum { |pair| row.public_send(pair[:achievement_column]).to_i }
         ]
       end
     end

@@ -76,7 +76,7 @@
                 <div class="muted">PO ID: <%= submission.po_id %></div>
               </td>
               <td class="achievement-sticky-col achievement-sticky-fco">
-                <strong><%= submission.fco_name %></strong>
+                <strong><%= ActionPlanFcoGroup.name_for(submission.fco_id, submission.fco_name) %></strong>
                 <div class="muted">FCO ID: <%= submission.fco_id %></div>
                 <div class="muted"><%= submission.to_name %></div>
               </td>
@@ -115,7 +115,7 @@
           <div>
             <p class="eyebrow"><%= submission.month.capitalize %> Achievement</p>
             <h2 id="<%= modal_id %>-title"><%= submission.project_name %></h2>
-            <p class="muted"><%= submission.fco_name %> • <%= submission.to_name %> • <%= submission.status_label %></p>
+            <p class="muted"><%= ActionPlanFcoGroup.name_for(submission.fco_id, submission.fco_name) %> • <%= submission.to_name %> • <%= submission.status_label %></p>
           </div>
           <button type="button" class="modal-close-button" data-close-achievement-modal aria-label="Close review">×</button>
         </div>

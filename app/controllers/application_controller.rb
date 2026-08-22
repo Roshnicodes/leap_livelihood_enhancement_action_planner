@@ -7,7 +7,8 @@ class ApplicationController < ActionController::Base
     :menu_show_allocated_pb?, :menu_show_project_summary?, :menu_show_project_summary_record?,
     :menu_show_pb_summary_approval?, :menu_show_pb_approval_records?, :menu_show_budget_utilization?,
     :menu_show_budget_utilization_report?,
-    :menu_show_project_action_plan?, :menu_show_achievement_entry?, :menu_show_achievement_approvals?,
+    :menu_show_project_action_plan?, :menu_show_achievement_entry?, :menu_show_achievement_entry_record?,
+    :menu_show_achievement_approvals?,
     :menu_show_vertical_action_plan?, :menu_show_vertical_action_plan_record?,
     :menu_show_pis_report_upload?, :menu_show_donor_report_upload?, :menu_show_fund_report_upload?,
     :menu_show_pis_report_records?, :menu_show_donor_report_records?, :menu_show_fund_report_records?,
@@ -154,6 +155,10 @@ class ApplicationController < ActionController::Base
     !current_user&.admin? && menu_employee&.action_plan_fco?
   end
 
+  def menu_show_achievement_entry_record?
+    current_user&.admin? || menu_employee&.action_plan_fco?
+  end
+
   def menu_show_achievement_approvals?
     return true if current_user&.admin?
 
@@ -217,7 +222,8 @@ class ApplicationController < ActionController::Base
   end
 
   def menu_show_action_plan_section?
-    menu_show_project_action_plan? || menu_show_achievement_entry? || menu_show_achievement_approvals? ||
+    menu_show_project_action_plan? || menu_show_achievement_entry? || menu_show_achievement_entry_record? ||
+      menu_show_achievement_approvals? ||
       menu_show_vertical_action_plan? || menu_show_vertical_action_plan_record? ||
       %w[po coo director].any? { |stage| menu_show_action_plan_approval?(stage) }
   end

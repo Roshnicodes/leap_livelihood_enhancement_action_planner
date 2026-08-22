@@ -9,6 +9,7 @@ class ActionPlanReportsController < ApplicationController
     @vertical_summary_rows = @report.vertical_summary_rows
     @action_plan_detail_rows = @report.action_plan_detail_rows
     @achievement_detail_rows = @report.achievement_detail_rows
+    @summary_totals = @report.summary_totals
 
     respond_to do |format|
       format.html
