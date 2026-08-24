@@ -38,10 +38,11 @@ class ActionPlanStatusReport
 
   def fco_approval_rows
     @fco_approval_rows ||= fco_options.map do |state, fco_id, fco_name, fco_ids|
-      statuses = MONTHS.index_with do |month|
+      month_details = MONTHS.index_with do |month|
         submission = achievement_submission_for(fco_id, month)
-        submission ? status_label(submission) : "Not Submitted"
+        submission ? approval_month_detail(submission) : { status: "Not Submitted", audit_lines: [] }
       end
+      statuses = month_details.transform_values { |detail| detail[:status] }
 
       {
         state: state,
@@ -49,6 +50,7 @@ class ActionPlanStatusReport
         fco_name: fco_name,
         fco_ids: fco_ids,
         statuses: statuses,
+        month_details: month_details,
         total_pending: statuses.values.count { |status| status.start_with?("Pending") },
         total_approved: statuses.values.count("Approved"),
         total_returned: statuses.values.count("Returned")
@@ -116,11 +118,16 @@ class ActionPlanStatusReport
         status: status_label(submission),
         current_stage: submission.current_stage.to_s.titleize,
         vertical_approver: employee_label(submission.vertical_approver),
+        vertical_reviewed_at: datetime(submission.vertical_reviewed_at),
         vertical_status: stage_status(submission, "vertical"),
         po_approver: employee_label(submission.po_approver),
+        po_reviewed_at: datetime(submission.po_reviewed_at),
         po_status: stage_status(submission, "po"),
         coo_approver: employee_label(submission.coo_approver),
+        coo_reviewed_at: datetime(submission.coo_reviewed_at),
         coo_status: stage_status(submission, "coo"),
+        director_approver: employee_label(submission.director_approver),
+        director_reviewed_at: datetime(submission.director_reviewed_at),
         director_view: stage_status(submission, "director"),
         remark: submission.submission_remark
       }
@@ -173,7 +180,7 @@ class ActionPlanStatusReport
         title: "Achievement Approval Status",
         headers: [ "State", "FCO ID", "FCO", *month_headers, "Total Pending", "Total Approved", "Total Returned" ],
         rows: fco_approval_rows.map do |row|
-          [ row[:state], row[:fco_ids].join(", "), row[:fco_name], *MONTHS.map { |month| row[:statuses][month] }, row[:total_pending], row[:total_approved], row[:total_returned] ]
+          [ row[:state], row[:fco_ids].join(", "), row[:fco_name], *MONTHS.map { |month| approval_export_value(row[:month_details][month]) }, row[:total_pending], row[:total_approved], row[:total_returned] ]
         end,
         widths: [ 12, 10, 28, *Array.new(MONTHS.size, 22), 15, 15, 15 ]
       },
@@ -196,9 +203,9 @@ class ActionPlanStatusReport
       {
         name: "Achievement",
         title: "Achievement Status Details",
-        headers: [ "Project", "State", "FCO", "TO", "Vertical", "Month", "Submitted By", "Submitted At", "Status", "Current Stage", "Vertical Approver", "Vertical Status", "PO Approver", "PO Status", "COO Approver", "COO Status", "Director View", "Remark" ],
+        headers: [ "Project", "State", "FCO", "TO", "Vertical", "Month", "Submitted By", "Submitted At", "Status", "Current Stage", "Vertical Approver", "Vertical Reviewed At", "Vertical Status", "PO Approver", "PO Reviewed At", "PO Status", "COO Approver", "COO Reviewed At", "COO Status", "Director Approver", "Director Reviewed At", "Director View", "Remark" ],
         rows: achievement_detail_rows.map { |row| row.values },
-        widths: [ 34, 10, 26, 26, 24, 12, 28, 22, 28, 18, 28, 24, 28, 24, 28, 24, 20, 36 ]
+        widths: [ 34, 10, 26, 26, 24, 12, 28, 22, 28, 18, 28, 22, 24, 28, 22, 24, 28, 22, 24, 28, 22, 20, 36 ]
       }
     ]
   end
@@ -260,7 +267,8 @@ class ActionPlanStatusReport
       pending_count: pending_projects.size,
       not_submitted_count: not_submitted_projects.size,
       not_submitted_projects: not_submitted_projects,
-      pending_projects: pending_projects
+      pending_projects: pending_projects,
+      audit_lines: submission_audit_lines(project_submissions.values)
     }
   end
 
@@ -310,9 +318,14 @@ class ActionPlanStatusReport
     return detail[:status] if detail[:expected_count].zero?
 
     value = "#{detail[:status]} (#{detail[:submitted_count]}/#{detail[:expected_count]})"
+    value = [ value, *detail[:audit_lines] ].compact_blank.join("; ")
     return value if detail[:not_submitted_projects].blank?
 
     "#{value}; Not submitted: #{detail[:not_submitted_projects].join(', ')}"
+  end
+
+  def approval_export_value(detail)
+    [ detail[:status], *detail[:audit_lines] ].compact_blank.join("; ")
   end
 
   def achievement_submission_for(fco_id, month)
@@ -350,6 +363,54 @@ class ActionPlanStatusReport
     "Awaiting"
   end
 
+  def approval_month_detail(submission)
+    {
+      status: status_label(submission),
+      audit_lines: submission_audit_lines([ submission ])
+    }
+  end
+
+  def submission_audit_lines(submissions)
+    submissions = submissions.compact
+    return [] if submissions.blank?
+
+    [
+      submitted_audit_line(submissions),
+      latest_review_audit_line(submissions)
+    ].compact
+  end
+
+  def submitted_audit_line(submissions)
+    submitted_times = submissions.filter_map(&:submitted_at)
+    return if submitted_times.blank?
+
+    submitted_by = submissions.map { |submission| employee_label(submission.employee) }.reject { |label| label == "-" }.uniq
+    label = submitted_times.size > 1 ? "Submitted #{datetime(submitted_times.min)} - #{datetime(submitted_times.max)}" : "Submitted #{datetime(submitted_times.first)}"
+    submitted_by.present? ? "#{label} by #{submitted_by.to_sentence}" : label
+  end
+
+  def latest_review_audit_line(submissions)
+    reviews = submissions.flat_map do |submission|
+      %w[vertical po coo director].filter_map do |stage|
+        reviewed_at = submission.public_send("#{stage}_reviewed_at")
+        next if reviewed_at.blank?
+
+        returned = submission.returned? && submission.current_stage == stage
+        {
+          reviewed_at: reviewed_at,
+          label: returned ? "Returned" : "Approved",
+          stage: stage,
+          actor: employee_label(submission.public_send("#{stage}_approver"))
+        }
+      end
+    end
+    review = reviews.max_by { |item| item[:reviewed_at] }
+    return if review.blank?
+
+    actor = review[:actor] == "-" ? review[:stage].titleize : review[:actor]
+    "#{review[:label]} by #{actor} on #{datetime(review[:reviewed_at])}"
+  end
+
   def employee_label(employee)
     return "-" if employee.blank?
 
@@ -382,7 +443,7 @@ class ActionPlanStatusReport
     csv << [ "Achievement Approval Status" ]
     csv << [ "State", "FCO ID", "FCO", *month_headers, "Total Pending", "Total Approved", "Total Returned" ]
     fco_approval_rows.each do |row|
-      csv << [ row[:state], row[:fco_ids].join(", "), row[:fco_name], *MONTHS.map { |month| row[:statuses][month] }, row[:total_pending], row[:total_approved], row[:total_returned] ]
+      csv << [ row[:state], row[:fco_ids].join(", "), row[:fco_name], *MONTHS.map { |month| approval_export_value(row[:month_details][month]) }, row[:total_pending], row[:total_approved], row[:total_returned] ]
     end
   end
 
@@ -402,7 +463,7 @@ class ActionPlanStatusReport
 
   def append_achievement_details_csv(csv)
     csv << [ "Achievement Status Details" ]
-    csv << [ "Project", "State", "FCO", "TO", "Vertical", "Month", "Submitted By", "Submitted At", "Status", "Current Stage", "Vertical Approver", "Vertical Status", "PO Approver", "PO Status", "COO Approver", "COO Status", "Director View", "Remark" ]
+    csv << [ "Project", "State", "FCO", "TO", "Vertical", "Month", "Submitted By", "Submitted At", "Status", "Current Stage", "Vertical Approver", "Vertical Reviewed At", "Vertical Status", "PO Approver", "PO Reviewed At", "PO Status", "COO Approver", "COO Reviewed At", "COO Status", "Director Approver", "Director Reviewed At", "Director View", "Remark" ]
     achievement_detail_rows.each { |row| csv << row.values }
   end
 

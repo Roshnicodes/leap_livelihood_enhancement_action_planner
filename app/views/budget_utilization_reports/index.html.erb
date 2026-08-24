@@ -55,6 +55,8 @@
             <th>Total Allocated Budget</th>
             <th>Total Expenditure</th>
             <th>Total Remaining Budget</th>
+            <th>Last Submitted By</th>
+            <th>Last Submitted At</th>
             <% @report_columns.each do |column| %>
               <th class="<%= column[:type] == :quarter ? "budget-quarter-heading" : nil %>"><%= column[:label] %></th>
             <% end %>
@@ -68,6 +70,8 @@
               <td class="money-cell"><strong><%= currency(row[:total_allocated]) %></strong></td>
               <td class="money-cell"><strong><%= currency(row[:total_expenditure]) %></strong></td>
               <td class="money-cell"><strong><%= currency(row[:total_remaining]) %></strong></td>
+              <td><%= row[:submitted_by].presence || "-" %></td>
+              <td><%= format_record_datetime(row[:submitted_at]) || "-" %></td>
               <% @report_columns.each do |column| %>
                 <% value = if column[:type] == :month
                   row[:month_utilized][column[:key]].to_d
@@ -76,6 +80,9 @@
                 end %>
                 <td class="money-cell <%= "budget-quarter-cell" if column[:type] == :quarter %>">
                   <strong><%= currency(value) %></strong>
+                  <% if column[:type] == :month && row[:month_audit][column[:key]].present? %>
+                    <small class="budget-audit-line"><%= row[:month_audit][column[:key]] %></small>
+                  <% end %>
                 </td>
               <% end %>
             </tr>

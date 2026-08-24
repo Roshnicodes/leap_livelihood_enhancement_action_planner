@@ -72,6 +72,9 @@
           <% @prior_months.each do |month| %>
             <td class="money-cell budget-prior-month-cell">
               <strong><%= currency(row[:month_utilized][month]) %></strong>
+              <% if row[:month_audit][month].present? %>
+                <small class="budget-audit-line"><%= row[:month_audit][month] %></small>
+              <% end %>
             </td>
           <% end %>
           <td class="money-cell<%= " budget-prior-month-cell" unless editable %>">
@@ -86,6 +89,9 @@
                 aria: { label: "#{@selected_month.capitalize} utilized amount for #{row[:activity_name]}" } %>
             <% else %>
               <strong><%= currency(row[:utilized_amount]) %></strong>
+            <% end %>
+            <% if row[:audit_line].present? %>
+              <small class="budget-audit-line"><%= row[:audit_line] %></small>
             <% end %>
           </td>
         </tr>

@@ -81,6 +81,7 @@ class BudgetUtilizationsController < ApplicationController
     else
       "not_started"
     end
+    @selected_budget_audit = selected_budget_audit
     @rows = if @selected_project.present? && @selected_month.present?
       budget_rows_for(@selected_project, @selected_month)
     else
@@ -113,7 +114,7 @@ class BudgetUtilizationsController < ApplicationController
   def budget_rows_for(project_name, month)
     activities = activity_scope.where(project_name: project_name).order(:bli_code, :name, :activity_name, :vertical_name)
     months = visible_months_for(month)
-    existing_scope = BudgetUtilization.with_single_bli_code.where(project_name: project_name, month: months)
+    existing_scope = BudgetUtilization.with_single_bli_code.includes(:submitted_by, :updated_by).where(project_name: project_name, month: months)
     existing_scope = existing_scope.submitted unless @can_edit
     existing = existing_scope
       .group_by { |utilization| [ utilization.project_name, utilization.bli_code.to_s ] }
@@ -131,6 +132,9 @@ class BudgetUtilizationsController < ApplicationController
         month_utilized = months.index_with do |candidate|
           by_month[candidate]&.utilized_amount.to_d
         end
+        month_audit = months.index_with do |candidate|
+          budget_audit_line(by_month[candidate])
+        end
         current = by_month[month]
         prior_expenditure = months[0...-1].sum { |candidate| month_utilized[candidate].to_d }
         current_utilized = current&.utilized_amount.to_d
@@ -147,10 +151,52 @@ class BudgetUtilizationsController < ApplicationController
           total_expenditure: total_expenditure,
           total_remaining: total_allocated - total_expenditure,
           month_amount: month_amount,
-          utilized_amount: current_utilized
+          utilized_amount: current_utilized,
+          month_audit: month_audit,
+          audit_line: budget_audit_line(current)
         }
       end
       .sort_by { |row| [ bli_code_sort_key(row[:bli_code]), row[:activity_name].to_s ] }
+  end
+
+  def selected_budget_audit
+    records = selected_budget_scope.includes(:submitted_by, :updated_by).to_a
+    return {} if records.blank?
+
+    latest_update = records.max_by(&:updated_at)
+    submitted_records = records.select(&:submitted?)
+    latest_submission = submitted_records.filter_map(&:submitted_at).max
+    submitters = submitted_records.map { |record| user_label(record.submitted_by) }.reject { |label| label == "-" }.uniq
+
+    {
+      draft_saved_at: latest_update&.updated_at,
+      draft_saved_by: user_label(latest_update&.updated_by),
+      submitted_at: latest_submission,
+      submitted_by: submitters.to_sentence
+    }
+  end
+
+  def budget_audit_line(record)
+    return if record.blank?
+
+    if record.submitted?
+      submitted_by = user_label(record.submitted_by)
+      submitted_at = helpers.format_record_datetime(record.submitted_at)
+      return "Submitted #{submitted_at} by #{submitted_by}"
+    end
+
+    updated_by = user_label(record.updated_by)
+    updated_at = helpers.format_record_datetime(record.updated_at)
+    "Draft updated #{updated_at} by #{updated_by}"
+  end
+
+  def user_label(user)
+    return "-" if user.blank?
+
+    employee = user.employee
+    return [ employee.employee_code, employee.name ].compact_blank.join(" - ") if employee.present?
+
+    user.login.presence || "User ##{user.id}"
   end
 
   def bli_code_sort_key(code)

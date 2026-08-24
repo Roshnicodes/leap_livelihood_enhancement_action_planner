@@ -81,6 +81,13 @@
                     <small><%= detail[:submitted_count] %>/<%= detail[:expected_count] %></small>
                   <% end %>
                 </span>
+                <% if detail[:audit_lines].present? %>
+                  <div class="submission-audit-lines">
+                    <% detail[:audit_lines].each do |line| %>
+                      <span><%= line %></span>
+                    <% end %>
+                  </div>
+                <% end %>
                 <% if detail[:not_submitted_projects].present? %>
                   <div class="missing-projects">
                     <span><%= detail[:not_submitted_count] %> not submitted</span>
@@ -140,8 +147,18 @@
               </div>
             </td>
             <% ActionPlanStatusReport::MONTHS.each do |month| %>
-              <% status = row[:statuses][month] %>
-              <td><span class="status-badge status-<%= status == "Approved" ? "approved" : status == "Returned" ? "returned" : status.start_with?("Pending") ? "pending" : "not_submitted" %>"><%= status %></span></td>
+              <% detail = row[:month_details][month] %>
+              <% status = detail[:status] %>
+              <td class="approval-month-cell">
+                <span class="status-badge status-<%= status == "Approved" ? "approved" : status == "Returned" ? "returned" : status.start_with?("Pending") ? "pending" : "not_submitted" %>"><%= status %></span>
+                <% if detail[:audit_lines].present? %>
+                  <div class="submission-audit-lines">
+                    <% detail[:audit_lines].each do |line| %>
+                      <span><%= line %></span>
+                    <% end %>
+                  </div>
+                <% end %>
+              </td>
             <% end %>
             <td><span class="code-pill"><%= row[:total_pending] %></span></td>
             <td><span class="code-pill"><%= row[:total_approved] %></span></td>
@@ -269,11 +286,16 @@
           <th>Submitted At</th>
           <th>Status</th>
           <th>Vertical Approver</th>
+          <th>Vertical Reviewed At</th>
           <th>Vertical Status</th>
           <th>PO Approver</th>
+          <th>PO Reviewed At</th>
           <th>PO Status</th>
           <th>COO Approver</th>
+          <th>COO Reviewed At</th>
           <th>COO Status</th>
+          <th>Director Approver</th>
+          <th>Director Reviewed At</th>
           <th>Director View</th>
         </tr>
       </thead>
@@ -288,11 +310,16 @@
             <td><%= row[:submitted_at] %></td>
             <td><span class="status-badge status-<%= row[:status] == "Approved" ? "approved" : row[:status] == "Returned" ? "returned" : "pending" %>"><%= row[:status] %></span></td>
             <td><%= row[:vertical_approver] %></td>
+            <td><%= row[:vertical_reviewed_at].presence || "-" %></td>
             <td><%= row[:vertical_status] %></td>
             <td><%= row[:po_approver] %></td>
+            <td><%= row[:po_reviewed_at].presence || "-" %></td>
             <td><%= row[:po_status] %></td>
             <td><%= row[:coo_approver] %></td>
+            <td><%= row[:coo_reviewed_at].presence || "-" %></td>
             <td><%= row[:coo_status] %></td>
+            <td><%= row[:director_approver] %></td>
+            <td><%= row[:director_reviewed_at].presence || "-" %></td>
             <td><%= row[:director_view] %></td>
           </tr>
         <% end %>

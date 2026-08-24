@@ -2305,8 +2305,9 @@ tbody tr:hover td {
   font-weight: 800;
 }
 
-.month-submission-cell {
-  min-width: 118px;
+.month-submission-cell,
+.approval-month-cell {
+  min-width: 190px;
 }
 
 .month-submission-cell .status-badge {
@@ -2322,6 +2323,21 @@ tbody tr:hover td {
   font-size: 0.72rem;
   line-height: 1;
   opacity: 0.78;
+}
+
+.submission-audit-lines {
+  display: grid;
+  gap: 3px;
+  max-width: 220px;
+  margin-top: 7px;
+  color: #344054;
+  font-size: 0.72rem;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.submission-audit-lines span {
+  overflow-wrap: anywhere;
 }
 
 .missing-projects {
@@ -6625,6 +6641,42 @@ body.app-body {
   margin: 14px 0;
 }
 
+.budget-audit-strip {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 14px;
+}
+
+.budget-audit-strip > div {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid #dce7ee;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.budget-audit-strip span {
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.budget-audit-strip strong {
+  color: #102035;
+  font-size: 0.98rem;
+}
+
+.budget-audit-strip small {
+  color: #475467;
+  font-size: 0.78rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
 .budget-utilization-panel {
   overflow: hidden;
 }
@@ -6659,7 +6711,7 @@ body.app-body {
 }
 
 .budget-utilization-table .money-cell {
-  white-space: nowrap;
+  min-width: 150px;
 }
 
 .budget-prior-month-cell {
@@ -6668,7 +6720,18 @@ body.app-body {
 }
 
 .budget-report-table {
-  min-width: 980px;
+  min-width: 1240px;
+}
+
+.budget-audit-line {
+  display: block;
+  max-width: 210px;
+  margin-top: 5px;
+  color: #475467;
+  font-size: 0.72rem;
+  font-weight: 750;
+  line-height: 1.3;
+  white-space: normal;
 }
 
 .budget-quarter-heading,

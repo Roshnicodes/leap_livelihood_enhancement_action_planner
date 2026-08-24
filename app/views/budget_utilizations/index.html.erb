@@ -53,6 +53,21 @@
     <article class="metric metric-gold"><span><%= @selected_month.capitalize %> Utilized</span><strong><%= currency(@utilized_total) %></strong></article>
   </section>
 
+  <% if @selected_budget_audit.present? %>
+    <section class="budget-audit-strip">
+      <div>
+        <span>Last Updated</span>
+        <strong><%= format_record_datetime(@selected_budget_audit[:draft_saved_at]) || "-" %></strong>
+        <small><%= @selected_budget_audit[:draft_saved_by].presence || "-" %></small>
+      </div>
+      <div>
+        <span>Final Submitted</span>
+        <strong><%= format_record_datetime(@selected_budget_audit[:submitted_at]) || "-" %></strong>
+        <small><%= @selected_budget_audit[:submitted_by].presence || "-" %></small>
+      </div>
+    </section>
+  <% end %>
+
   <% if @can_edit && !@submitted_locked %>
     <%= form_with url: budget_utilizations_path, method: :patch, class: "table-panel budget-utilization-panel", data: { searchable_table: true, budget_utilization_panel: true } do %>
       <%= hidden_field_tag :project, @selected_project %>
