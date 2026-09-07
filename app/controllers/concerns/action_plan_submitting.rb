@@ -76,8 +76,8 @@ module ActionPlanSubmitting
 
   def resolve_project_ownership(project_name, po_id)
     project_ownership_for(project_name) ||
-      ProjectOwnership.find_by(po_id: po_id, project_name: project_name) ||
-      ProjectOwnership.find_by(po_id: po_id) ||
-      ProjectOwnership.find_by(project_name: project_name)
+      ProjectOwnership.active.find_by(po_id: po_id, project_name: project_name) ||
+      ProjectOwnership.active.find_by(po_id: po_id) ||
+      ProjectOwnership.active.find_by(project_name: project_name)
   end
 end

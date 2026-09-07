@@ -72,8 +72,8 @@ class DonorReportUploadsController < ApplicationController
 
   def project_options
     (
-      BliActivity.where.not(project_name: [ nil, "" ]).distinct.pluck(:project_name) +
-      ProjectOwnership.where.not(project_name: [ nil, "" ]).distinct.pluck(:project_name)
+      BliActivity.active.where.not(project_name: [ nil, "" ]).distinct.pluck(:project_name) +
+      ProjectOwnership.active.where.not(project_name: [ nil, "" ]).distinct.pluck(:project_name)
     ).compact_blank.uniq.sort
   end
 
@@ -86,7 +86,7 @@ class DonorReportUploadsController < ApplicationController
   def require_upload_access
     return if current_user&.admin?
 
-    redirect_to donor_report_uploads_path, alert: "PMC access required to upload donor reports."
+    redirect_to donor_report_uploads_path, alert: "MIS access required to upload donor reports."
   end
 
   def records_csv
@@ -103,7 +103,7 @@ class DonorReportUploadsController < ApplicationController
           upload.submission_date,
           document_attachment&.attached? ? document_attachment.filename.to_s : nil,
           upload.screenshot_file.attached? ? upload.screenshot_file.filename.to_s : nil,
-          upload.uploaded_by&.admin? ? "PMC" : upload.uploaded_by&.employee&.name,
+          upload.uploaded_by&.admin? ? "MIS" : upload.uploaded_by&.employee&.name,
           helpers.format_record_datetime(upload.created_at)
         ]
       end

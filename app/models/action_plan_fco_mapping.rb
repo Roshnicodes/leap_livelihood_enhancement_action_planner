@@ -6,7 +6,9 @@ class ActionPlanFcoMapping < ApplicationRecord
 
   before_validation :normalize_text
 
-  scope :for_employee, ->(employee) { where(employee: employee) }
+  scope :active, -> { where(active: true) }
+  scope :disabled, -> { where(active: false) }
+  scope :for_employee, ->(employee) { active.where(employee: employee) }
 
   def self.ensure_for_employee(employee)
     return none if employee.blank?
@@ -49,6 +51,7 @@ class ActionPlanFcoMapping < ApplicationRecord
         mapping = find_or_initialize_by(employee: employee, fco_id: fco_id)
         mapping.employee_code = employee.employee_code
         mapping.fco_name = fco&.fetch(:fco_name) || fco_name
+        mapping.active = true
         mapping.save!
         enable_login_for!(employee)
         result[:imported] += 1

@@ -45,7 +45,7 @@
 
               <div class="sidebar-section<%= " is-open" if admin_open %>" data-sidebar-section>
                 <button type="button" class="sidebar-section-toggle" data-sidebar-toggle aria-expanded="<%= admin_open %>">
-                  <span>PMC</span>
+                  <span>MIS</span>
                   <span class="sidebar-section-caret" aria-hidden="true"></span>
                 </button>
                 <div class="sidebar-section-menu">
@@ -392,10 +392,10 @@
 
           <div class="sidebar-user">
             <div class="sidebar-user-main">
-              <span class="side-avatar"><%= current_user.admin? ? "P" : current_user.employee&.name.to_s.first %></span>
+              <span class="side-avatar"><%= current_user.admin? ? "M" : current_user.employee&.name.to_s.first %></span>
               <div>
-                <strong><%= current_user.admin? ? "PMC" : current_user.employee&.name %></strong>
-                <small><%= current_user.admin? ? "PMC Login" : [current_user.employee&.employee_code, current_user.employee&.department].compact_blank.join(" • ") %></small>
+                <strong><%= current_user.admin? ? "MIS" : current_user.employee&.name %></strong>
+                <small><%= current_user.admin? ? "MIS Login" : [current_user.employee&.employee_code, current_user.employee&.department].compact_blank.join(" • ") %></small>
               </div>
             </div>
             <% if current_user.employee&.mapped_vertical_names.present? %>
@@ -435,30 +435,250 @@
 
     <script>
       (() => {
-        function bindSearch(panel) {
-          const input = panel.querySelector("[data-table-search-input]");
-          const rows = [...panel.querySelectorAll("tbody tr")];
-          const count = panel.querySelector("[data-filtered-count]");
-          if (!input || rows.length === 0) return;
+        function compactText(value) {
+          return (value || "").replace(/\s+/g, " ").trim();
+        }
 
-          input.addEventListener("input", () => {
-            const term = input.value.trim().toLowerCase();
-            let visible = 0;
+        function normalizedText(value) {
+          return compactText(value).toLowerCase();
+        }
 
-            rows.forEach((row) => {
-              const match = row.textContent.toLowerCase().includes(term);
-              row.hidden = !match;
-              if (match) visible += 1;
-            });
+        function filterTextFor(element) {
+          if (!element) return "";
 
-            if (count) {
-              const label = count.dataset.countLabel || "rows";
-              count.textContent = `${visible} ${label}`;
+          const values = [element.textContent];
+          element.querySelectorAll("input, textarea, select").forEach((control) => {
+            if (control.type === "checkbox" || control.type === "radio") {
+              values.push(control.checked ? "checked yes true" : "unchecked no false");
+            } else if (control.tagName === "SELECT") {
+              const selected = [...control.selectedOptions].map((option) => option.textContent);
+              values.push(control.value, ...selected);
+            } else {
+              values.push(control.value);
             }
+          });
+
+          return normalizedText(values.join(" "));
+        }
+
+        function tableRows(table) {
+          return [...table.tBodies].flatMap((body) => [...body.rows]);
+        }
+
+        function tablePanel(table) {
+          return table.closest(".table-panel") ||
+            table.closest("[data-searchable-table]") ||
+            table.closest(".responsive-table") ||
+            table.parentElement;
+        }
+
+        function localTableSearchInput(table) {
+          return tablePanel(table)?.querySelector("[data-table-search-input]");
+        }
+
+        function globalRecordSearchTerm() {
+          return normalizedText(document.querySelector("[data-global-record-search]")?.value);
+        }
+
+        function rowCellText(row, columnIndex) {
+          return filterTextFor(row.cells[columnIndex]);
+        }
+
+        function columnFilterMatches(text, operator, term) {
+          if (operator === "blank") return text.length === 0 || text === "-";
+          if (operator === "not_blank") return text.length > 0 && text !== "-";
+          if (term.length === 0) return true;
+          if (operator === "equals") return text === term;
+          if (operator === "starts_with") return text.startsWith(term);
+          if (operator === "ends_with") return text.endsWith(term);
+
+          return text.includes(term);
+        }
+
+        function tableColumnFilters(table) {
+          return [...table.querySelectorAll("[data-column-filter-term]")].map((input) => ({
+            columnIndex: Number(input.dataset.columnIndex),
+            term: normalizedText(input.value),
+            operator: input.closest("[data-column-filter-popover]")?.querySelector("[data-column-filter-operator]")?.value || "contains"
+          }));
+        }
+
+        function updateTableCount(table, visibleRows) {
+          const count = tablePanel(table)?.querySelector("[data-filtered-count]");
+          if (!count) return;
+
+          const label = count.dataset.countLabel || "rows";
+          count.textContent = `${visibleRows} ${label}`;
+        }
+
+        function updateGlobalRecordCount() {
+          const count = document.querySelector("[data-global-record-count]");
+          if (!count) return;
+
+          const panels = [...document.querySelectorAll("[data-record-table-panel]")];
+          if (panels.length === 0) return;
+
+          let visibleRows = 0;
+          panels.forEach((panel) => {
+            const rows = [...panel.querySelectorAll("tbody tr")];
+            const panelVisibleRows = rows.filter((row) => !row.hidden).length;
+            panel.hidden = panelVisibleRows === 0;
+            visibleRows += panelVisibleRows;
+          });
+
+          const label = count.dataset.countLabel || "rows";
+          count.textContent = `${visibleRows} ${label}`;
+        }
+
+        function applyTableFilters(table) {
+          const rows = tableRows(table);
+          if (rows.length === 0) return;
+
+          const localTerm = normalizedText(localTableSearchInput(table)?.value);
+          const globalTerm = table.closest("[data-record-table-panel]") ? globalRecordSearchTerm() : "";
+          const columnFilters = tableColumnFilters(table);
+          let visibleRows = 0;
+
+          rows.forEach((row) => {
+            const rowText = filterTextFor(row);
+            const matchesSearch = (!localTerm || rowText.includes(localTerm)) &&
+              (!globalTerm || rowText.includes(globalTerm));
+            const matchesColumns = columnFilters.every((filter) =>
+              columnFilterMatches(rowCellText(row, filter.columnIndex), filter.operator, filter.term)
+            );
+            const visible = matchesSearch && matchesColumns;
+
+            row.hidden = !visible;
+            if (visible) visibleRows += 1;
+          });
+
+          updateTableCount(table, visibleRows);
+          updateGlobalRecordCount();
+        }
+
+        function closeColumnFilterPopovers(except = null) {
+          document.querySelectorAll("[data-column-filter-popover]").forEach((popover) => {
+            if (popover !== except) popover.hidden = true;
           });
         }
 
-        document.querySelectorAll("[data-searchable-table]").forEach(bindSearch);
+        function headerLabelFor(th, index) {
+          const clone = th.cloneNode(true);
+          clone.querySelectorAll("[data-column-filter-button], [data-column-filter-popover]").forEach((node) => node.remove());
+          return compactText(clone.textContent) || `Column ${index + 1}`;
+        }
+
+        function headerColumns(table) {
+          const headerRow = table.tHead?.rows[table.tHead.rows.length - 1];
+          if (!headerRow) return [];
+
+          let columnIndex = 0;
+          return [...headerRow.cells].flatMap((th) => {
+            const span = Number(th.colSpan || 1);
+            const column = span === 1 ? [{ th, columnIndex, label: headerLabelFor(th, columnIndex) }] : [];
+            columnIndex += span;
+            return column;
+          });
+        }
+
+        function bindColumnFilters(table) {
+          if (table.dataset.columnFiltersBound === "true") return;
+
+          const rows = tableRows(table);
+          const columns = headerColumns(table);
+          if (rows.length === 0 || columns.length === 0) return;
+
+          table.dataset.columnFiltersBound = "true";
+          table.classList.add("has-column-filters");
+
+          columns.forEach(({ th, columnIndex, label }) => {
+            th.classList.add("column-filter-header");
+
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "column-filter-button";
+            button.dataset.columnFilterButton = "true";
+            button.setAttribute("aria-label", `Filter ${label}`);
+            button.title = `Filter ${label}`;
+
+            const popover = document.createElement("div");
+            popover.className = "column-filter-popover";
+            popover.dataset.columnFilterPopover = "true";
+            popover.hidden = true;
+
+            const operator = document.createElement("select");
+            operator.className = "column-filter-operator";
+            operator.dataset.columnFilterOperator = "true";
+            [
+              ["contains", "Contains"],
+              ["equals", "Equals"],
+              ["starts_with", "Starts With"],
+              ["ends_with", "Ends With"],
+              ["blank", "Blank"],
+              ["not_blank", "Not Blank"]
+            ].forEach(([value, text]) => operator.add(new Option(text, value)));
+
+            const input = document.createElement("input");
+            input.type = "search";
+            input.className = "column-filter-input";
+            input.placeholder = "Filter...";
+            input.dataset.columnFilterTerm = "true";
+            input.dataset.columnIndex = columnIndex;
+            input.setAttribute("aria-label", `Filter ${label}`);
+
+            const clear = document.createElement("button");
+            clear.type = "button";
+            clear.className = "column-filter-clear";
+            clear.textContent = "Clear";
+
+            popover.append(operator, input, clear);
+            th.append(button, popover);
+
+            function refreshColumnFilter() {
+              const textOperator = !["blank", "not_blank"].includes(operator.value);
+              input.disabled = !textOperator;
+              if (!textOperator) input.value = "";
+              th.classList.toggle("has-active-column-filter", !textOperator || input.value.trim().length > 0);
+              applyTableFilters(table);
+            }
+
+            button.addEventListener("click", (event) => {
+              event.stopPropagation();
+              const opening = popover.hidden;
+              closeColumnFilterPopovers(opening ? popover : null);
+              popover.hidden = !opening;
+              if (opening) input.focus();
+            });
+
+            popover.addEventListener("click", (event) => event.stopPropagation());
+            operator.addEventListener("change", refreshColumnFilter);
+            input.addEventListener("input", refreshColumnFilter);
+            clear.addEventListener("click", () => {
+              operator.value = "contains";
+              input.disabled = false;
+              input.value = "";
+              th.classList.remove("has-active-column-filter");
+              applyTableFilters(table);
+              input.focus();
+            });
+          });
+
+          applyTableFilters(table);
+        }
+
+        const filterableTables = [...document.querySelectorAll(".app-shell table:not([data-no-column-filters])")];
+        filterableTables.forEach(bindColumnFilters);
+        document.querySelectorAll("[data-table-search-input], [data-global-record-search]").forEach((input) => {
+          input.addEventListener("input", () => filterableTables.forEach(applyTableFilters));
+        });
+        filterableTables.forEach((table) => {
+          table.addEventListener("input", () => applyTableFilters(table));
+          table.addEventListener("change", () => applyTableFilters(table));
+        });
+        document.addEventListener("click", () => closeColumnFilterPopovers());
+        document.addEventListener("keydown", (event) => {
+          if (event.key === "Escape") closeColumnFilterPopovers();
+        });
 
         function bindCollapsiblePanel(panel) {
           const toggle = panel.querySelector("[data-collapsible-toggle]");
@@ -475,10 +695,22 @@
             toggle.setAttribute("aria-expanded", open ? "true" : "false");
           }
 
+          panel.setCollapsibleOpen = setOpen;
           setOpen(panel.dataset.collapsed !== "true");
 
           toggle.addEventListener("click", () => {
-            setOpen(content.hidden);
+            const opening = content.hidden;
+            const group = panel.dataset.collapsibleGroup;
+
+            if (opening && group) {
+              document.querySelectorAll("[data-collapsible-panel][data-collapsible-group]").forEach((otherPanel) => {
+                if (otherPanel !== panel && otherPanel.dataset.collapsibleGroup === group && otherPanel.setCollapsibleOpen) {
+                  otherPanel.setCollapsibleOpen(false);
+                }
+              });
+            }
+
+            setOpen(opening);
           });
         }
 

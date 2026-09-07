@@ -71,7 +71,9 @@ class ActionPlanRow < ApplicationRecord
 
   MONTH_SUM_SQL = MONTH_COLUMNS.map { |month| "COALESCE(#{month}, 0)" }.join(" + ").freeze
 
-  scope :active_import, -> { where(import_flag: 0) }
+  scope :current_import, -> { where(import_flag: 0) }
+  scope :active_import, -> { current_import.where(active: true) }
+  scope :disabled_import, -> { current_import.where(active: false) }
   scope :unbalanced, -> { where("(#{MONTH_SUM_SQL}) <> planned_total") }
   scope :matching_verticals, lambda { |vertical_names|
     names = Array(vertical_names).flat_map { |name| vertical_match_tokens(name) }.uniq.compact_blank

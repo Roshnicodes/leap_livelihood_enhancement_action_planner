@@ -82,7 +82,11 @@ class AchievementEntryRecordsController < ApplicationController
     rows = ActionPlanRow.active_import
     return rows if current_user.admin?
 
-    fco_ids = ActionPlanFcoMapping.ensure_for_employee(current_user.employee).pluck(:fco_id)
+    fco_ids = ActionPlanFcoMapping
+      .ensure_for_employee(current_user.employee)
+      .pluck(:fco_id)
+      .flat_map { |fco_id| ActionPlanFcoGroup.ids_for(fco_id) }
+      .uniq
     rows.where(user_id: fco_ids)
   end
 

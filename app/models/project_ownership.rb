@@ -3,6 +3,8 @@ class ProjectOwnership < ApplicationRecord
 
   validates :po_id, :project_name, presence: true
 
+  scope :active, -> { where(active: true) }
+  scope :disabled, -> { where(active: false) }
   scope :for_employee, lambda { |employee|
     if employee.blank?
       none
@@ -12,9 +14,9 @@ class ProjectOwnership < ApplicationRecord
       email = employee.email.to_s.squish.downcase
       name = employee.name.to_s.squish.downcase
 
-      scope = where(project_owner_id: code_candidates)
-      scope = scope.or(where("LOWER(email_id) = ?", email)) if email.present?
-      scope = scope.or(where("LOWER(po_name) = ?", name)) if name.present?
+      scope = active.where(project_owner_id: code_candidates)
+      scope = scope.or(active.where("LOWER(email_id) = ?", email)) if email.present?
+      scope = scope.or(active.where("LOWER(po_name) = ?", name)) if name.present?
       scope
     end
   }

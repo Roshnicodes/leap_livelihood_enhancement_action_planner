@@ -1,10 +1,22 @@
 <% content_for :title, "Action Plan Import | LEAP" %>
+<% editing_action_plan_row = @action_plan_row_form.persisted? %>
+<% show_action_plan_row_form = editing_action_plan_row || @action_plan_row_form.errors.any? || params[:open_action_plan_row_form].present? %>
+<% action_plan_row_form_url = editing_action_plan_row ? admin_action_plan_row_path(@action_plan_row_form) : admin_action_plan_rows_path %>
+<% action_plan_row_form_method = editing_action_plan_row ? :patch : :post %>
+<% editing_project_ownership = @project_ownership_form.persisted? %>
+<% show_project_ownership_panel = editing_project_ownership || @project_ownership_form.errors.any? || params[:open_project_ownership_form].present? %>
+<% project_ownership_form_url = editing_project_ownership ? admin_project_ownership_path(@project_ownership_form) : admin_project_ownerships_path %>
+<% project_ownership_form_method = editing_project_ownership ? :patch : :post %>
+<% editing_vertical_mapping = @vertical_mapping_form.persisted? %>
+<% show_vertical_mapping_panel = editing_vertical_mapping || @vertical_mapping_form.errors.any? || params[:open_vertical_mapping_form].present? %>
+<% vertical_mapping_form_url = editing_vertical_mapping ? admin_action_plan_vertical_mapping_path(@vertical_mapping_form) : admin_action_plan_vertical_mappings_path %>
+<% vertical_mapping_form_method = editing_vertical_mapping ? :patch : :post %>
+<% import_accordion_group = "action-plan-imports" %>
 
-<section class="page-header">
+<section class="page-header admin-hero">
   <div>
-    <p class="eyebrow">PMC workspace</p>
+    <p class="eyebrow">MIS workspace</p>
     <h1>Action Plan Import</h1>
-    <p class="muted">Upload project ownership and action plan files. Action plan uploads keep old imports archived and show the latest active file.</p>
   </div>
   <div class="header-card">
     <span>Projects</span>
@@ -14,24 +26,25 @@
 
 <section class="metric-grid admin-grid">
   <article class="metric metric-teal"><span>Project Owners</span><strong><%= @summary[:project_ownerships] %></strong></article>
-  <article class="metric metric-blue"><span>No of Activity</span><strong><%= @summary[:action_plan_rows] %></strong></article>
+  <article class="metric metric-blue"><span>Active Rows</span><strong><%= @summary[:action_plan_rows] %></strong></article>
+  <article class="metric metric-rose"><span>Disabled Rows</span><strong><%= @summary[:disabled_action_plan_rows] %></strong></article>
   <article class="metric metric-gold"><span>User Verticals</span><strong><%= @summary[:vertical_mappings] %></strong></article>
-  <article class="metric metric-rose"><span>Archived Activities</span><strong><%= @summary[:archived_action_plan_rows] %></strong></article>
+  <article class="metric metric-ink"><span>Archived Rows</span><strong><%= @summary[:archived_action_plan_rows] %></strong></article>
 </section>
 
-<section class="table-panel import-panel">
+<section class="table-panel import-panel compact-upload-panel">
   <div class="table-heading">
     <div>
-      <h2>Upload files</h2>
-      <p class="muted">Project file can be XLSX/CSV. Project BLI mapping uses only Sheet 1. User vertical mapping filters by State and ASA Theme ID.</p>
+      <h2>Upload Files</h2>
     </div>
     <div class="table-actions">
+      <%= link_to "Uploaded Files", download_latest_files_admin_action_plan_imports_path, class: "approval-review-button" %>
       <%= link_to "Download Action Plan", download_admin_action_plan_imports_path, class: "submit-plan-button" %>
     </div>
   </div>
 
-  <%= form_with url: admin_action_plan_imports_path, method: :post, multipart: true, class: "import-form" do |form| %>
-    <div class="import-grid">
+  <%= form_with url: admin_action_plan_imports_path, method: :post, multipart: true, class: "admin-master-form" do |form| %>
+    <div class="admin-form-grid import-admin-grid">
       <label>
         <span>Project owner file</span>
         <%= form.file_field :project_file, accept: ".xlsx,.csv", class: "input" %>
@@ -45,27 +58,241 @@
         <%= form.file_field :vertical_mapping_file, accept: ".csv,.xlsx", class: "input" %>
       </label>
     </div>
-    <div class="submit-panel">
-      <p>
-        Latest action plan import:
-        <strong><%= format_record_datetime(@latest_action_plan_imported_at) || "Not imported yet" %></strong>
-      </p>
-      <p>Project BLI mapping import adds new rows only. Existing action plan data will not be updated or replaced.</p>
+    <div class="admin-form-footer">
+      <span class="table-count">Latest: <%= format_record_datetime(@latest_action_plan_imported_at) || "Not imported" %></span>
       <%= form.submit "Import Action Plan", class: "submit-plan-button" %>
     </div>
   <% end %>
 </section>
 
-<section class="table-panel import-history-panel collapsible-panel is-collapsed" data-searchable-table data-collapsible-panel data-collapsed="true">
+<section
+  class="table-panel admin-editor-panel collapsible-panel <%= "is-collapsed" unless show_action_plan_row_form %>"
+  id="action-plan-main-file"
+  data-collapsible-panel
+  data-collapsible-group="<%= import_accordion_group %>"
+  data-collapsed="<%= show_action_plan_row_form ? "false" : "true" %>"
+>
   <div class="table-heading">
     <div>
-      <h2>Import history</h2>
-      <p class="muted">Original uploaded files are saved before import. Download any old file from here.</p>
+      <h2><%= editing_action_plan_row ? "Edit main file row" : "Add main file row" %></h2>
+    </div>
+    <div class="table-actions">
+      <% if editing_action_plan_row %>
+        <%= link_to "Add New", admin_action_plan_imports_path(open_action_plan_row_form: 1, anchor: "action-plan-main-file"), class: "secondary-button" %>
+      <% end %>
+      <button
+        type="button"
+        class="panel-toggle-button"
+        data-collapsible-toggle
+        data-show-label="Show"
+        data-hide-label="Hide"
+        aria-expanded="<%= show_action_plan_row_form ? "true" : "false" %>"
+      >
+        <%= show_action_plan_row_form ? "Hide" : "Show" %>
+      </button>
+    </div>
+  </div>
+
+  <div class="collapsible-content" data-collapsible-content <%= "hidden" unless show_action_plan_row_form %>>
+    <%= form_with model: @action_plan_row_form, url: action_plan_row_form_url, method: action_plan_row_form_method, class: "admin-master-form action-plan-row-form" do |form| %>
+      <div class="admin-form-grid action-plan-row-grid">
+        <label>
+          <span>ID New</span>
+          <%= form.text_field :id_new, class: "input" %>
+        </label>
+        <label>
+          <span>State</span>
+          <%= form.text_field :statte, class: "input" %>
+        </label>
+        <label>
+          <span>PO ID</span>
+          <%= form.text_field :po_id, class: "input", required: true %>
+        </label>
+        <label>
+          <span>Project</span>
+          <%= form.text_field :project_name, class: "input", required: true %>
+        </label>
+        <label>
+          <span>Project ID</span>
+          <%= form.text_field :project_id, class: "input" %>
+        </label>
+        <label>
+          <span>Project Owner</span>
+          <%= form.text_field :project_owner, class: "input" %>
+        </label>
+        <label>
+          <span>FCO ID</span>
+          <%= form.text_field :user_id, class: "input" %>
+        </label>
+        <label>
+          <span>FCO Name</span>
+          <%= form.text_field :user_name, class: "input" %>
+        </label>
+        <label>
+          <span>TO ID</span>
+          <%= form.text_field :to_id, class: "input" %>
+        </label>
+        <label>
+          <span>TO Name</span>
+          <%= form.text_field :to_name, class: "input" %>
+        </label>
+        <label>
+          <span>ASA Theme ID</span>
+          <%= form.text_field :asa_theme_id, class: "input" %>
+        </label>
+        <label>
+          <span>ASA Theme</span>
+          <%= form.text_field :asa_theme, class: "input" %>
+        </label>
+        <label>
+          <span>ASA Activity ID</span>
+          <%= form.text_field :asa_activity_id, class: "input" %>
+        </label>
+        <label>
+          <span>ASA Activity</span>
+          <%= form.text_field :asa_activity_name, class: "input" %>
+        </label>
+        <label>
+          <span>Theme ID</span>
+          <%= form.text_field :theme_id, class: "input" %>
+        </label>
+        <label>
+          <span>Project Theme</span>
+          <%= form.text_field :theme, class: "input" %>
+        </label>
+        <label>
+          <span>Activity ID</span>
+          <%= form.text_field :activity_id, class: "input" %>
+        </label>
+        <label class="wide-field">
+          <span>Project Activity</span>
+          <%= form.text_field :activity, class: "input" %>
+        </label>
+        <label>
+          <span>Unit</span>
+          <%= form.text_field :unit_type, class: "input" %>
+        </label>
+        <label>
+          <span>Remark</span>
+          <%= form.text_field :a_remark, class: "input" %>
+        </label>
+      </div>
+
+      <div class="month-input-grid">
+        <% ActionPlanRow::MONTH_COLUMNS.each do |month| %>
+          <label>
+            <span><%= month.capitalize %></span>
+            <%= form.number_field month, class: "input month-admin-input", min: 0, step: 1 %>
+          </label>
+        <% end %>
+      </div>
+
+      <div class="admin-form-footer">
+        <%= form.submit editing_action_plan_row ? "Update Row" : "Add Row", class: "submit-plan-button" %>
+      </div>
+    <% end %>
+  </div>
+</section>
+
+<section
+  class="table-panel admin-data-panel collapsible-panel is-collapsed"
+  data-searchable-table
+  data-collapsible-panel
+  data-collapsible-group="<%= import_accordion_group %>"
+  data-collapsed="true"
+>
+  <div class="table-heading">
+    <div>
+      <h2>Main File Data</h2>
+    </div>
+    <div class="table-actions">
+      <span class="table-count" data-filtered-count data-count-label="rows"><%= @action_plan_rows.size %> rows</span>
+      <button type="button" class="panel-toggle-button" data-collapsible-toggle data-show-label="Show" data-hide-label="Hide" aria-expanded="false">
+        Show
+      </button>
+    </div>
+  </div>
+
+  <div class="collapsible-content" data-collapsible-content hidden>
+    <div class="collapsible-tools">
+      <input type="search" class="table-search" placeholder="Search main file" data-table-search-input>
+    </div>
+
+    <div class="responsive-table action-plan-data-scroll">
+      <table class="admin-table action-plan-main-table">
+        <thead>
+          <tr>
+            <th>Status</th>
+            <th>ID New</th>
+            <th>Project</th>
+            <th>FCO / TO</th>
+            <th>ASA Theme</th>
+            <th>Activity</th>
+            <th>Unit</th>
+            <th>Total Target</th>
+            <th>Total Achievement</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @action_plan_rows.each do |row| %>
+            <tr class="<%= "is-disabled-row" unless row.active? %>">
+              <td><span class="status-badge status-<%= row.active? ? "approved" : "not_submitted" %>"><%= row.active? ? "Active" : "Disabled" %></span></td>
+              <td><span class="code-pill"><%= row.id_new.presence || row.id %></span></td>
+              <td>
+                <strong><%= row.project_name %></strong>
+                <div class="muted"><%= [ row.po_id, row.statte ].compact_blank.join(" / ") %></div>
+              </td>
+              <td>
+                <%= [ row.user_id, row.user_name ].compact_blank.join(" - ").presence || "-" %>
+                <div class="muted"><%= [ row.to_id, row.to_name ].compact_blank.join(" - ").presence || "-" %></div>
+              </td>
+              <td>
+                <%= [ row.asa_theme_id, row.asa_theme ].compact_blank.join(" - ").presence || "-" %>
+                <div class="muted"><%= [ row.asa_activity_id, row.asa_activity_name ].compact_blank.join(" - ").presence || "-" %></div>
+              </td>
+              <td>
+                <%= [ row.activity_id, row.activity ].compact_blank.join(" - ").presence || "-" %>
+                <div class="muted"><%= [ row.theme_id, row.theme ].compact_blank.join(" - ").presence || "-" %></div>
+              </td>
+              <td><%= row.unit_type.presence || "-" %></td>
+              <td><%= row.monthly_total %></td>
+              <td><%= row.target_total %></td>
+              <td>
+                <div class="row-action-group">
+                  <%= link_to "Edit",
+                    admin_action_plan_imports_path(edit_action_plan_row_id: row.id, anchor: "action-plan-main-file"),
+                    class: "secondary-button admin-row-button" %>
+                  <%= button_to row.active? ? "Disable" : "Enable",
+                    admin_toggle_action_plan_row_path(row),
+                    method: :patch,
+                    class: row.active? ? "return-button admin-row-button" : "submit-plan-button admin-row-button",
+                    form: { data: { turbo_confirm: "#{row.active? ? "Disable" : "Enable"} this action plan row?" } } %>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section
+  class="table-panel import-history-panel collapsible-panel is-collapsed"
+  data-searchable-table
+  data-collapsible-panel
+  data-collapsible-group="<%= import_accordion_group %>"
+  data-collapsed="true"
+>
+  <div class="table-heading">
+    <div>
+      <h2>Import History</h2>
     </div>
     <div class="table-actions">
       <span class="table-count" data-filtered-count data-count-label="files"><%= @import_files.size %> files</span>
-      <button type="button" class="panel-toggle-button" data-collapsible-toggle data-show-label="Show history" data-hide-label="Hide history" aria-expanded="false">
-        Show history
+      <button type="button" class="panel-toggle-button" data-collapsible-toggle data-show-label="Show" data-hide-label="Hide" aria-expanded="false">
+        Show
       </button>
     </div>
   </div>
@@ -83,7 +310,7 @@
             <th>File Name</th>
             <th>Financial Year</th>
             <th>Uploaded By</th>
-            <th>No of Activity</th>
+            <th>Rows</th>
             <th>Status</th>
             <th>Uploaded At</th>
             <th>Download</th>
@@ -102,7 +329,7 @@
                   <% end %>
                 </td>
                 <td><span class="code-pill"><%= import_file.financial_year %></span></td>
-                <td><%= import_file.uploaded_by&.admin? ? "PMC" : import_file.uploaded_by&.employee&.name || "-" %></td>
+                <td><%= import_file.uploaded_by&.admin? ? "MIS" : import_file.uploaded_by&.employee&.name || "-" %></td>
                 <td><%= import_file.row_count || "-" %></td>
                 <td><span class="status-badge status-<%= import_file.status == "failed" ? "returned" : "approved" %>"><%= import_file.status.titleize %></span></td>
                 <td><%= format_record_datetime(import_file.imported_at) %></td>
@@ -117,7 +344,7 @@
             <% end %>
           <% else %>
             <tr>
-              <td colspan="8">No saved import files yet.</td>
+              <td colspan="8">No saved import files.</td>
             </tr>
           <% end %>
         </tbody>
@@ -126,86 +353,112 @@
   </div>
 </section>
 
-<section class="table-panel" data-searchable-table>
+<section
+  class="table-panel collapsible-panel is-collapsed"
+  data-searchable-table
+  data-collapsible-panel
+  data-collapsible-group="<%= import_accordion_group %>"
+  data-collapsed="true"
+>
   <div class="table-heading">
     <div>
-      <h2>User vertical mapping table</h2>
-      <p class="muted">Fixed database mapping used by Vertical Action Plan.</p>
+      <h2>User Vertical Mapping</h2>
     </div>
     <div class="table-actions">
-      <input type="search" class="table-search" placeholder="Search user verticals" data-table-search-input>
-      <span class="table-count" data-filtered-count data-count-label="activities"><%= @vertical_mappings.size %> activities</span>
+      <span class="table-count" data-filtered-count data-count-label="rows"><%= @vertical_mappings.size %> rows</span>
+      <button type="button" class="panel-toggle-button" data-collapsible-toggle data-show-label="Show" data-hide-label="Hide" aria-expanded="false">
+        Show
+      </button>
     </div>
   </div>
 
-  <div class="responsive-table">
-    <table>
-      <thead>
-        <tr>
-          <th>Employee ID</th>
-          <th>Employee Name</th>
-          <th>State</th>
-          <th>ASA Theme ID</th>
-          <th>ASA Theme</th>
-          <th>Login</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% @vertical_mappings.each do |mapping| %>
+  <div class="collapsible-content" data-collapsible-content hidden>
+    <div class="collapsible-tools">
+      <input type="search" class="table-search" placeholder="Search user verticals" data-table-search-input>
+    </div>
+
+    <div class="responsive-table">
+      <table>
+        <thead>
           <tr>
-            <td><span class="code-pill"><%= mapping.employee_code %></span></td>
-            <td><%= mapping.employee&.name || "Not found" %></td>
-            <td><span class="code-pill"><%= mapping.state_code %></span></td>
-            <td><span class="code-pill"><%= mapping.asa_theme_id %></span></td>
-            <td><%= mapping.asa_theme %></td>
-            <td>
-              <% if mapping.employee %>
-                <span class="status-badge status-<%= mapping.employee.active? ? "approved" : "not_submitted" %>"><%= mapping.employee.active? ? "Active" : "Inactive" %></span>
-              <% else %>
-                <span class="status-badge status-not_submitted">No employee</span>
-              <% end %>
-            </td>
+            <th>Employee ID</th>
+            <th>Employee Name</th>
+            <th>State</th>
+            <th>ASA Theme ID</th>
+            <th>ASA Theme</th>
+            <th>Login</th>
           </tr>
-        <% end %>
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          <% @vertical_mappings.each do |mapping| %>
+            <tr>
+              <td><span class="code-pill"><%= mapping.employee_code %></span></td>
+              <td><%= mapping.employee&.name || "Not found" %></td>
+              <td><span class="code-pill"><%= mapping.state_code %></span></td>
+              <td><span class="code-pill"><%= mapping.asa_theme_id %></span></td>
+              <td><%= mapping.asa_theme %></td>
+              <td>
+                <% if mapping.employee %>
+                  <span class="status-badge status-<%= mapping.employee.active? ? "approved" : "not_submitted" %>"><%= mapping.employee.active? ? "Active" : "Disabled" %></span>
+                <% else %>
+                  <span class="status-badge status-not_submitted">No employee</span>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
   </div>
 </section>
 
-<section class="table-panel" data-searchable-table>
+<section
+  class="table-panel collapsible-panel is-collapsed"
+  data-searchable-table
+  data-collapsible-panel
+  data-collapsible-group="<%= import_accordion_group %>"
+  data-collapsed="true"
+>
   <div class="table-heading">
     <div>
-      <h2>Project owner table</h2>
-      <p class="muted">Imported from the project file.</p>
+      <h2>Project Owners</h2>
     </div>
     <div class="table-actions">
-      <input type="search" class="table-search" placeholder="Search project owners" data-table-search-input>
-      <span class="table-count" data-filtered-count data-count-label="activities"><%= @project_ownerships.size %> activities</span>
+      <span class="table-count" data-filtered-count data-count-label="rows"><%= @project_ownerships.size %> rows</span>
+      <button type="button" class="panel-toggle-button" data-collapsible-toggle data-show-label="Show" data-hide-label="Hide" aria-expanded="false">
+        Show
+      </button>
     </div>
   </div>
 
-  <div class="responsive-table">
-    <table>
-      <thead>
-        <tr>
-          <th>PO ID</th>
-          <th>Project</th>
-          <th>Project Owner ID</th>
-          <th>Project Owner</th>
-          <th>Email</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% @project_ownerships.each do |ownership| %>
+  <div class="collapsible-content" data-collapsible-content hidden>
+    <div class="collapsible-tools">
+      <input type="search" class="table-search" placeholder="Search project owners" data-table-search-input>
+    </div>
+
+    <div class="responsive-table">
+      <table>
+        <thead>
           <tr>
-            <td><span class="code-pill"><%= ownership.po_id %></span></td>
-            <td><%= ownership.project_name %></td>
-            <td><%= ownership.project_owner_id %></td>
-            <td><%= ownership.po_name %></td>
-            <td><%= ownership.email_id %></td>
+            <th>PO ID</th>
+            <th>Project</th>
+            <th>Owner ID</th>
+            <th>Owner</th>
+            <th>Email</th>
           </tr>
-        <% end %>
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          <% @project_ownerships.each do |ownership| %>
+            <tr>
+              <td><span class="code-pill"><%= ownership.po_id %></span></td>
+              <td><%= ownership.project_name %></td>
+              <td><%= ownership.project_owner_id %></td>
+              <td><%= ownership.po_name %></td>
+              <td><%= ownership.email_id %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
   </div>
 </section>

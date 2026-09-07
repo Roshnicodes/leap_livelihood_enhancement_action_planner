@@ -20,8 +20,8 @@ class ReportInformationController < ApplicationController
 
   def project_options
     (
-      BliActivity.where.not(project_name: [ nil, "" ]).distinct.pluck(:project_name) +
-      ProjectOwnership.where.not(project_name: [ nil, "" ]).distinct.pluck(:project_name) +
+      BliActivity.active.where.not(project_name: [ nil, "" ]).distinct.pluck(:project_name) +
+      ProjectOwnership.active.where.not(project_name: [ nil, "" ]).distinct.pluck(:project_name) +
       PisReportDocument.distinct.pluck(:project_name) +
       DonorReportUpload.distinct.pluck(:project_name) +
       FundReportUpload.distinct.pluck(:project_name) +
@@ -156,6 +156,6 @@ class ReportInformationController < ApplicationController
   end
 
   def uploaded_by_label(record)
-    record.uploaded_by&.admin? ? "PMC" : record.uploaded_by&.employee&.name || "-"
+    record.uploaded_by&.admin? ? "MIS" : record.uploaded_by&.employee&.name || "-"
   end
 end

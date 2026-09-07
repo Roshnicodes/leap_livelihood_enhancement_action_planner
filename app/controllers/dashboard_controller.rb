@@ -31,7 +31,7 @@ class DashboardController < ApplicationController
   end
 
   def filtered_activities
-    scope = @employee.bli_activities.order(:project_name, :vertical_name, :activity_name)
+    scope = @employee.bli_activities.active.order(:project_name, :vertical_name, :activity_name)
     return scope.none if @selected.blank?
 
     @mode == "project" ? scope.for_vertical(@selected) : scope.for_project(@selected)

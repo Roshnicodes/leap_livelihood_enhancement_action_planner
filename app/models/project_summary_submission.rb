@@ -94,6 +94,7 @@ class ProjectSummarySubmission < ApplicationRecord
 
   def apply_item_to_bli_activities!(item)
     activities = BliActivity
+      .active
       .where(project_name: item.project_name, activity_name: item.activity_name, vertical_name: item.vertical_name)
       .order(:id)
       .to_a

@@ -18,7 +18,7 @@ class Employee < ApplicationRecord
   validates :name, presence: true
 
   def verticals
-    mapped_vertical_names.presence || bli_activities.distinct.order(:vertical_name).pluck(:vertical_name).compact_blank
+    mapped_vertical_names.presence || bli_activities.active.distinct.order(:vertical_name).pluck(:vertical_name).compact_blank
   end
 
   def projects
@@ -26,24 +26,28 @@ class Employee < ApplicationRecord
   end
 
   def accessible_bli_activities
-    bli_activities
+    bli_activities.active
       .order(:project_name, :vertical_name, :activity_name, :bli_code, :id)
       .to_a
   end
 
   def mapped_vertical_names
-    mapped_vertical_percents.order(:vertical_name).pluck(:vertical_name)
+    VerticalPercent
+      .joins(:employee_vertical_mappings)
+      .where(employee_vertical_mappings: { employee_id: id, active: true })
+      .order(:vertical_name)
+      .pluck(:vertical_name)
   end
 
   def action_plan_vertical_names
-    mapping_names = action_plan_vertical_mappings.order(:state_code, :asa_theme_id).map(&:label)
+    mapping_names = action_plan_vertical_mappings.active.order(:state_code, :asa_theme_id).map(&:label)
     return mapping_names if mapping_names.present?
 
-    parent_activity_assignments.order(:source_parent_activity).pluck(:source_parent_activity).presence ||
+    parent_activity_assignments.active.order(:source_parent_activity).pluck(:source_parent_activity).presence ||
       mapped_vertical_names
   end
 
   def action_plan_fco?
-    action_plan_fco_mappings.exists? || ActionPlanFcoMapping.fco_staff?(self)
+    ActionPlanFcoMapping.fco_staff?(self)
   end
 end

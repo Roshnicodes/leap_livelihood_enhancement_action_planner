@@ -41,7 +41,7 @@ class AchievementEntriesController < ApplicationController
       return
     end
 
-    if selected_rows_locked?
+    if all_selected_rows_locked?
       redirect_to achievement_entry_path(to_id: @selected_to_id, project: @selected_project, month: @selected_month),
         alert: "Vertical approval is done for one or more rows. Achievement changes are locked."
       return
@@ -79,7 +79,7 @@ class AchievementEntriesController < ApplicationController
       return
     end
 
-    if selected_rows_locked?
+    if all_selected_rows_locked?
       redirect_to achievement_entry_path(to_id: @selected_to_id, project: @selected_project, month: @selected_month),
         alert: "These achievements are already locked after vertical approval."
       return
@@ -160,16 +160,33 @@ class AchievementEntriesController < ApplicationController
 
     target_rows = @selected_month.present? ? @rows.select { |row| row.public_send(@selected_month).to_i.positive? } : []
     @target_rows_count = target_rows.size
-    @locked_submission_count = if @rows.present? && @selected_month.present? && selected_rows_locked?
-      AchievementSubmission.locked_for_rows(@rows.map(&:id), @selected_month).count
-    else
-      0
-    end
+    row_ids = @rows.map(&:id)
+    @locked_submission_row_ids = @rows.present? && @selected_month.present? ? locked_submission_row_ids_for(row_ids, @selected_month) : []
+    @active_submission_row_ids = @rows.present? && @selected_month.present? ? active_submission_row_ids_for(row_ids, @selected_month) : []
+    @editable_row_count = row_ids.size - @locked_submission_row_ids.size
+    @submission_candidate_row_count = (row_ids - @active_submission_row_ids).size
+    @locked_submission_count = @rows.present? && @selected_month.present? ? AchievementSubmission.locked_for_rows(row_ids, @selected_month).count : 0
     @active_submission_count = if @rows.present? && @selected_month.present?
-      AchievementSubmission.active_for_rows(@rows.map(&:id), @selected_month).count
+      AchievementSubmission.active_for_rows(row_ids, @selected_month).count
     else
       0
     end
+    @selected_returned_submissions = if @rows.present? && @selected_month.present?
+      unresolved_returned_submissions(
+        AchievementSubmission
+          .returned_for_rows(row_ids, @selected_month)
+          .includes(:vertical_approver, :po_approver, :coo_approver, :director_approver, achievement_submission_rows: :action_plan_row)
+          .order(submitted_at: :desc, id: :desc)
+      )
+    else
+      []
+    end
+    @open_returned_submissions = unresolved_returned_submissions(
+      AchievementSubmission
+        .where(status: "returned", fco_id: @fco_ids)
+        .includes(:vertical_approver, :po_approver, :coo_approver, :director_approver, achievement_submission_rows: :action_plan_row)
+        .order(submitted_at: :desc, id: :desc)
+    )
   end
 
   # Never auto-pick the first dropdown option — user must choose explicitly.
@@ -186,7 +203,8 @@ class AchievementEntriesController < ApplicationController
   def save_achievement_values!
     achievement_column = "#{@selected_month}_t"
     permitted_values = params[:achievements].respond_to?(:to_unsafe_h) ? params[:achievements].to_unsafe_h : {}
-    accessible_rows = @scoped_rows.where(id: permitted_values.keys)
+    editable_ids = editable_row_ids_for(permitted_values.keys)
+    accessible_rows = @scoped_rows.where(id: editable_ids)
 
     ActionPlanRow.transaction do
       accessible_rows.find_each do |row|
@@ -199,7 +217,7 @@ class AchievementEntriesController < ApplicationController
     remarks = params[:remarks].respond_to?(:to_unsafe_h) ? params[:remarks].to_unsafe_h : {}
     uploads = params[:files].respond_to?(:to_unsafe_h) ? params[:files].to_unsafe_h : {}
     purge_ids = Array(params[:purge_file_ids]).map(&:to_s).reject(&:blank?)
-    accessible_ids = @scoped_rows.where(id: @rows.map(&:id)).pluck(:id)
+    accessible_ids = @scoped_rows.where(id: editable_row_ids_for(@rows.map(&:id))).pluck(:id)
     existing = AchievementEntryDetail
       .where(action_plan_row_id: accessible_ids, month: @selected_month)
       .includes(files_attachments: :blob)
@@ -231,7 +249,10 @@ class AchievementEntriesController < ApplicationController
 
   def create_achievement_submissions!
     row_ids = @rows.map(&:id)
-    if AchievementSubmission.active_for_rows(row_ids, @selected_month).exists?
+    active_row_ids = active_submission_row_ids_for(row_ids, @selected_month)
+    submission_rows = @rows.reject { |row| active_row_ids.include?(row.id) }
+
+    if submission_rows.blank?
       raise ActiveRecord::RecordInvalid.new(AchievementSubmission.new.tap do |submission|
         submission.errors.add(:base, "Approval request already exists for this selected month/project.")
       end)
@@ -239,7 +260,7 @@ class AchievementEntriesController < ApplicationController
 
     # Rows without ASA Theme ID cannot be routed to a vertical approver.
     # Keep them out of the approval package (achievements can still be saved as draft).
-    submittable_rows = @rows.select { |row| ActionPlanRow.format_decimal_string(row.asa_theme_id).present? }
+    submittable_rows = submission_rows.select { |row| ActionPlanRow.format_decimal_string(row.asa_theme_id).present? }
     if submittable_rows.blank?
       raise ActiveRecord::RecordInvalid.new(AchievementSubmission.new.tap do |submission|
         submission.errors.add(:base, "No activities with ASA Theme ID found for approval. Check the action plan import.")
@@ -250,7 +271,7 @@ class AchievementEntriesController < ApplicationController
     # Example: June / Palsud / Anurag = single request with themes 1,2,3,11,12 inside.
     state_codes = submittable_rows.map { |row| row.statte.to_s.squish.upcase }.uniq
     theme_ids = submittable_rows.map { |row| ActionPlanRow.format_decimal_string(row.asa_theme_id) }.uniq
-    mappings_by_key = ActionPlanVerticalMapping
+    mappings_by_key = ActionPlanVerticalMapping.active
       .where(state_code: state_codes, asa_theme_id: theme_ids)
       .includes(:employee)
       .index_by { |mapping| [ mapping.state_code, mapping.asa_theme_id ] }
@@ -282,11 +303,11 @@ class AchievementEntriesController < ApplicationController
       end)
     end
 
-    ownerships_by_po_project = ProjectOwnership
+    ownerships_by_po_project = ProjectOwnership.active
       .where(po_id: submittable_rows.map(&:po_id).uniq, project_name: submittable_rows.map(&:project_name).uniq)
       .index_by { |ownership| [ ownership.po_id, ownership.project_name ] }
-    ownerships_by_po = ProjectOwnership.where(po_id: submittable_rows.map(&:po_id).uniq).index_by(&:po_id)
-    ownerships_by_project = ProjectOwnership.where(project_name: submittable_rows.map(&:project_name).uniq).index_by(&:project_name)
+    ownerships_by_po = ProjectOwnership.active.where(po_id: submittable_rows.map(&:po_id).uniq).index_by(&:po_id)
+    ownerships_by_project = ProjectOwnership.active.where(project_name: submittable_rows.map(&:project_name).uniq).index_by(&:project_name)
 
     groups = submittable_rows.group_by do |row|
       [
@@ -348,8 +369,61 @@ class AchievementEntriesController < ApplicationController
     mapping.employee || Employee.find_by(employee_code: mapping.employee_code)
   end
 
-  def selected_rows_locked?
-    @rows.present? && AchievementSubmission.locked_for_rows(@rows.map(&:id), @selected_month).exists?
+  def all_selected_rows_locked?
+    row_ids = @rows.map(&:id)
+    locked_row_ids = locked_submission_row_ids_for(row_ids, @selected_month)
+
+    row_ids.present? && (row_ids - locked_row_ids).blank?
+  end
+
+  def editable_row_ids_for(row_ids)
+    ids = row_ids.map(&:to_i).uniq
+    ids - locked_submission_row_ids_for(ids, @selected_month)
+  end
+
+  def active_submission_row_ids_for(row_ids, month)
+    ids = row_ids.map(&:to_i).uniq
+    return [] if ids.blank? || month.blank?
+
+    AchievementSubmissionRow
+      .joins(:achievement_submission)
+      .where(action_plan_row_id: ids, month: month)
+      .where(achievement_submissions: { status: %w[pending approved] })
+      .distinct
+      .pluck(:action_plan_row_id)
+  end
+
+  def locked_submission_row_ids_for(row_ids, month)
+    ids = row_ids.map(&:to_i).uniq
+    return [] if ids.blank? || month.blank?
+
+    AchievementSubmissionRow
+      .joins(:achievement_submission)
+      .where(action_plan_row_id: ids, month: month)
+      .where(achievement_submissions: { status: %w[pending approved] })
+      .where.not(achievement_submissions: { vertical_reviewed_at: nil })
+      .distinct
+      .pluck(:action_plan_row_id)
+  end
+
+  def unresolved_returned_submissions(scope)
+    scope.to_a.reject { |submission| newer_submission_exists_for?(submission) }
+  end
+
+  def newer_submission_exists_for?(submission)
+    row_ids = submission.achievement_submission_rows.map(&:action_plan_row_id)
+    return false if row_ids.blank?
+
+    AchievementSubmission
+      .for_rows(row_ids, submission.month)
+      .where.not(id: submission.id)
+      .where(
+        "achievement_submissions.submitted_at > :submitted_at OR " \
+          "(achievement_submissions.submitted_at = :submitted_at AND achievement_submissions.id > :id)",
+        submitted_at: submission.submitted_at,
+        id: submission.id
+      )
+      .exists?
   end
 
   def achievement_entry_csv

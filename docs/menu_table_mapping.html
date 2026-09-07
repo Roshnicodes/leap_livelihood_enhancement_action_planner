@@ -1,0 +1,397 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>LEAP Menu To Table Mapping</title>
+  <style>
+    @page { size: A4 landscape; margin: 11mm; }
+    * { box-sizing: border-box; }
+    body { font-family: Arial, Helvetica, sans-serif; color: #1f2933; font-size: 9.4px; line-height: 1.33; margin: 0; }
+    h1 { font-size: 22px; margin: 0 0 5px; color: #0f2f36; }
+    h2 { font-size: 14px; margin: 16px 0 7px; color: #0f2f36; border-bottom: 1px solid #9fb4bd; padding-bottom: 4px; }
+    p { margin: 4px 0 8px; }
+    table { width: 100%; border-collapse: collapse; margin: 6px 0 12px; page-break-inside: auto; }
+    tr { page-break-inside: avoid; page-break-after: auto; }
+    th { background: #e8f1f0; color: #183f49; text-align: left; border: 1px solid #b9c8cd; padding: 5px; font-weight: 700; }
+    td { border: 1px solid #cad4d8; padding: 4px 5px; vertical-align: top; }
+    code { font-family: "Courier New", monospace; font-size: 8.9px; }
+    .meta { color: #52616b; font-size: 9.2px; margin-bottom: 12px; }
+    .small { color: #52616b; font-size: 8.8px; }
+    .section { font-weight: 700; color: #0f2f36; white-space: nowrap; }
+    .menu { font-weight: 700; }
+    .page-break { page-break-before: always; }
+  </style>
+</head>
+<body>
+  <h1>LEAP Menu To Table Mapping</h1>
+  <div class="meta">Generated from <code>app/views/layouts/application.html.erb</code>, <code>config/routes.rb</code>, controllers/services, and <code>db/schema.rb</code>.</div>
+
+  <p>This report maps visible application menus/routes to the main database tables they read or write. Supporting tables are included when they control access, provide dropdown options, join uploaded files, or feed summary calculations.</p>
+
+  <h2>Menu Wise Tables</h2>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 8%;">Section</th>
+        <th style="width: 13%;">Menu</th>
+        <th style="width: 11%;">Visible For</th>
+        <th style="width: 14%;">Path / Controller</th>
+        <th style="width: 20%;">Primary Tables</th>
+        <th style="width: 20%;">Supporting Tables</th>
+        <th style="width: 14%;">Notes</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="section">System</td>
+        <td class="menu">Login / Logout</td>
+        <td>All users</td>
+        <td><code>root, /login, /logout</code><br><span class="small">SessionsController</span></td>
+        <td><code>users</code>, <code>employees</code></td>
+        <td><code>budget_utilizations</code>, <code>project_summary_submissions</code></td>
+        <td>Login validates users. employee link decides role-specific access. Session create may redirect finance or P&amp;B approval users based on helper checks.</td>
+      </tr>
+      <tr>
+        <td class="section">System</td>
+        <td class="menu">Dashboard</td>
+        <td>Logged-in users</td>
+        <td><code>/dashboard</code><br><span class="small">DashboardController#index</span></td>
+        <td><code>bli_activities</code>, <code>plan_submissions</code>, <code>plan_submission_items</code></td>
+        <td><code>employees</code>, <code>users</code></td>
+        <td>Current implementation redirects user dashboard to Allocated P&amp;B and admin dashboard to Employees. Old dashboard logic still references employee activities and saved plan submissions.</td>
+      </tr>
+      <tr>
+        <td class="section">MIS</td>
+        <td class="menu">Employees</td>
+        <td>Admin/MIS</td>
+        <td><code>/admin/employees</code><br><span class="small">Admin::EmployeesController#index/create/update/toggle_active</span></td>
+        <td><code>employees</code>, <code>users</code></td>
+        <td><code>bli_activities</code>, <code>action_plan_fco_mappings</code>, <code>action_plan_vertical_mappings</code>, <code>project_ownerships</code></td>
+        <td>Employee master and login creation/update. Employee code changes are synced into FCO mappings, vertical mappings, and project ownership records.</td>
+      </tr>
+      <tr>
+        <td class="section">MIS</td>
+        <td class="menu">FCO Access</td>
+        <td>Admin/MIS</td>
+        <td><code>/admin/action_plan_fco_mapping</code><br><span class="small">Admin::ActionPlanFcoMappingsController</span></td>
+        <td><code>action_plan_fco_mappings</code></td>
+        <td><code>employees</code>, <code>users</code>, <code>action_plan_rows</code></td>
+        <td>Maps employees to action-plan FCO IDs. FCO option list is derived from active action_plan_rows. Enables login for mapped employees.</td>
+      </tr>
+      <tr>
+        <td class="section">P&amp;B</td>
+        <td class="menu">P&amp;B Download</td>
+        <td>Admin/MIS</td>
+        <td><code>/admin/pb_imports</code><br><span class="small">Admin::PbImportsController</span></td>
+        <td><code>bli_activities</code>, <code>pb_import_files</code>, <code>parent_activity_assignments</code></td>
+        <td><code>employees</code>, <code>vertical_percents</code>, <code>employee_vertical_mappings</code></td>
+        <td>Imports/downloads P&amp;B source rows and parent activity mappings. Parent activity mapping also maintains employee_vertical_mappings.</td>
+      </tr>
+      <tr>
+        <td class="section">P&amp;B</td>
+        <td class="menu">Allocated P&amp;B</td>
+        <td>Admin/MIS, budget users, summary users</td>
+        <td><code>/plan_submissions</code><br><span class="small">PlanSubmissionsController#index/create</span></td>
+        <td><code>bli_activities</code>, <code>plan_submissions</code>, <code>plan_submission_items</code></td>
+        <td><code>employees</code>, <code>project_summary_submissions</code></td>
+        <td>Shows active allocated P&amp;B rows. Non-admin employee save creates/updates plan_submissions and plan_submission_items.</td>
+      </tr>
+      <tr>
+        <td class="section">P&amp;B</td>
+        <td class="menu">Project Summary</td>
+        <td>Non-admin budget users only</td>
+        <td><code>/project_summary</code><br><span class="small">ProjectSummariesController#index/create</span></td>
+        <td><code>project_summary_submissions</code>, <code>project_summary_submission_items</code></td>
+        <td><code>bli_activities</code>, <code>vertical_percents</code>, <code>employees</code></td>
+        <td>Builds summary from employee accessible BLI activities and monthly split from vertical_percents; creates project summary submission/items for approval.</td>
+      </tr>
+      <tr>
+        <td class="section">P&amp;B</td>
+        <td class="menu">Budget Utilization</td>
+        <td>All logged-in users; edit for Accounts/finance users</td>
+        <td><code>/budget_utilizations</code><br><span class="small">BudgetUtilizationsController#index/update</span></td>
+        <td><code>budget_utilizations</code></td>
+        <td><code>bli_activities</code>, <code>vertical_percents</code>, <code>users</code>, <code>employees</code></td>
+        <td>Uses BLI budget as planned amount source; saves draft/submitted utilization by project, BLI code, and month.</td>
+      </tr>
+      <tr>
+        <td class="section">P&amp;B</td>
+        <td class="menu">Budget Utilization Report</td>
+        <td>All logged-in users</td>
+        <td><code>/budget_utilization_reports</code><br><span class="small">BudgetUtilizationReportsController#index</span></td>
+        <td><code>budget_utilizations</code></td>
+        <td><code>bli_activities</code>, <code>users</code>, <code>employees</code></td>
+        <td>Reads submitted utilization rows and active BLI rows to show allocated, expenditure, remaining, and audit details.</td>
+      </tr>
+      <tr>
+        <td class="section">P&amp;B</td>
+        <td class="menu">Project Summary Record</td>
+        <td>Admin/MIS, summary approvers, budget users</td>
+        <td><code>/project_summary_records</code><br><span class="small">ProjectSummaryRecordsController#index/update/bulk_update</span></td>
+        <td><code>project_summary_submissions</code>, <code>project_summary_submission_items</code></td>
+        <td><code>employees</code>, <code>bli_activities</code>, <code>vertical_percents</code></td>
+        <td>Record screen for submitted/not-submitted project summaries. Can recalculate baseline from active BLI rows and update pending summary items.</td>
+      </tr>
+      <tr>
+        <td class="section">P&amp;B</td>
+        <td class="menu">P&amp;B Summary Approval / P&amp;B Summary View</td>
+        <td>Admin/MIS and summary approvers/viewers</td>
+        <td><code>/project_summary_approvals</code><br><span class="small">ProjectSummaryApprovalsController#index/approve/return</span></td>
+        <td><code>project_summary_submissions</code>, <code>project_summary_submission_items</code></td>
+        <td><code>employees</code>, <code>bli_activities</code>, <code>vertical_percents</code></td>
+        <td>Approves/returns project summary submissions. Final approval applies approved amounts back to active BLI activities.</td>
+      </tr>
+      <tr>
+        <td class="section">P&amp;B</td>
+        <td class="menu">Approval Records</td>
+        <td>Admin/MIS and summary/action-plan approvers</td>
+        <td><code>/project_summary_approval_records</code><br><span class="small">ProjectSummaryApprovalRecordsController#index</span></td>
+        <td><code>project_summary_submissions</code>, <code>project_summary_submission_items</code>, <code>action_plan_submissions</code></td>
+        <td><code>action_plan_rows</code>, <code>employees</code>, <code>project_ownerships</code>, <code>vertical_percents</code></td>
+        <td>Combined records screen. record_type=P&amp;B reads project summary tables; record_type=Action Plan reads action_plan_submissions and related action_plan_rows.</td>
+      </tr>
+      <tr>
+        <td class="section">Action Plan</td>
+        <td class="menu">Action Plan Import</td>
+        <td>Admin/MIS</td>
+        <td><code>/admin/action_plan_imports</code><br><span class="small">Admin::ActionPlanImportsController</span></td>
+        <td><code>action_plan_rows</code>, <code>action_plan_import_files</code>, <code>project_ownerships</code>, <code>action_plan_vertical_mappings</code></td>
+        <td><code>employees</code>, <code>users</code>, <code>action_plan_submissions</code>, <code>action_plan_month_changes</code></td>
+        <td>Imports project owner file, action plan rows, and user vertical mapping. Shows pending submission count and preserves/reapplies pending month changes during import.</td>
+      </tr>
+      <tr>
+        <td class="section">Action Plan</td>
+        <td class="menu">Project Action Plan</td>
+        <td>Admin/MIS, project owners, FCO users</td>
+        <td><code>/action_plans</code><br><span class="small">ActionPlansController#index/create/download</span></td>
+        <td><code>action_plan_rows</code>, <code>action_plan_submissions</code></td>
+        <td><code>project_ownerships</code>, <code>action_plan_fco_mappings</code>, <code>employees</code></td>
+        <td>Displays active action_plan_rows by project/FCO/TO/state/vertical. Project owner submission creates action_plan_submissions with plan_type=project.</td>
+      </tr>
+      <tr>
+        <td class="section">Action Plan</td>
+        <td class="menu">Vertical Action Plan</td>
+        <td>Admin/MIS and mapped vertical users</td>
+        <td><code>/vertical_action_plans</code><br><span class="small">VerticalActionPlansController#index/update/create/download</span></td>
+        <td><code>action_plan_rows</code>, <code>action_plan_month_changes</code>, <code>action_plan_submissions</code></td>
+        <td><code>action_plan_vertical_mappings</code>, <code>project_ownerships</code>, <code>employees</code></td>
+        <td>Vertical users edit monthly target columns in action_plan_rows; deltas are captured in action_plan_month_changes. Submission creates action_plan_submissions with plan_type=vertical.</td>
+      </tr>
+      <tr>
+        <td class="section">Action Plan</td>
+        <td class="menu">Vertical Action Plan Record</td>
+        <td>Admin/MIS and mapped vertical users</td>
+        <td><code>/action_plan_records</code><br><span class="small">ActionPlanRecordsController#index/create</span></td>
+        <td><code>action_plan_rows</code>, <code>action_plan_submissions</code></td>
+        <td><code>project_ownerships</code>, <code>action_plan_vertical_mappings</code>, <code>employees</code></td>
+        <td>Record/summary view of vertical action plans. Can send selected vertical records for approval using action_plan_submissions.</td>
+      </tr>
+      <tr>
+        <td class="section">Action Plan</td>
+        <td class="menu">Achievement Entry</td>
+        <td>FCO users</td>
+        <td><code>/achievement_entry</code><br><span class="small">AchievementEntriesController#show/update/submit</span></td>
+        <td><code>action_plan_rows</code>, <code>achievement_entry_details</code>, <code>achievement_submissions</code>, <code>achievement_submission_rows</code></td>
+        <td><code>action_plan_fco_mappings</code>, <code>action_plan_vertical_mappings</code>, <code>project_ownerships</code>, <code>employees</code>, <code>active_storage_attachments</code>, <code>active_storage_blobs</code></td>
+        <td>Draft achievement values are saved in monthly achievement columns on action_plan_rows. Remarks/files go to achievement_entry_details and Active Storage. Submit creates achievement approval records.</td>
+      </tr>
+      <tr>
+        <td class="section">Action Plan</td>
+        <td class="menu">Achievement Entry Record</td>
+        <td>Admin/MIS and FCO users</td>
+        <td><code>/achievement_entry_records</code><br><span class="small">AchievementEntryRecordsController#index</span></td>
+        <td><code>action_plan_rows</code>, <code>achievement_entry_details</code>, <code>achievement_submission_rows</code>, <code>achievement_submissions</code></td>
+        <td><code>action_plan_fco_mappings</code>, <code>active_storage_attachments</code>, <code>active_storage_blobs</code></td>
+        <td>Shows saved drafts and submitted/approved/returned achievement rows by month/status.</td>
+      </tr>
+      <tr>
+        <td class="section">Action Plan</td>
+        <td class="menu">Achievement Approvals</td>
+        <td>Admin/MIS and vertical/PO/COO/director approvers</td>
+        <td><code>/achievement_approvals/:stage</code><br><span class="small">AchievementApprovalsController#index/approve/return</span></td>
+        <td><code>achievement_submissions</code>, <code>achievement_submission_rows</code></td>
+        <td><code>action_plan_rows</code>, <code>achievement_entry_details</code>, <code>employees</code>, <code>active_storage_attachments</code>, <code>active_storage_blobs</code></td>
+        <td>Approval workflow for achievement submissions. Stages: vertical, PO, COO, director.</td>
+      </tr>
+      <tr>
+        <td class="section">Action Plan</td>
+        <td class="menu">Action Plan PO Approval</td>
+        <td>PO approvers</td>
+        <td><code>/action_plan_approvals/po</code><br><span class="small">ActionPlanApprovalsController#index/approve/return</span></td>
+        <td><code>action_plan_submissions</code></td>
+        <td><code>action_plan_rows</code>, <code>action_plan_month_changes</code>, <code>employees</code>, <code>project_ownerships</code></td>
+        <td>PO stage of project/vertical action plan approval. Reads scoped action_plan_rows for submitted project/plan type.</td>
+      </tr>
+      <tr>
+        <td class="section">Action Plan</td>
+        <td class="menu">Action Plan COO Approval</td>
+        <td>COO approver</td>
+        <td><code>/action_plan_approvals/coo</code><br><span class="small">ActionPlanApprovalsController#index/approve/return</span></td>
+        <td><code>action_plan_submissions</code></td>
+        <td><code>action_plan_rows</code>, <code>action_plan_month_changes</code>, <code>employees</code>, <code>project_ownerships</code></td>
+        <td>COO stage. Approval can mark action plan complete/approved.</td>
+      </tr>
+      <tr>
+        <td class="section">Action Plan</td>
+        <td class="menu">Action Plan Director View</td>
+        <td>Director approver/viewer</td>
+        <td><code>/action_plan_approvals/director</code><br><span class="small">ActionPlanApprovalsController#index/approve/return</span></td>
+        <td><code>action_plan_submissions</code></td>
+        <td><code>action_plan_rows</code>, <code>action_plan_month_changes</code>, <code>employees</code>, <code>project_ownerships</code></td>
+        <td>Director stage/view for action plan workflow.</td>
+      </tr>
+      <tr>
+        <td class="section">Action Plan</td>
+        <td class="menu">Approval Records</td>
+        <td>Admin/MIS and action-plan approvers</td>
+        <td><code>/project_summary_approval_records?record_type=action_plan</code><br><span class="small">ProjectSummaryApprovalRecordsController#index</span></td>
+        <td><code>action_plan_submissions</code>, <code>action_plan_rows</code></td>
+        <td><code>employees</code>, <code>project_ownerships</code></td>
+        <td>Same controller as P&amp;B Approval Records, with Action Plan record type selected.</td>
+      </tr>
+      <tr>
+        <td class="section">Action Plan</td>
+        <td class="menu">Action Plan Reports</td>
+        <td>Admin/MIS</td>
+        <td><code>/action_plan_reports</code><br><span class="small">ActionPlanReportsController#index + ActionPlanStatusReport service</span></td>
+        <td><code>action_plan_rows</code>, <code>action_plan_submissions</code>, <code>achievement_submissions</code></td>
+        <td><code>action_plan_vertical_mappings</code>, <code>achievement_submission_rows</code>, <code>employees</code>, <code>project_ownerships</code></td>
+        <td>Status report across FCO submission, achievement approval, vertical summary, action plan approval details, and achievement details.</td>
+      </tr>
+      <tr>
+        <td class="section">Reports</td>
+        <td class="menu">Report Information</td>
+        <td>All logged-in users</td>
+        <td><code>/report_information</code><br><span class="small">ReportInformationController#index</span></td>
+        <td><code>pis_report_documents</code>, <code>donor_report_uploads</code>, <code>fund_report_uploads</code>, <code>project_information_sheets</code></td>
+        <td><code>pis_document_types</code>, <code>donor_report_types</code>, <code>fund_report_types</code>, <code>bli_activities</code>, <code>project_ownerships</code>, <code>users</code>, <code>active_storage_attachments</code>, <code>active_storage_blobs</code></td>
+        <td>Combined report viewer filtered by project and financial year.</td>
+      </tr>
+      <tr>
+        <td class="section">Reports</td>
+        <td class="menu">Project Information Sheet</td>
+        <td>All logged-in users; upload/import admin only</td>
+        <td><code>/project_information_sheets</code><br><span class="small">ProjectInformationSheetsController#index/create</span></td>
+        <td><code>project_information_sheets</code></td>
+        <td><code>users</code></td>
+        <td>PIS master/project information import and export. Financial-year helper is ReportFinancialYear, no DB table.</td>
+      </tr>
+      <tr>
+        <td class="section">Reports</td>
+        <td class="menu">PIS Report Upload</td>
+        <td>Admin/MIS</td>
+        <td><code>/pis_report_uploads</code><br><span class="small">PisReportUploadsController#index/create</span></td>
+        <td><code>pis_report_documents</code></td>
+        <td><code>pis_document_types</code>, <code>users</code>, <code>bli_activities</code>, <code>project_ownerships</code>, <code>active_storage_attachments</code>, <code>active_storage_blobs</code></td>
+        <td>Uploads PIS documents and screenshots; files are stored via Active Storage.</td>
+      </tr>
+      <tr>
+        <td class="section">Reports</td>
+        <td class="menu">PIS Report Record</td>
+        <td>All logged-in users</td>
+        <td><code>/pis_report_records</code><br><span class="small">PisReportUploadsController#records</span></td>
+        <td><code>pis_report_documents</code></td>
+        <td><code>pis_document_types</code>, <code>users</code>, <code>active_storage_attachments</code>, <code>active_storage_blobs</code></td>
+        <td>Record/export view of uploaded PIS reports.</td>
+      </tr>
+      <tr>
+        <td class="section">Reports</td>
+        <td class="menu">Donor Report Upload</td>
+        <td>Admin/MIS</td>
+        <td><code>/donor_report_uploads</code><br><span class="small">DonorReportUploadsController#index/create</span></td>
+        <td><code>donor_report_uploads</code></td>
+        <td><code>donor_report_types</code>, <code>users</code>, <code>bli_activities</code>, <code>project_ownerships</code>, <code>active_storage_attachments</code>, <code>active_storage_blobs</code></td>
+        <td>Uploads donor reports and screenshots; project options come from active BLI rows and project ownerships.</td>
+      </tr>
+      <tr>
+        <td class="section">Reports</td>
+        <td class="menu">Donor Report Record</td>
+        <td>All logged-in users</td>
+        <td><code>/donor_report_records</code><br><span class="small">DonorReportUploadsController#records</span></td>
+        <td><code>donor_report_uploads</code></td>
+        <td><code>donor_report_types</code>, <code>users</code>, <code>active_storage_attachments</code>, <code>active_storage_blobs</code></td>
+        <td>Record/export view of uploaded donor reports.</td>
+      </tr>
+      <tr>
+        <td class="section">Reports</td>
+        <td class="menu">Fund Report Upload</td>
+        <td>Admin/MIS</td>
+        <td><code>/fund_report_uploads</code><br><span class="small">FundReportUploadsController#index/create</span></td>
+        <td><code>fund_report_uploads</code></td>
+        <td><code>fund_report_types</code>, <code>users</code>, <code>bli_activities</code>, <code>project_ownerships</code>, <code>active_storage_attachments</code>, <code>active_storage_blobs</code></td>
+        <td>Uploads fund reports, receipt/letter data, documents and screenshots.</td>
+      </tr>
+      <tr>
+        <td class="section">Reports</td>
+        <td class="menu">Fund Report Record</td>
+        <td>All logged-in users</td>
+        <td><code>/fund_report_records</code><br><span class="small">FundReportUploadsController#records</span></td>
+        <td><code>fund_report_uploads</code></td>
+        <td><code>fund_report_types</code>, <code>users</code>, <code>active_storage_attachments</code>, <code>active_storage_blobs</code></td>
+        <td>Record/export view of uploaded fund reports.</td>
+      </tr>
+      <tr>
+        <td class="section">Reports</td>
+        <td class="menu">Report Masters</td>
+        <td>Admin/MIS</td>
+        <td><code>/report_masters</code><br><span class="small">ReportMastersController#index/create_*</span></td>
+        <td><code>pis_document_types</code>, <code>donor_report_types</code>, <code>fund_report_types</code></td>
+        <td><span class=\"small\">None</span></td>
+        <td>Master setup for PIS document names, donor report names, and fund report names.</td>
+      </tr>
+      <tr>
+        <td class="section">API</td>
+        <td class="menu">Project Action Plan API</td>
+        <td>API consumer</td>
+        <td><code>/api/project_action_plan</code><br><span class="small">Api::ActionPlansController#project</span></td>
+        <td><code>action_plan_rows</code></td>
+        <td><code>project_ownerships</code>, <code>action_plan_fco_mappings</code>, <code>employees</code></td>
+        <td>JSON API for project action plan data.</td>
+      </tr>
+      <tr>
+        <td class="section">API</td>
+        <td class="menu">Vertical Action Plan API</td>
+        <td>API consumer</td>
+        <td><code>/api/vertical_action_plan</code><br><span class="small">Api::ActionPlansController#vertical</span></td>
+        <td><code>action_plan_rows</code></td>
+        <td><code>action_plan_vertical_mappings</code>, <code>project_ownerships</code>, <code>employees</code></td>
+        <td>JSON API for vertical action plan data.</td>
+      </tr>
+      <tr>
+        <td class="section">API</td>
+        <td class="menu">P&amp;B Summary Approval API</td>
+        <td>API consumer</td>
+        <td><code>/api/project_summary_approvals</code><br><span class="small">Api::ProjectSummaryApprovalsController</span></td>
+        <td><code>project_summary_submissions</code>, <code>project_summary_submission_items</code></td>
+        <td><code>bli_activities</code>, <code>project_information_sheets</code>, <code>action_plan_rows</code>, <code>project_ownerships</code>, <code>employees</code>, <code>vertical_percents</code></td>
+        <td>JSON API for P&amp;B summary approvals. Includes project_id and source/colored-workbook related data fields added for integration.</td>
+      </tr>
+  </tbody>
+</table>
+
+<h2 class="page-break">Menu Access / Visibility Checks</h2>
+<table>
+  <thead><tr><th style="width: 20%;">Area</th><th style="width: 35%;">Tables / Helper Models</th><th>Meaning</th></tr></thead>
+  <tbody>
+      <tr><td><strong>Admin/MIS menu</strong></td><td><code>users</code>, <code>employees</code></td><td>Admin is decided mainly by users.role and linked employee.</td></tr>
+      <tr><td><strong>P&amp;B menu visibility</strong></td><td><code>bli_activities</code>, <code>project_summary_submissions</code>, <code>employees</code></td><td>Allocated/summary menu depends on active BLI activities and summary access helpers.</td></tr>
+      <tr><td><strong>Action Plan menu visibility</strong></td><td><code>project_ownerships</code>, <code>action_plan_fco_mappings</code>, <code>action_plan_vertical_mappings</code>, <code>action_plan_submissions</code>, <code>achievement_submissions</code>, <code>employees</code></td><td>Project owner, FCO access, vertical mapping, and approver checks control visibility.</td></tr>
+      <tr><td><strong>Reports menu visibility</strong></td><td><code>users</code></td><td>Mostly current_user/admin checks; records are filtered inside each controller.</td></tr>
+      <tr><td><strong>File preview/download support</strong></td><td><code>active_storage_attachments</code>, <code>active_storage_blobs</code>, <code>active_storage_variant_records</code></td><td>Attachment tables support uploaded report and achievement files.</td></tr>
+      <tr><td><strong>Helper models with no DB table</strong></td><td><code>ActionPlanFcoGroup</code>, <code>ReportFinancialYear</code></td><td>Used for grouping FCO IDs and financial-year option generation; these are not database tables.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Quick Lookup</h2>
+  <table>
+    <thead><tr><th>Common Question</th><th>Answer</th></tr></thead>
+    <tbody>
+      <tr><td>Project Action Plan ka main table?</td><td><code>action_plan_rows</code>; submission/approval table <code>action_plan_submissions</code> with <code>plan_type = project</code>.</td></tr>
+      <tr><td>Vertical Action Plan ka main table?</td><td><code>action_plan_rows</code>; vertical mapping <code>action_plan_vertical_mappings</code>; month edit audit <code>action_plan_month_changes</code>; submission <code>action_plan_submissions</code> with <code>plan_type = vertical</code>.</td></tr>
+      <tr><td>P&B Summary Approval ka main table?</td><td><code>project_summary_submissions</code> and <code>project_summary_submission_items</code>; approval apply hone par active <code>bli_activities</code> update hoti hai.</td></tr>
+      <tr><td>Achievement Entry ka main table?</td><td>Achievement values <code>action_plan_rows</code> ke monthly achievement columns me; remarks/files <code>achievement_entry_details</code>; approval records <code>achievement_submissions</code> and <code>achievement_submission_rows</code>.</td></tr>
+      <tr><td>Reports uploads files kaha store hote hain?</td><td>Upload row apni table me hoti hai, file links <code>active_storage_attachments</code> / <code>active_storage_blobs</code> me hote hain.</td></tr>
+    </tbody>
+  </table>
+</body>
+</html>

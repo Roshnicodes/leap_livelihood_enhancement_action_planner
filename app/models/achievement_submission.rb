@@ -10,25 +10,30 @@ class AchievementSubmission < ApplicationRecord
   has_many :achievement_submission_rows, dependent: :destroy
   has_many :action_plan_rows, through: :achievement_submission_rows
 
+  REVIEW_STAGES = %w[vertical po coo director].freeze
   validates :fco_id, :project_name, :po_id, :asa_theme_id, :month, :submitted_at, presence: true
   validates :status, inclusion: { in: STATUSES }
   validates :current_stage, inclusion: { in: STAGES }
   validates :month, inclusion: { in: ActionPlanRow::MONTH_COLUMNS }
   validate :approval_route_must_be_available
 
-  scope :pending_for_stage, ->(stage) { where(status: "pending", current_stage: stage) }
-  scope :active_for_rows, lambda { |row_ids, month|
+  scope :for_rows, lambda { |row_ids, month|
     joins(:achievement_submission_rows)
-      .where(status: %w[pending approved])
       .where(achievement_submission_rows: { action_plan_row_id: row_ids, month: month })
       .distinct
   }
+  scope :pending_for_stage, ->(stage) { where(status: "pending", current_stage: stage) }
+  scope :active_for_rows, lambda { |row_ids, month|
+    for_rows(row_ids, month)
+      .where(status: %w[pending approved])
+  }
   scope :locked_for_rows, lambda { |row_ids, month|
-    joins(:achievement_submission_rows)
+    for_rows(row_ids, month)
       .where.not(vertical_reviewed_at: nil)
       .where(status: %w[pending approved])
-      .where(achievement_submission_rows: { action_plan_row_id: row_ids, month: month })
-      .distinct
+  }
+  scope :returned_for_rows, lambda { |row_ids, month|
+    for_rows(row_ids, month).where(status: "returned")
   }
 
   def self.coo_employee
@@ -113,6 +118,28 @@ class AchievementSubmission < ApplicationRecord
 
   def stage_actor(stage)
     public_send("#{stage}_approver")&.name.presence || stage.to_s.titleize
+  end
+
+  def returned_stage
+    return unless returned?
+
+    current_stage.presence_in(REVIEW_STAGES) ||
+      REVIEW_STAGES.reverse.find { |stage| public_send("#{stage}_reviewed_at").present? }
+  end
+
+  def returned_at
+    stage = returned_stage
+    public_send("#{stage}_reviewed_at") if stage.present?
+  end
+
+  def returned_remark
+    stage = returned_stage
+    public_send("#{stage}_remark").presence if stage.present?
+  end
+
+  def returned_by
+    stage = returned_stage
+    public_send("#{stage}_approver") if stage.present?
   end
 
   private

@@ -96,7 +96,7 @@
                     { label: "Email/Application Screenshot", attachment: upload.screenshot_file }
                   ] %>
               </td>
-              <td><%= upload.uploaded_by&.admin? ? "PMC" : upload.uploaded_by&.employee&.name || "-" %></td>
+              <td><%= upload.uploaded_by&.admin? ? "MIS" : upload.uploaded_by&.employee&.name || "-" %></td>
               <td><%= format_record_datetime(upload.created_at) %></td>
             </tr>
           <% end %>

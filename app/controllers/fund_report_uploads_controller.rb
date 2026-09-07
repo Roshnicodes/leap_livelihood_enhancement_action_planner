@@ -79,8 +79,8 @@ class FundReportUploadsController < ApplicationController
 
   def project_options
     (
-      BliActivity.where.not(project_name: [ nil, "" ]).distinct.pluck(:project_name) +
-      ProjectOwnership.where.not(project_name: [ nil, "" ]).distinct.pluck(:project_name)
+      BliActivity.active.where.not(project_name: [ nil, "" ]).distinct.pluck(:project_name) +
+      ProjectOwnership.active.where.not(project_name: [ nil, "" ]).distinct.pluck(:project_name)
     ).compact_blank.uniq.sort
   end
 
@@ -92,7 +92,7 @@ class FundReportUploadsController < ApplicationController
   def require_upload_access
     return if current_user&.admin?
 
-    redirect_to fund_report_uploads_path, alert: "PMC access required to upload fund reports."
+    redirect_to fund_report_uploads_path, alert: "MIS access required to upload fund reports."
   end
 
   def records_csv
@@ -110,7 +110,7 @@ class FundReportUploadsController < ApplicationController
           upload.submission_receipt_amount,
           upload.document_file.attached? ? upload.document_file.filename.to_s : nil,
           upload.screenshot_file.attached? ? upload.screenshot_file.filename.to_s : nil,
-          upload.uploaded_by&.admin? ? "PMC" : upload.uploaded_by&.employee&.name,
+          upload.uploaded_by&.admin? ? "MIS" : upload.uploaded_by&.employee&.name,
           helpers.format_record_datetime(upload.created_at)
         ]
       end

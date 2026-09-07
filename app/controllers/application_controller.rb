@@ -39,7 +39,7 @@ class ApplicationController < ActionController::Base
   def require_admin
     return if current_user&.admin?
 
-    redirect_to dashboard_path, alert: "PMC access required."
+    redirect_to dashboard_path, alert: "MIS access required."
   end
 
   def pending_project_summary_approval_count
@@ -110,21 +110,21 @@ class ApplicationController < ActionController::Base
     return true if current_user&.admin?
     return true if ProjectSummarySubmission.summary_access?(menu_employee)
 
-    menu_employee&.bli_activities&.exists?
+    menu_employee&.bli_activities&.active&.exists?
   end
 
   def menu_show_project_summary?
     return false if current_user&.admin?
     return false if ProjectSummarySubmission.summary_access?(menu_employee)
 
-    menu_employee&.bli_activities&.exists?
+    menu_employee&.bli_activities&.active&.exists?
   end
 
   def menu_show_project_summary_record?
     return true if current_user&.admin?
     return true if ProjectSummarySubmission.summary_access?(menu_employee)
 
-    menu_employee&.bli_activities&.exists?
+    menu_employee&.bli_activities&.active&.exists?
   end
 
   def menu_show_pb_summary_approval?

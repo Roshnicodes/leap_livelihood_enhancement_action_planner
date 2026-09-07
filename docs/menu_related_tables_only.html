@@ -1,0 +1,62 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Menu Related Tables</title>
+  <style>
+    @page { size: A4 landscape; margin: 12mm; }
+    body { font-family: Arial, Helvetica, sans-serif; color: #1f2933; font-size: 10px; margin: 0; }
+    h1 { font-size: 22px; margin: 0 0 10px; color: #0f2f36; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #e8f1f0; color: #183f49; text-align: left; border: 1px solid #b9c8cd; padding: 6px; }
+    td { border: 1px solid #cad4d8; padding: 5px 6px; vertical-align: top; }
+    tr { page-break-inside: avoid; }
+    code { font-family: "Courier New", monospace; font-size: 9.4px; }
+    .section { font-weight: 700; color: #0f2f36; white-space: nowrap; }
+    .menu { font-weight: 700; }
+  </style>
+</head>
+<body>
+  <h1>Menu Related Tables</h1>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 14%;">Section</th>
+        <th style="width: 24%;">Menu</th>
+        <th>Related Tables</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td class="section">System</td><td class="menu">Login / Logout</td><td><code>users</code>, <code>employees</code></td></tr>
+      <tr><td class="section">System</td><td class="menu">Dashboard</td><td><code>bli_activities</code>, <code>plan_submissions</code>, <code>plan_submission_items</code></td></tr>
+      <tr><td class="section">MIS</td><td class="menu">Employees</td><td><code>employees</code>, <code>users</code>, <code>bli_activities</code>, <code>action_plan_fco_mappings</code>, <code>action_plan_vertical_mappings</code>, <code>project_ownerships</code></td></tr>
+      <tr><td class="section">MIS</td><td class="menu">FCO Access</td><td><code>action_plan_fco_mappings</code>, <code>employees</code>, <code>users</code>, <code>action_plan_rows</code></td></tr>
+      <tr><td class="section">P&amp;B</td><td class="menu">P&amp;B Download</td><td><code>bli_activities</code>, <code>pb_import_files</code>, <code>parent_activity_assignments</code>, <code>employees</code>, <code>vertical_percents</code>, <code>employee_vertical_mappings</code></td></tr>
+      <tr><td class="section">P&amp;B</td><td class="menu">Allocated P&amp;B</td><td><code>bli_activities</code>, <code>plan_submissions</code>, <code>plan_submission_items</code></td></tr>
+      <tr><td class="section">P&amp;B</td><td class="menu">Project Summary</td><td><code>project_summary_submissions</code>, <code>project_summary_submission_items</code>, <code>bli_activities</code>, <code>vertical_percents</code></td></tr>
+      <tr><td class="section">P&amp;B</td><td class="menu">Budget Utilization</td><td><code>budget_utilizations</code>, <code>bli_activities</code>, <code>vertical_percents</code>, <code>users</code></td></tr>
+      <tr><td class="section">P&amp;B</td><td class="menu">Budget Utilization Report</td><td><code>budget_utilizations</code>, <code>bli_activities</code>, <code>users</code></td></tr>
+      <tr><td class="section">P&amp;B</td><td class="menu">Project Summary Record</td><td><code>project_summary_submissions</code>, <code>project_summary_submission_items</code>, <code>employees</code>, <code>bli_activities</code>, <code>vertical_percents</code></td></tr>
+      <tr><td class="section">P&amp;B</td><td class="menu">P&amp;B Summary Approval</td><td><code>project_summary_submissions</code>, <code>project_summary_submission_items</code>, <code>employees</code>, <code>bli_activities</code>, <code>vertical_percents</code></td></tr>
+      <tr><td class="section">P&amp;B</td><td class="menu">Approval Records</td><td><code>project_summary_submissions</code>, <code>project_summary_submission_items</code>, <code>action_plan_submissions</code>, <code>action_plan_rows</code>, <code>employees</code>, <code>project_ownerships</code>, <code>vertical_percents</code></td></tr>
+      <tr><td class="section">Action Plan</td><td class="menu">Action Plan Import</td><td><code>action_plan_rows</code>, <code>action_plan_import_files</code>, <code>project_ownerships</code>, <code>action_plan_vertical_mappings</code>, <code>employees</code>, <code>users</code></td></tr>
+      <tr><td class="section">Action Plan</td><td class="menu">Project Action Plan</td><td><code>action_plan_rows</code>, <code>action_plan_submissions</code>, <code>project_ownerships</code>, <code>action_plan_fco_mappings</code></td></tr>
+      <tr><td class="section">Action Plan</td><td class="menu">Vertical Action Plan</td><td><code>action_plan_rows</code>, <code>action_plan_month_changes</code>, <code>action_plan_submissions</code>, <code>action_plan_vertical_mappings</code>, <code>project_ownerships</code></td></tr>
+      <tr><td class="section">Action Plan</td><td class="menu">Vertical Action Plan Record</td><td><code>action_plan_rows</code>, <code>action_plan_submissions</code>, <code>project_ownerships</code>, <code>action_plan_vertical_mappings</code></td></tr>
+      <tr><td class="section">Action Plan</td><td class="menu">Achievement Entry</td><td><code>action_plan_rows</code>, <code>achievement_entry_details</code>, <code>achievement_submissions</code>, <code>achievement_submission_rows</code>, <code>active_storage_attachments</code>, <code>active_storage_blobs</code></td></tr>
+      <tr><td class="section">Action Plan</td><td class="menu">Achievement Entry Record</td><td><code>action_plan_rows</code>, <code>achievement_entry_details</code>, <code>achievement_submission_rows</code>, <code>achievement_submissions</code></td></tr>
+      <tr><td class="section">Action Plan</td><td class="menu">Achievement Approvals</td><td><code>achievement_submissions</code>, <code>achievement_submission_rows</code>, <code>action_plan_rows</code>, <code>achievement_entry_details</code>, <code>employees</code></td></tr>
+      <tr><td class="section">Action Plan</td><td class="menu">Action Plan PO Approval</td><td><code>action_plan_submissions</code>, <code>action_plan_rows</code>, <code>action_plan_month_changes</code>, <code>employees</code>, <code>project_ownerships</code></td></tr>
+      <tr><td class="section">Action Plan</td><td class="menu">Action Plan COO Approval</td><td><code>action_plan_submissions</code>, <code>action_plan_rows</code>, <code>action_plan_month_changes</code>, <code>employees</code>, <code>project_ownerships</code></td></tr>
+      <tr><td class="section">Action Plan</td><td class="menu">Action Plan Director View</td><td><code>action_plan_submissions</code>, <code>action_plan_rows</code>, <code>action_plan_month_changes</code>, <code>employees</code>, <code>project_ownerships</code></td></tr>
+      <tr><td class="section">Action Plan</td><td class="menu">Action Plan Reports</td><td><code>action_plan_rows</code>, <code>action_plan_submissions</code>, <code>achievement_submissions</code>, <code>achievement_submission_rows</code>, <code>action_plan_vertical_mappings</code></td></tr>
+      <tr><td class="section">Reports</td><td class="menu">Report Information</td><td><code>pis_report_documents</code>, <code>donor_report_uploads</code>, <code>fund_report_uploads</code>, <code>project_information_sheets</code></td></tr>
+      <tr><td class="section">Reports</td><td class="menu">Project Information Sheet</td><td><code>project_information_sheets</code>, <code>users</code></td></tr>
+      <tr><td class="section">Reports</td><td class="menu">PIS Report Upload / Record</td><td><code>pis_report_documents</code>, <code>pis_document_types</code>, <code>users</code>, <code>active_storage_attachments</code>, <code>active_storage_blobs</code></td></tr>
+      <tr><td class="section">Reports</td><td class="menu">Donor Report Upload / Record</td><td><code>donor_report_uploads</code>, <code>donor_report_types</code>, <code>users</code>, <code>active_storage_attachments</code>, <code>active_storage_blobs</code></td></tr>
+      <tr><td class="section">Reports</td><td class="menu">Fund Report Upload / Record</td><td><code>fund_report_uploads</code>, <code>fund_report_types</code>, <code>users</code>, <code>active_storage_attachments</code>, <code>active_storage_blobs</code></td></tr>
+      <tr><td class="section">Reports</td><td class="menu">Report Masters</td><td><code>pis_document_types</code>, <code>donor_report_types</code>, <code>fund_report_types</code></td></tr>
+    </tbody>
+  </table>
+</body>
+</html>

@@ -23,6 +23,62 @@
   <% end %>
 </section>
 
+<% if @open_returned_submissions.present? %>
+  <section class="table-panel achievement-return-panel">
+    <div class="table-heading">
+      <div>
+        <p class="eyebrow">Returned</p>
+        <h2>Returned Achievement Requests</h2>
+        <p class="muted">Open the request, update achievement details, then submit again.</p>
+      </div>
+      <span class="status-badge status-returned"><%= @open_returned_submissions.size %> open</span>
+    </div>
+    <div class="responsive-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Project</th>
+            <th>FCO / TO</th>
+            <th>Vertical</th>
+            <th>Month</th>
+            <th>Returned By</th>
+            <th>Return Remark</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @open_returned_submissions.each do |submission| %>
+            <tr>
+              <td><strong><%= submission.project_name %></strong></td>
+              <td>
+                <strong><%= ActionPlanFcoGroup.name_for(submission.fco_id, submission.fco_name) %></strong>
+                <div class="muted">FCO ID: <%= ActionPlanFcoGroup.display_id_for(submission.fco_id) %></div>
+                <div><%= [submission.to_name, submission.to_id].compact_blank.join(" / ") %></div>
+              </td>
+              <td>
+                <span class="code-pill"><%= submission.state_code %> / <%= submission.theme_label %></span>
+              </td>
+              <td><span class="code-pill"><%= submission.month.capitalize %></span></td>
+              <td>
+                <strong><%= submission.returned_by&.name || submission.returned_stage.to_s.titleize %></strong>
+                <% if submission.returned_at.present? %>
+                  <div class="muted"><%= format_record_datetime(submission.returned_at) %></div>
+                <% end %>
+              </td>
+              <td class="achievement-return-remark"><%= simple_format(submission.returned_remark.presence || "-", class: "muted") %></td>
+              <td>
+                <%= link_to "Open Entry",
+                  achievement_entry_path(to_id: submission.to_id, project: submission.project_name, month: submission.month),
+                  class: "approval-review-button achievement-open-return-link" %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+<% end %>
+
 <section class="toolbar achievement-toolbar records-filter-toolbar">
   <%= form_with url: achievement_entry_path,
         method: :get,
@@ -111,7 +167,9 @@
         <p class="muted">
           <%= @to_options.assoc(@selected_to_id)&.first %>
           • Total Activity Target: <strong><%= @target_rows_count %></strong>
-          <% if @locked_submission_count.to_i.positive? %>
+          <% if @selected_returned_submissions.present? %>
+            • Returned for correction
+          <% elsif @locked_submission_count.to_i.positive? && @submission_candidate_row_count.to_i.zero? %>
             • Locked after vertical approval
           <% elsif @active_submission_count.to_i.positive? %>
             • Submitted for approval
@@ -127,6 +185,32 @@
         <span class="table-count" data-filtered-count data-count-label="activities"><%= @rows.size %> activities</span>
       </div>
     </div>
+
+    <% if @selected_returned_submissions.present? %>
+      <div class="achievement-return-alert">
+        <div class="achievement-return-alert-heading">
+          <span class="status-badge status-returned">Returned</span>
+          <div>
+            <strong>Correction Required</strong>
+            <p class="muted">Update the returned achievement details and submit again.</p>
+          </div>
+        </div>
+        <div class="achievement-return-alert-list">
+          <% @selected_returned_submissions.each do |submission| %>
+            <article>
+              <strong>
+                <%= submission.returned_by&.name || submission.returned_stage.to_s.titleize %>
+                <% if submission.returned_at.present? %>
+                  • <%= format_record_datetime(submission.returned_at) %>
+                <% end %>
+              </strong>
+              <p><%= submission.state_code %> / <%= submission.theme_label %></p>
+              <%= simple_format(submission.returned_remark.presence || "-", class: "achievement-return-note") %>
+            </article>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
 
     <div class="responsive-table achievement-table-wrap" data-searchable-table>
       <table class="action-plan-table achievement-entry-table">
@@ -146,11 +230,12 @@
           </tr>
         </thead>
         <tbody>
-          <% locked = @locked_submission_count.to_i.positive? %>
+          <% locked_row_ids = @locked_submission_row_ids || [] %>
           <% @rows.each_with_index do |row, index| %>
             <% month_target = row.public_send(@selected_month).to_i %>
             <% has_target = month_target.positive? %>
             <% detail = @entry_details_by_row_id[row.id] %>
+            <% row_locked = locked_row_ids.include?(row.id) %>
             <tr class="<%= "achievement-row-has-target" if has_target %>">
               <td><span class="code-pill"><%= index + 1 %></span></td>
               <td><strong><%= row.project_name %></strong></td>
@@ -177,7 +262,7 @@
                   min: 0,
                   step: 1,
                   class: "achievement-input #{'is-priority' if has_target}",
-                  disabled: locked,
+                  disabled: row_locked,
                   aria: { label: "#{@selected_month.capitalize} achievement for #{row.asa_activity_name.presence || row.activity}" } %>
               </td>
               <td class="achievement-file-cell">
@@ -185,12 +270,12 @@
                   <% if detail&.files&.attached? %>
                     <%= render "shared/attachment_previews",
                       attachments: detail.files.attachments,
-                      removable: !locked %>
+                      removable: !row_locked %>
                   <% end %>
                   <div class="achievement-local-previews" data-local-file-previews></div>
                   <%= file_field_tag "files[#{row.id}][]",
                     multiple: true,
-                    disabled: locked,
+                    disabled: row_locked,
                     class: "achievement-file-input",
                     data: { local_file_input: true },
                     aria: { label: "Upload supporting files for #{row.asa_activity_name.presence || row.activity}" } %>
@@ -202,7 +287,7 @@
                   detail&.remark,
                   rows: 2,
                   class: "achievement-remark-input",
-                  disabled: locked,
+                  disabled: row_locked,
                   placeholder: "Remark",
                   aria: { label: "Remark for #{row.asa_activity_name.presence || row.activity}" } %>
               </td>
@@ -214,7 +299,9 @@
 
     <div class="submit-panel achievement-submit-panel">
       <p class="muted">
-        <% if @locked_submission_count.to_i.positive? %>
+        <% if @selected_returned_submissions.present? && @submission_candidate_row_count.to_i.positive? %>
+          This request was returned. Update values, remarks or files, then submit again.
+        <% elsif @locked_submission_count.to_i.positive? && @editable_row_count.to_i.zero? %>
           Vertical approval is done. Achievements are locked for this month.
         <% elsif @active_submission_count.to_i.positive? %>
           Already submitted for approval. Changes are allowed only until vertical approval.
@@ -223,11 +310,11 @@
         <% end %>
       </p>
       <div class="achievement-submit-actions">
-        <%= text_field_tag :submission_remark, nil, class: "remark-input achievement-submit-remark", placeholder: "Remark for approvers (optional)", disabled: @locked_submission_count.to_i.positive? %>
-        <%= submit_tag "Save Draft", class: "secondary-button", disabled: @locked_submission_count.to_i.positive? %>
+        <%= text_field_tag :submission_remark, nil, class: "remark-input achievement-submit-remark", placeholder: "Remark for approvers (optional)", disabled: @submission_candidate_row_count.to_i.zero? %>
+        <%= submit_tag "Save Draft", class: "secondary-button", disabled: @editable_row_count.to_i.zero? %>
         <%= submit_tag "Submit for Approval",
           class: "submit-plan-button",
-          disabled: @locked_submission_count.to_i.positive? || @active_submission_count.to_i.positive? %>
+          disabled: @submission_candidate_row_count.to_i.zero? %>
       </div>
     </div>
   <% end %>

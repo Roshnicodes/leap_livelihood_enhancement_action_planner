@@ -4,13 +4,13 @@ class CreatePmcAdminLogin < ActiveRecord::Migration[7.2]
   end
 
   def up
-    pmc = MigrationUser.find_or_initialize_by(login: "PMC")
-    pmc.role = "admin"
-    pmc.employee_id = nil if pmc.has_attribute?(:employee_id)
-    assign_password(pmc, "pmc@123")
-    pmc.save!
+    mis = MigrationUser.find_or_initialize_by(login: "MIS")
+    mis.role = "admin"
+    mis.employee_id = nil if mis.has_attribute?(:employee_id)
+    assign_password(mis, "mis@123")
+    mis.save!
 
-    MigrationUser.where(login: "admin@leap.local").where.not(id: pmc.id).delete_all
+    MigrationUser.where(login: "admin@leap.local").where.not(id: mis.id).delete_all
   end
 
   def down

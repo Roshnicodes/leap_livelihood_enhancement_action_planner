@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_21_102000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_31_143000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -83,12 +83,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_102000) do
   end
 
   create_table "action_plan_fco_mappings", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
     t.datetime "created_at", null: false
     t.string "employee_code", null: false
     t.bigint "employee_id", null: false
     t.string "fco_id", null: false
     t.string "fco_name", null: false
     t.datetime "updated_at", null: false
+    t.index ["active", "employee_id", "fco_id"], name: "idx_action_plan_fco_active_employee"
     t.index ["employee_code"], name: "index_action_plan_fco_mappings_on_employee_code"
     t.index ["employee_id", "fco_id"], name: "idx_action_plan_fco_employee_fco", unique: true
     t.index ["employee_id", "fco_name", "fco_id"], name: "idx_action_plan_fco_mappings_employee_name"
@@ -147,6 +149,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_102000) do
 
   create_table "action_plan_rows", force: :cascade do |t|
     t.text "a_remark"
+    t.boolean "active", default: true, null: false
     t.text "activity"
     t.string "activity_id"
     t.integer "apr", default: 0, null: false
@@ -209,6 +212,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_102000) do
     t.string "user_id"
     t.string "user_name"
     t.index ["id_new"], name: "index_action_plan_rows_on_id_new"
+    t.index ["import_flag", "active", "project_name", "id"], name: "idx_action_plan_rows_active_admin"
     t.index ["import_flag", "po_id", "id"], name: "idx_action_plan_rows_active_po_order"
     t.index ["import_flag", "po_id", "project_name", "id"], name: "idx_action_plan_rows_active_po_project_order"
     t.index ["import_flag", "project_name", "id"], name: "idx_action_plan_rows_active_project_order"
@@ -265,6 +269,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_102000) do
   end
 
   create_table "action_plan_vertical_mappings", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
     t.text "asa_theme"
     t.string "asa_theme_id", null: false
     t.datetime "created_at", null: false
@@ -272,6 +277,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_102000) do
     t.bigint "employee_id"
     t.string "state_code", null: false
     t.datetime "updated_at", null: false
+    t.index ["active", "employee_code", "state_code", "asa_theme_id"], name: "idx_action_plan_vertical_mappings_active_lookup"
     t.index ["employee_code", "state_code", "asa_theme_id"], name: "idx_action_plan_vertical_mappings_employee_code_lookup"
     t.index ["employee_code", "state_code", "asa_theme_id"], name: "idx_action_plan_vertical_mappings_unique", unique: true
     t.index ["employee_id", "state_code", "asa_theme_id"], name: "idx_action_plan_vertical_mappings_employee_lookup"
@@ -308,6 +314,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_102000) do
   end
 
   create_table "bli_activities", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
     t.string "activity_name"
     t.decimal "allocated_fund", precision: 15, scale: 2, default: "0.0", null: false
     t.date "allocating_date"
@@ -320,6 +327,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_102000) do
     t.datetime "created_at", null: false
     t.bigint "employee_id", null: false
     t.string "financial_year"
+    t.integer "import_flag", default: 0, null: false
     t.string "name"
     t.string "office_name"
     t.string "parent_activity"
@@ -338,12 +346,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_102000) do
     t.datetime "updated_at", null: false
     t.decimal "utilised_fund", precision: 15, scale: 2, default: "0.0", null: false
     t.string "vertical_name"
+    t.index ["active", "project_name", "vertical_name", "bli_code", "id"], name: "idx_bli_activities_active_admin_lookup"
     t.index ["employee_id", "project_name", "bli_code", "name", "activity_name", "vertical_name"], name: "idx_bli_activities_employee_budget_order"
     t.index ["employee_id", "project_name", "vertical_name", "activity_name", "bli_code", "id"], name: "idx_bli_activities_employee_export_order"
     t.index ["employee_id", "project_name", "vertical_name"], name: "index_bli_activities_on_employee_project_vertical"
     t.index ["employee_id", "vertical_name", "project_name", "activity_name"], name: "index_bli_activities_on_employee_vertical_project_activity"
     t.index ["employee_id"], name: "index_bli_activities_on_employee_id"
     t.index ["financial_year"], name: "index_bli_activities_on_financial_year"
+    t.index ["import_flag", "active", "project_name", "vertical_name", "bli_code", "id"], name: "idx_bli_activities_current_admin_lookup"
     t.index ["project_name", "activity_name", "vertical_name"], name: "idx_bli_activities_project_activity_vertical"
     t.index ["project_name", "bli_code", "name", "activity_name", "vertical_name"], name: "idx_bli_activities_project_budget_order"
     t.index ["project_name", "bli_code"], name: "idx_bli_activities_project_code"
@@ -412,10 +422,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_102000) do
   end
 
   create_table "employee_vertical_mappings", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
     t.datetime "created_at", null: false
     t.bigint "employee_id", null: false
     t.datetime "updated_at", null: false
     t.bigint "vertical_percent_id", null: false
+    t.index ["active", "employee_id", "vertical_percent_id"], name: "idx_employee_vertical_mappings_active_lookup"
     t.index ["employee_id", "vertical_percent_id"], name: "index_employee_vertical_mappings_unique", unique: true
     t.index ["employee_id"], name: "index_employee_vertical_mappings_on_employee_id"
     t.index ["vertical_percent_id"], name: "index_employee_vertical_mappings_on_vertical_percent_id"
@@ -478,11 +490,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_102000) do
   end
 
   create_table "parent_activity_assignments", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
     t.datetime "created_at", null: false
     t.bigint "employee_id", null: false
     t.string "source_parent_activity", null: false
     t.datetime "updated_at", null: false
     t.bigint "vertical_percent_id", null: false
+    t.index ["active", "source_parent_activity"], name: "idx_parent_activity_assignments_active_lookup"
     t.index ["employee_id", "vertical_percent_id"], name: "index_parent_activity_assignments_on_employee_vertical"
     t.index ["employee_id"], name: "index_parent_activity_assignments_on_employee_id"
     t.index ["source_parent_activity"], name: "index_parent_activity_assignments_on_source", unique: true
@@ -603,6 +617,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_102000) do
   end
 
   create_table "project_ownerships", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
     t.datetime "created_at", null: false
     t.string "email_id"
     t.string "po_id", null: false
@@ -612,6 +627,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_102000) do
     t.datetime "updated_at", null: false
     t.index "lower((email_id)::text)", name: "idx_project_ownerships_lower_email_id"
     t.index "lower((po_name)::text)", name: "idx_project_ownerships_lower_po_name"
+    t.index ["active", "po_id", "project_name"], name: "idx_project_ownerships_active_lookup"
     t.index ["email_id"], name: "index_project_ownerships_on_email_id"
     t.index ["po_id", "project_name"], name: "index_project_ownerships_on_po_id_and_project_name", unique: true
     t.index ["project_name"], name: "index_project_ownerships_on_project_name"

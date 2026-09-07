@@ -71,8 +71,12 @@ class ActionPlanImporter
       }
     end
 
-    ProjectOwnership.delete_all
-    ProjectOwnership.insert_all!(rows) if rows.any?
+    timestamp = Time.current
+    ProjectOwnership.update_all(active: false, updated_at: timestamp)
+    ProjectOwnership.upsert_all!(
+      rows.map { |row| row.merge(active: true, updated_at: timestamp) },
+      unique_by: :index_project_ownerships_on_po_id_and_project_name
+    ) if rows.any?
     sync_pending_submission_approvers!
     rows.size
   end
@@ -123,9 +127,9 @@ class ActionPlanImporter
   # reimport they must follow the new ownership so approvals land with the right PO.
   def sync_pending_submission_approvers!
     ActionPlanSubmission.where(status: "pending").find_each do |submission|
-      ownership = ProjectOwnership.find_by(po_id: submission.po_id, project_name: submission.project_name) ||
-        ProjectOwnership.find_by(po_id: submission.po_id) ||
-        ProjectOwnership.find_by(project_name: submission.project_name)
+      ownership = ProjectOwnership.active.find_by(po_id: submission.po_id, project_name: submission.project_name) ||
+        ProjectOwnership.active.find_by(po_id: submission.po_id) ||
+        ProjectOwnership.active.find_by(project_name: submission.project_name)
       next unless ownership
 
       submission.update!(
@@ -205,6 +209,7 @@ class ActionPlanImporter
         asa_activity_name: value(row, "ASA_Activity_Name"),
         planned_total: month_values.values.sum,
         import_flag: 0,
+        active: true,
         imported_at: imported_at,
         created_at: Time.current,
         updated_at: Time.current,
@@ -216,20 +221,20 @@ class ActionPlanImporter
   end
 
   def replace_action_plan_rows!(rows)
-    ActionPlanRow.active_import.update_all(import_flag: 1, updated_at: Time.current)
+    ActionPlanRow.current_import.update_all(import_flag: 1, updated_at: Time.current)
     ActionPlanRow.insert_all!(rows)
     rows.size
   end
 
   def append_new_action_plan_rows!(rows)
-    existing_keys = action_plan_rows_by_identity(ActionPlanRow.active_import).keys.index_with(true)
+    existing_keys = action_plan_rows_by_identity(ActionPlanRow.current_import).keys.index_with(true)
     new_rows = rows.reject { |row| existing_keys[action_plan_identity_key(row)] }
     ActionPlanRow.insert_all!(new_rows) if new_rows.any?
     new_rows.size
   end
 
   def update_existing_action_plan_rows!(rows)
-    active_rows = action_plan_rows_by_identity(ActionPlanRow.active_import)
+    active_rows = action_plan_rows_by_identity(ActionPlanRow.current_import)
     updated_count = 0
 
     rows.each do |attributes|
@@ -237,7 +242,7 @@ class ActionPlanImporter
       next unless matches.size == 1
 
       row = matches.first
-      row.assign_attributes(attributes.except(:id, :created_at, :import_flag))
+      row.assign_attributes(attributes.except(:id, :created_at, :import_flag, :active))
       row.import_flag = 0
       row.save!
       updated_count += 1
@@ -277,8 +282,12 @@ class ActionPlanImporter
 
     unique_rows = rows.uniq { |row| [ row[:employee_code], row[:state_code], row[:asa_theme_id] ] }
 
-    ActionPlanVerticalMapping.delete_all
-    ActionPlanVerticalMapping.insert_all!(unique_rows) if unique_rows.any?
+    timestamp = Time.current
+    ActionPlanVerticalMapping.update_all(active: false, updated_at: timestamp)
+    ActionPlanVerticalMapping.upsert_all!(
+      unique_rows.map { |row| row.merge(active: true, updated_at: timestamp) },
+      unique_by: :idx_action_plan_vertical_mappings_unique
+    ) if unique_rows.any?
     unique_rows.size
   end
 

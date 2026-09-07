@@ -132,7 +132,7 @@ class ProjectSummaryRecordsController < ApplicationController
   def require_employee_budget_edit_access
     return if current_user.employee.present? && !current_user.admin? && !ProjectSummarySubmission.summary_access?(current_user.employee)
 
-    redirect_to project_summary_records_path(vertical: params[:vertical].presence), alert: "PMC can view records but cannot edit."
+    redirect_to project_summary_records_path(vertical: params[:vertical].presence), alert: "MIS can view records but cannot edit."
   end
 
   def record_items_params

@@ -52,7 +52,7 @@ class PbImportFile < ApplicationRecord
       content_type: File.extname(source_path).downcase == ".csv" ? "text/csv" : PbActivityExporter::XLSX_CONTENT_TYPE,
       status: "imported",
       file_kind: "source",
-      row_count: BliActivity.count
+      row_count: BliActivity.active.count
     )
   end
 
@@ -96,7 +96,7 @@ class PbImportFile < ApplicationRecord
   def self.capture_active_snapshot!(uploaded_by: nil)
     source_file = latest_source
     return capture_source_snapshot!(source_file, uploaded_by: uploaded_by) if source_file&.file_available?
-    return unless BliActivity.exists?
+    return unless BliActivity.active.exists?
 
     imported_at = Time.current
     financial_year = financial_year_for(imported_at)
@@ -113,7 +113,7 @@ class PbImportFile < ApplicationRecord
       byte_size: File.size(absolute_path),
       storage_path: relative_path,
       uploaded_by: uploaded_by,
-      row_count: BliActivity.count,
+      row_count: BliActivity.active.count,
       status: "backup",
       file_kind: "before_import_snapshot",
       financial_year: financial_year,

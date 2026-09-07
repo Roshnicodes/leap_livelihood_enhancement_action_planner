@@ -64,9 +64,9 @@ module ActionPlanPresenter
     return if project_name.blank?
 
     row = ActionPlanRow.active_import.find_by(project_name: project_name)
-    return ProjectOwnership.find_by(po_id: row&.po_id, project_name: project_name) ||
-      ProjectOwnership.find_by(po_id: row&.po_id) ||
-      ProjectOwnership.find_by(project_name: project_name) if current_user.admin?
+    return ProjectOwnership.active.find_by(po_id: row&.po_id, project_name: project_name) ||
+      ProjectOwnership.active.find_by(po_id: row&.po_id) ||
+      ProjectOwnership.active.find_by(project_name: project_name) if current_user.admin?
 
     ProjectOwnership.find_owned_for(current_user.employee, project_name: project_name, po_id: row&.po_id)
   end

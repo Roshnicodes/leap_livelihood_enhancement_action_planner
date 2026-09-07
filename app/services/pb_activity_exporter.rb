@@ -32,7 +32,7 @@ class PbActivityExporter
   ].freeze
 
   def self.active_xlsx
-    new(BliActivity.order(:project_name, :vertical_name, :bli_code, :id)).xlsx
+    new(BliActivity.active.order(:project_name, :vertical_name, :bli_code, :id)).xlsx
   end
 
   def initialize(rows)

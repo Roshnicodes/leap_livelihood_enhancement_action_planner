@@ -50,7 +50,7 @@ class BudgetUtilizationReportsController < ApplicationController
   end
 
   def project_row(project_name, months, project_utilizations)
-    activities = BliActivity.with_single_bli_code.where(project_name: project_name)
+    activities = BliActivity.active.with_single_bli_code.where(project_name: project_name)
     return if activities.none?
 
     total_allocated = activities

@@ -342,7 +342,7 @@ class ActionPlanStatusReport
   end
 
   def vertical_mappings
-    @vertical_mappings ||= ActionPlanVerticalMapping
+    @vertical_mappings ||= ActionPlanVerticalMapping.active
       .includes(:employee)
       .order(:state_code, :asa_theme_id, :employee_code)
       .to_a

@@ -10,8 +10,9 @@ class ParentActivityAssignmentImporter
     imported = 0
 
     ParentActivityAssignment.transaction do
-      ParentActivityAssignment.delete_all
-      EmployeeVerticalMapping.delete_all if replace_employee_verticals
+      timestamp = Time.current
+      ParentActivityAssignment.update_all(active: false, updated_at: timestamp)
+      EmployeeVerticalMapping.update_all(active: false, updated_at: timestamp) if replace_employee_verticals
 
       rows.each do |row|
         source_parent_activity = row_value(row, "Parent Activity")
@@ -23,12 +24,18 @@ class ParentActivityAssignmentImporter
         raise ActiveRecord::RecordNotFound, "No vertical percent found for #{source_parent_activity.inspect}" unless vertical_percent
 
         employee.update!(active: true) unless employee.active?
-        ParentActivityAssignment.create!(
+        assignment = ParentActivityAssignment.find_or_initialize_by(source_parent_activity: source_parent_activity)
+        assignment.assign_attributes(
           source_parent_activity: source_parent_activity,
           employee: employee,
-          vertical_percent: vertical_percent
+          vertical_percent: vertical_percent,
+          active: true
         )
-        EmployeeVerticalMapping.find_or_create_by!(employee: employee, vertical_percent: vertical_percent)
+        assignment.save!
+
+        mapping = EmployeeVerticalMapping.find_or_initialize_by(employee: employee, vertical_percent: vertical_percent)
+        mapping.active = true
+        mapping.save!
         imported += 1
       end
     end

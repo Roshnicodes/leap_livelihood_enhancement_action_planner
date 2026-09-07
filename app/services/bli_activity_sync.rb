@@ -46,7 +46,7 @@ class BliActivitySync
       end
     end
 
-    imported_count = BliActivity.count
+    imported_count = BliActivity.active.count
     if save_history && source_file.present?
       PbImportFile.capture_path!(
         path: source_file,
@@ -65,15 +65,12 @@ class BliActivitySync
   attr_reader :csv_path, :xlsx_path, :source_path, :financial_year, :save_history
 
   def clear_existing_records(clear_summaries)
-    PlanSubmissionItem.delete_all
-    PlanSubmission.delete_all
-
     if clear_summaries
       ProjectSummarySubmissionItem.delete_all
       ProjectSummarySubmission.delete_all
     end
 
-    BliActivity.delete_all
+    BliActivity.current_import.update_all(import_flag: 1, active: false, updated_at: Time.current)
   end
 
   def source_rows
@@ -104,12 +101,13 @@ class BliActivitySync
   def employees_mapped_to_vertical(vertical_name)
     Employee
       .joins(employee_vertical_mappings: :vertical_percent)
+      .where(employee_vertical_mappings: { active: true })
       .where("LOWER(TRIM(vertical_percents.vertical_name)) = ?", vertical_name.to_s.squish.downcase)
       .distinct
   end
 
   def assignments_for_parent_activity(source_parent_activity)
-    ParentActivityAssignment.where(
+    ParentActivityAssignment.active.where(
       "LOWER(TRIM(source_parent_activity)) = ?",
       source_parent_activity.to_s.squish.downcase
     )
@@ -160,6 +158,7 @@ class BliActivitySync
 
     BliActivity.create!(
       employee: employee,
+      active: true,
       stakeholder_name: row_value(row, "Stakeholder Name"),
       allocating_date: parsed_date(row_value(row, "Allocating Date")),
       name: row_value(row, "Project Bli Name", "Name", "Project Name"),

@@ -71,19 +71,50 @@ Rails.application.routes.draw do
   patch "project_summary_approvals/:id/approve" => "project_summary_approvals#approve", as: :approve_project_summary
   patch "project_summary_approvals/:id/return" => "project_summary_approvals#return_summary", as: :return_project_summary
 
+  namespace :api, defaults: { format: :json } do
+    get "project_action_plan" => "action_plans#project"
+    get "vertical_action_plan" => "action_plans#vertical"
+    get "project_summary_approvals" => "project_summary_approvals#index"
+    patch "project_summary_approvals/approve" => "project_summary_approvals#bulk_approve"
+    patch "project_summary_approvals/return" => "project_summary_approvals#bulk_return"
+    patch "project_summary_approvals/:id/approve" => "project_summary_approvals#approve"
+    patch "project_summary_approvals/:id/return" => "project_summary_approvals#return_summary"
+  end
+
   namespace :admin do
-    resources :employees, only: :index
+    resources :employees, only: %i[index create update] do
+      patch :toggle_active, on: :member
+    end
     get "action_plan_fco_mapping" => "action_plan_fco_mappings#index", as: :action_plan_fco_mapping
+    post "action_plan_fco_mapping" => "action_plan_fco_mappings#create"
     patch "action_plan_fco_mapping" => "action_plan_fco_mappings#update"
+    patch "action_plan_fco_mapping/:id" => "action_plan_fco_mappings#update_mapping", as: :update_action_plan_fco_mapping
+    patch "action_plan_fco_mapping/:id/toggle_active" => "action_plan_fco_mappings#toggle_active", as: :toggle_action_plan_fco_mapping
     post "action_plan_fco_mapping/import" => "action_plan_fco_mappings#import", as: :import_action_plan_fco_mapping
     delete "action_plan_fco_mapping/:id" => "action_plan_fco_mappings#destroy", as: :destroy_action_plan_fco_mapping
     resources :pb_imports, only: %i[index create] do
       get :download, on: :collection
       get :download_file, on: :member
     end
+    post "pb_imports/bli_activities" => "pb_imports#create_bli_activity", as: :pb_bli_activities
+    patch "pb_imports/bli_activities/:id" => "pb_imports#update_bli_activity", as: :pb_bli_activity
+    patch "pb_imports/bli_activities/:id/toggle_active" => "pb_imports#toggle_bli_activity", as: :toggle_pb_bli_activity
+    post "pb_imports/parent_activity_assignments" => "pb_imports#create_parent_activity_assignment", as: :parent_activity_assignments
+    patch "pb_imports/parent_activity_assignments/:id" => "pb_imports#update_parent_activity_assignment", as: :parent_activity_assignment
+    patch "pb_imports/parent_activity_assignments/:id/toggle_active" => "pb_imports#toggle_parent_activity_assignment", as: :toggle_parent_activity_assignment
     resources :action_plan_imports, only: %i[index create] do
       get :download, on: :collection
+      get :download_latest_files, on: :collection
       get :download_file, on: :member
     end
+    post "action_plan_imports/action_plan_rows" => "action_plan_imports#create_action_plan_row", as: :action_plan_rows
+    patch "action_plan_imports/action_plan_rows/:id" => "action_plan_imports#update_action_plan_row", as: :action_plan_row
+    patch "action_plan_imports/action_plan_rows/:id/toggle_active" => "action_plan_imports#toggle_action_plan_row", as: :toggle_action_plan_row
+    post "action_plan_imports/project_ownerships" => "action_plan_imports#create_project_ownership", as: :project_ownerships
+    patch "action_plan_imports/project_ownerships/:id" => "action_plan_imports#update_project_ownership", as: :project_ownership
+    patch "action_plan_imports/project_ownerships/:id/toggle_active" => "action_plan_imports#toggle_project_ownership", as: :toggle_project_ownership
+    post "action_plan_imports/vertical_mappings" => "action_plan_imports#create_vertical_mapping", as: :action_plan_vertical_mappings
+    patch "action_plan_imports/vertical_mappings/:id" => "action_plan_imports#update_vertical_mapping", as: :action_plan_vertical_mapping
+    patch "action_plan_imports/vertical_mappings/:id/toggle_active" => "action_plan_imports#toggle_vertical_mapping", as: :toggle_action_plan_vertical_mapping
   end
 end

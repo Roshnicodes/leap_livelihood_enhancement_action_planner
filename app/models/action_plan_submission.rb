@@ -106,7 +106,7 @@ class ActionPlanSubmission < ApplicationRecord
   private
 
   def assign_approvers
-    ownership = project_ownership || ProjectOwnership.find_by(po_id: po_id, project_name: project_name)
+    ownership = project_ownership || ProjectOwnership.active.find_by(po_id: po_id, project_name: project_name)
     self.project_ownership ||= ownership
     self.po_approver ||= ownership&.owner_employee
     self.coo_approver ||= self.class.coo_employee

@@ -1,0 +1,1014 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>LEAP Database Tables & Relationships</title>
+  <style>
+    @page { size: A4; margin: 14mm 12mm; }
+    * { box-sizing: border-box; }
+    body { font-family: Arial, Helvetica, sans-serif; color: #1f2933; font-size: 10.3px; line-height: 1.38; margin: 0; }
+    h1 { font-size: 24px; margin: 0 0 5px; color: #0f2f36; }
+    h2 { font-size: 16px; margin: 22px 0 8px; color: #0f2f36; border-bottom: 1px solid #9fb4bd; padding-bottom: 4px; }
+    h3 { font-size: 13px; margin: 15px 0 6px; color: #183f49; }
+    p { margin: 4px 0 8px; }
+    table { width: 100%; border-collapse: collapse; margin: 6px 0 12px; page-break-inside: auto; }
+    tr { page-break-inside: avoid; page-break-after: auto; }
+    th { background: #e8f1f0; color: #183f49; text-align: left; border: 1px solid #b9c8cd; padding: 5px; font-weight: 700; }
+    td { border: 1px solid #cad4d8; padding: 4px 5px; vertical-align: top; }
+    .meta { color: #52616b; font-size: 10px; margin-bottom: 14px; }
+    .summary { display: table; width: 100%; margin: 12px 0; border-spacing: 6px 0; }
+    .summary-card { display: table-cell; width: 33%; border: 1px solid #b9c8cd; padding: 9px; background: #f7faf9; }
+    .summary-card strong { display: block; font-size: 18px; color: #0f2f36; margin-bottom: 2px; }
+    .tag { display: inline-block; padding: 2px 5px; border: 1px solid #a7bbc1; background: #f4f8f7; color: #1c4d57; border-radius: 3px; font-size: 9px; }
+    .small { color: #52616b; font-size: 9.4px; }
+    .nowrap { white-space: nowrap; }
+    .page-break { page-break-before: always; }
+    ul { margin: 4px 0 8px 18px; padding: 0; }
+    li { margin: 2px 0; }
+    code { font-family: "Courier New", monospace; font-size: 9.4px; }
+  </style>
+</head>
+<body>
+  <h1>LEAP Database Tables & Relationships</h1>
+  <div class="meta">Generated at 02 Sep 2026, 10:00 AM IST from <code>db/schema.rb</code> version 2026-08-31-143000 and <code>app/models</code> association declarations.</div>
+
+  <div class="summary">
+    <div class="summary-card"><strong>32</strong>Application tables</div>
+    <div class="summary-card"><strong>44</strong>Foreign-key relationships</div>
+    <div class="summary-card"><strong>76</strong>Model association lines</div>
+  </div>
+
+  <h2>Module Wise Tables</h2>
+  <table>
+    <thead><tr><th>Module</th><th>Tables</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Employee, Access &amp; Assignment</strong></td><td><code>employees</code>, <code>users</code>, <code>vertical_percents</code>, <code>employee_vertical_mappings</code>, <code>parent_activity_assignments</code>, <code>action_plan_vertical_mappings</code>, <code>action_plan_fco_mappings</code>, <code>project_ownerships</code></td></tr>
+      <tr><td><strong>P&amp;B Planning &amp; Summary</strong></td><td><code>bli_activities</code>, <code>plan_submissions</code>, <code>plan_submission_items</code>, <code>project_summary_submissions</code>, <code>project_summary_submission_items</code>, <code>pb_import_files</code>, <code>budget_utilizations</code></td></tr>
+      <tr><td><strong>Action Plan &amp; Achievement</strong></td><td><code>action_plan_import_files</code>, <code>action_plan_rows</code>, <code>action_plan_submissions</code>, <code>action_plan_month_changes</code>, <code>achievement_submissions</code>, <code>achievement_submission_rows</code>, <code>achievement_entry_details</code></td></tr>
+      <tr><td><strong>Reports &amp; Documents</strong></td><td><code>project_information_sheets</code>, <code>pis_document_types</code>, <code>pis_report_documents</code>, <code>donor_report_types</code>, <code>donor_report_uploads</code>, <code>fund_report_types</code>, <code>fund_report_uploads</code>, <code>active_storage_blobs</code>, <code>active_storage_attachments</code>, <code>active_storage_variant_records</code></td></tr>
+  </tbody>
+</table>
+
+<h2>Important Notes</h2>
+<ul>
+  <li><code>action_plan_rows</code> is the main imported action plan data table used by project and vertical action plan flows.</li>
+  <li><code>action_plan_submissions</code> stores approval workflow records. The <code>plan_type</code> column separates project and vertical submissions.</li>
+  <li><code>bli_activities</code>, <code>plan_submissions</code>, and <code>project_summary_submissions</code> are the core P&B planning and summary approval tables.</li>
+  <li>Rails Active Storage tables store uploaded file metadata and links; actual files are managed by the configured storage service.</li>
+</ul>
+
+<h2>Foreign Key Relationship Map</h2>
+<table>
+  <thead><tr><th>From</th><th>To</th><th>Action</th></tr></thead>
+  <tbody>
+      <tr><td><code>achievement_entry_details.action_plan_row_id</code></td><td><code>action_plan_rows.id</code></td><td class="small"></td></tr>
+      <tr><td><code>achievement_submission_rows.achievement_submission_id</code></td><td><code>achievement_submissions.id</code></td><td class="small"></td></tr>
+      <tr><td><code>achievement_submission_rows.action_plan_row_id</code></td><td><code>action_plan_rows.id</code></td><td class="small"></td></tr>
+      <tr><td><code>achievement_submissions.coo_approver_id</code></td><td><code>employees.id</code></td><td class="small"></td></tr>
+      <tr><td><code>achievement_submissions.director_approver_id</code></td><td><code>employees.id</code></td><td class="small"></td></tr>
+      <tr><td><code>achievement_submissions.employee_id</code></td><td><code>employees.id</code></td><td class="small"></td></tr>
+      <tr><td><code>achievement_submissions.po_approver_id</code></td><td><code>employees.id</code></td><td class="small"></td></tr>
+      <tr><td><code>achievement_submissions.vertical_approver_id</code></td><td><code>employees.id</code></td><td class="small"></td></tr>
+      <tr><td><code>action_plan_fco_mappings.employee_id</code></td><td><code>employees.id</code></td><td class="small"></td></tr>
+      <tr><td><code>action_plan_import_files.uploaded_by_id</code></td><td><code>users.id</code></td><td class="small"></td></tr>
+      <tr><td><code>action_plan_month_changes.action_plan_submission_id</code></td><td><code>action_plan_submissions.id</code></td><td class="small"></td></tr>
+      <tr><td><code>action_plan_month_changes.changed_by_id</code></td><td><code>users.id</code></td><td class="small"></td></tr>
+      <tr><td><code>action_plan_submissions.coo_approver_id</code></td><td><code>employees.id</code></td><td class="small"></td></tr>
+      <tr><td><code>action_plan_submissions.director_approver_id</code></td><td><code>employees.id</code></td><td class="small"></td></tr>
+      <tr><td><code>action_plan_submissions.employee_id</code></td><td><code>employees.id</code></td><td class="small"></td></tr>
+      <tr><td><code>action_plan_submissions.po_approver_id</code></td><td><code>employees.id</code></td><td class="small"></td></tr>
+      <tr><td><code>action_plan_submissions.project_ownership_id</code></td><td><code>project_ownerships.id</code></td><td class="small"></td></tr>
+      <tr><td><code>action_plan_vertical_mappings.employee_id</code></td><td><code>employees.id</code></td><td class="small"></td></tr>
+      <tr><td><code>active_storage_attachments.blob_id</code></td><td><code>active_storage_blobs.id</code></td><td class="small"></td></tr>
+      <tr><td><code>active_storage_variant_records.blob_id</code></td><td><code>active_storage_blobs.id</code></td><td class="small"></td></tr>
+      <tr><td><code>bli_activities.employee_id</code></td><td><code>employees.id</code></td><td class="small"></td></tr>
+      <tr><td><code>budget_utilizations.submitted_by_id</code></td><td><code>users.id</code></td><td class="small"></td></tr>
+      <tr><td><code>budget_utilizations.updated_by_id</code></td><td><code>users.id</code></td><td class="small"></td></tr>
+      <tr><td><code>donor_report_uploads.donor_report_type_id</code></td><td><code>donor_report_types.id</code></td><td class="small"></td></tr>
+      <tr><td><code>donor_report_uploads.uploaded_by_id</code></td><td><code>users.id</code></td><td class="small"></td></tr>
+      <tr><td><code>employee_vertical_mappings.employee_id</code></td><td><code>employees.id</code></td><td class="small"></td></tr>
+      <tr><td><code>employee_vertical_mappings.vertical_percent_id</code></td><td><code>vertical_percents.id</code></td><td class="small"></td></tr>
+      <tr><td><code>fund_report_uploads.fund_report_type_id</code></td><td><code>fund_report_types.id</code></td><td class="small"></td></tr>
+      <tr><td><code>fund_report_uploads.uploaded_by_id</code></td><td><code>users.id</code></td><td class="small"></td></tr>
+      <tr><td><code>parent_activity_assignments.employee_id</code></td><td><code>employees.id</code></td><td class="small"></td></tr>
+      <tr><td><code>parent_activity_assignments.vertical_percent_id</code></td><td><code>vertical_percents.id</code></td><td class="small"></td></tr>
+      <tr><td><code>pb_import_files.approved_by_id</code></td><td><code>users.id</code></td><td class="small"></td></tr>
+      <tr><td><code>pb_import_files.uploaded_by_id</code></td><td><code>users.id</code></td><td class="small"></td></tr>
+      <tr><td><code>pis_report_documents.pis_document_type_id</code></td><td><code>pis_document_types.id</code></td><td class="small"></td></tr>
+      <tr><td><code>pis_report_documents.uploaded_by_id</code></td><td><code>users.id</code></td><td class="small"></td></tr>
+      <tr><td><code>plan_submission_items.bli_activity_id</code></td><td><code>bli_activities.id</code></td><td class="small"></td></tr>
+      <tr><td><code>plan_submission_items.plan_submission_id</code></td><td><code>plan_submissions.id</code></td><td class="small"></td></tr>
+      <tr><td><code>plan_submissions.employee_id</code></td><td><code>employees.id</code></td><td class="small"></td></tr>
+      <tr><td><code>project_information_sheets.uploaded_by_id</code></td><td><code>users.id</code></td><td class="small"></td></tr>
+      <tr><td><code>project_summary_submission_items.project_summary_submission_id</code></td><td><code>project_summary_submissions.id</code></td><td class="small"></td></tr>
+      <tr><td><code>project_summary_submissions.approver_id</code></td><td><code>employees.id</code></td><td class="small"></td></tr>
+      <tr><td><code>project_summary_submissions.employee_id</code></td><td><code>employees.id</code></td><td class="small"></td></tr>
+      <tr><td><code>project_summary_submissions.first_approver_id</code></td><td><code>employees.id</code></td><td class="small"></td></tr>
+      <tr><td><code>users.employee_id</code></td><td><code>employees.id</code></td><td class="small"></td></tr>
+  </tbody>
+</table>
+
+<h2 class="page-break">Table Details</h2>
+  <h3><code>achievement_entry_details</code> <span class="tag">Action Plan &amp; Achievement</span></h3>
+  <p><strong>Purpose:</strong> Achievement entry detail rows linked with action plan rows. Stores entered achievement values and supports attached evidence files.</p>
+  <p><strong>Related from this table:</strong> <code>achievement_entry_details.action_plan_row_id -&gt; action_plan_rows.id</code></p>
+  <p><strong>Referenced by:</strong> <span class=\"small\">None</span></p>
+  <p><strong>Model associations:</strong></p>
+  <ul>
+    <li><code>AchievementEntryDetail</code> line 5: belongs_to :action_plan_row</li>
+    <li><code>AchievementEntryDetail</code> line 6: has_many_attached :files</li>
+  </ul>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th></tr></thead>
+    <tbody>
+      <tr><td><code>action_plan_row_id</code></td><td>bigint</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>created_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>month</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>remark</code></td><td>text</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>updated_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+    </tbody>
+  </table>
+  <p><strong>Indexes:</strong> <code>idx_achievement_entry_details_row_month (action_plan_row_id, month) unique</code>, <code>index_achievement_entry_details_on_action_plan_row_id (action_plan_row_id)</code></p>
+  <h3><code>achievement_submission_rows</code> <span class="tag">Action Plan &amp; Achievement</span></h3>
+  <p><strong>Purpose:</strong> Line items inside an achievement submission. Connects submitted achievement data back to action plan rows.</p>
+  <p><strong>Related from this table:</strong> <code>achievement_submission_rows.achievement_submission_id -&gt; achievement_submissions.id</code>, <code>achievement_submission_rows.action_plan_row_id -&gt; action_plan_rows.id</code></p>
+  <p><strong>Referenced by:</strong> <span class=\"small\">None</span></p>
+  <p><strong>Model associations:</strong></p>
+  <ul>
+    <li><code>AchievementSubmissionRow</code> line 2: belongs_to :achievement_submission</li>
+    <li><code>AchievementSubmissionRow</code> line 3: belongs_to :action_plan_row</li>
+  </ul>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th></tr></thead>
+    <tbody>
+      <tr><td><code>achievement_submission_id</code></td><td>bigint</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>achievement_value</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>action_plan_row_id</code></td><td>bigint</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>created_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>month</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>target_value</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>updated_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+    </tbody>
+  </table>
+  <p><strong>Indexes:</strong> <code>index_achievement_submission_rows_on_achievement_submission_id (achievement_submission_id)</code>, <code>idx_achievement_submission_rows_unique (action_plan_row_id, month, achievement_submission_id) unique</code>, <code>index_achievement_submission_rows_on_action_plan_row_id (action_plan_row_id)</code>, <code>idx_achievement_submission_rows_month_row (month, action_plan_row_id)</code></p>
+  <h3><code>achievement_submissions</code> <span class="tag">Action Plan &amp; Achievement</span></h3>
+  <p><strong>Purpose:</strong> Achievement submission workflow records for employees, with PO, vertical, COO, and director approval references.</p>
+  <p><strong>Related from this table:</strong> <code>achievement_submissions.coo_approver_id -&gt; employees.id</code>, <code>achievement_submissions.director_approver_id -&gt; employees.id</code>, <code>achievement_submissions.employee_id -&gt; employees.id</code>, <code>achievement_submissions.po_approver_id -&gt; employees.id</code>, <code>achievement_submissions.vertical_approver_id -&gt; employees.id</code></p>
+  <p><strong>Referenced by:</strong> <code>achievement_submission_rows.achievement_submission_id -&gt; achievement_submissions.id</code></p>
+  <p><strong>Model associations:</strong></p>
+  <ul>
+    <li><code>AchievementSubmission</code> line 5: belongs_to :employee</li>
+    <li><code>AchievementSubmission</code> line 6: belongs_to :vertical_approver, class_name: &quot;Employee&quot;, optional: true</li>
+    <li><code>AchievementSubmission</code> line 7: belongs_to :po_approver, class_name: &quot;Employee&quot;, optional: true</li>
+    <li><code>AchievementSubmission</code> line 8: belongs_to :coo_approver, class_name: &quot;Employee&quot;, optional: true</li>
+    <li><code>AchievementSubmission</code> line 9: belongs_to :director_approver, class_name: &quot;Employee&quot;, optional: true</li>
+    <li><code>AchievementSubmission</code> line 10: has_many :achievement_submission_rows, dependent: :destroy</li>
+    <li><code>AchievementSubmission</code> line 11: has_many :action_plan_rows, through: :achievement_submission_rows</li>
+  </ul>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th></tr></thead>
+    <tbody>
+      <tr><td><code>asa_theme_id</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>coo_approver_id</code></td><td>bigint</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>coo_remark</code></td><td>text</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>coo_reviewed_at</code></td><td>datetime</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>created_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>current_stage</code></td><td>string</td><td class="nowrap">No</td><td>vertical</td></tr>
+      <tr><td><code>director_approver_id</code></td><td>bigint</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>director_remark</code></td><td>text</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>director_reviewed_at</code></td><td>datetime</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>employee_id</code></td><td>bigint</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>fco_id</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>fco_name</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>month</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>po_approver_id</code></td><td>bigint</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>po_id</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>po_remark</code></td><td>text</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>po_reviewed_at</code></td><td>datetime</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>project_name</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>state_code</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>status</code></td><td>string</td><td class="nowrap">No</td><td>pending</td></tr>
+      <tr><td><code>submission_remark</code></td><td>text</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>submitted_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>to_id</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>to_name</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>updated_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>vertical_approver_id</code></td><td>bigint</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>vertical_remark</code></td><td>text</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>vertical_reviewed_at</code></td><td>datetime</td><td class="nowrap">Yes</td><td></td></tr>
+    </tbody>
+  </table>
+  <p><strong>Indexes:</strong> <code>idx_achievement_coo_pending (coo_approver_id, status, current_stage)</code>, <code>index_achievement_submissions_on_coo_approver_id (coo_approver_id)</code>, <code>idx_achievement_director_pending (director_approver_id, status, current_stage)</code>, <code>index_achievement_submissions_on_director_approver_id (director_approver_id)</code>, <code>idx_achievement_submission_employee_scope (employee_id, project_name, to_id, month)</code>, <code>index_achievement_submissions_on_employee_id (employee_id)</code>, <code>idx_achievement_po_pending (po_approver_id, status, current_stage)</code>, <code>index_achievement_submissions_on_po_approver_id (po_approver_id)</code>, <code>idx_achievement_submissions_project_month_time (project_name, month, submitted_at)</code>, <code>idx_on_status_current_stage_submitted_at_bd6c858085 (status, current_stage, submitted_at)</code>, <code>idx_achievement_submissions_scope_status (to_id, project_name, month, status)</code>, <code>idx_achievement_vertical_pending (vertical_approver_id, status, current_stage)</code>, <code>index_achievement_submissions_on_vertical_approver_id (vertical_approver_id)</code></p>
+  <h3><code>action_plan_fco_mappings</code> <span class="tag">Employee, Access &amp; Assignment</span></h3>
+  <p><strong>Purpose:</strong> Maps employees to FCO-related action plan ownership or filtering scope.</p>
+  <p><strong>Related from this table:</strong> <code>action_plan_fco_mappings.employee_id -&gt; employees.id</code></p>
+  <p><strong>Referenced by:</strong> <span class=\"small\">None</span></p>
+  <p><strong>Model associations:</strong></p>
+  <ul>
+    <li><code>ActionPlanFcoMapping</code> line 2: belongs_to :employee</li>
+  </ul>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th></tr></thead>
+    <tbody>
+      <tr><td><code>active</code></td><td>boolean</td><td class="nowrap">No</td><td>true</td></tr>
+      <tr><td><code>created_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>employee_code</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>employee_id</code></td><td>bigint</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>fco_id</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>fco_name</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>updated_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+    </tbody>
+  </table>
+  <p><strong>Indexes:</strong> <code>idx_action_plan_fco_active_employee (active, employee_id, fco_id)</code>, <code>index_action_plan_fco_mappings_on_employee_code (employee_code)</code>, <code>idx_action_plan_fco_employee_fco (employee_id, fco_id) unique</code>, <code>idx_action_plan_fco_mappings_employee_name (employee_id, fco_name, fco_id)</code>, <code>index_action_plan_fco_mappings_on_employee_id (employee_id)</code>, <code>index_action_plan_fco_mappings_on_fco_id (fco_id)</code></p>
+  <h3><code>action_plan_import_files</code> <span class="tag">Action Plan &amp; Achievement</span></h3>
+  <p><strong>Purpose:</strong> Tracks uploaded action-plan import files and the user who uploaded each file.</p>
+  <p><strong>Related from this table:</strong> <code>action_plan_import_files.uploaded_by_id -&gt; users.id</code></p>
+  <p><strong>Referenced by:</strong> <span class=\"small\">None</span></p>
+  <p><strong>Model associations:</strong></p>
+  <ul>
+    <li><code>ActionPlanImportFile</code> line 13: belongs_to :uploaded_by, class_name: &quot;User&quot;, optional: true</li>
+  </ul>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th></tr></thead>
+    <tbody>
+      <tr><td><code>byte_size</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>content_type</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>created_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>error_message</code></td><td>text</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>financial_year</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>import_type</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>imported_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>original_filename</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>row_count</code></td><td>integer</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>status</code></td><td>string</td><td class="nowrap">No</td><td>saved</td></tr>
+      <tr><td><code>storage_path</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>updated_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>uploaded_by_id</code></td><td>bigint</td><td class="nowrap">Yes</td><td></td></tr>
+    </tbody>
+  </table>
+  <p><strong>Indexes:</strong> <code>index_action_plan_import_files_on_financial_year (financial_year)</code>, <code>idx_action_plan_import_files_type_status_year_time (import_type, status, financial_year, imported_at)</code>, <code>index_action_plan_import_files_on_import_type (import_type)</code>, <code>index_action_plan_import_files_on_imported_at (imported_at)</code>, <code>index_action_plan_import_files_on_status (status)</code>, <code>index_action_plan_import_files_on_storage_path (storage_path) unique</code>, <code>index_action_plan_import_files_on_uploaded_by_id (uploaded_by_id)</code></p>
+  <h3><code>action_plan_month_changes</code> <span class="tag">Action Plan &amp; Achievement</span></h3>
+  <p><strong>Purpose:</strong> Audit/history rows for month changes made on action plan submissions.</p>
+  <p><strong>Related from this table:</strong> <code>action_plan_month_changes.action_plan_submission_id -&gt; action_plan_submissions.id</code>, <code>action_plan_month_changes.changed_by_id -&gt; users.id</code></p>
+  <p><strong>Referenced by:</strong> <span class=\"small\">None</span></p>
+  <p><strong>Model associations:</strong></p>
+  <ul>
+    <li><code>ActionPlanMonthChange</code> line 7: belongs_to :action_plan_submission, optional: true</li>
+    <li><code>ActionPlanMonthChange</code> line 8: belongs_to :changed_by, class_name: &quot;User&quot;, optional: true</li>
+  </ul>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th></tr></thead>
+    <tbody>
+      <tr><td><code>action_plan_submission_id</code></td><td>bigint</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>asa_activity_id</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>asa_theme_id</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>changed_by_id</code></td><td>bigint</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>changed_value</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>created_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>last_applied_at</code></td><td>datetime</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>merged_at</code></td><td>datetime</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>month</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>original_value</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>po_id</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>project_name</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>source</code></td><td>string</td><td class="nowrap">No</td><td>user_edit</td></tr>
+      <tr><td><code>statte</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>status</code></td><td>string</td><td class="nowrap">No</td><td>pending</td></tr>
+      <tr><td><code>to_id</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>updated_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>user_id</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+    </tbody>
+  </table>
+  <p><strong>Indexes:</strong> <code>index_action_plan_month_changes_on_action_plan_submission_id (action_plan_submission_id)</code>, <code>index_action_plan_month_changes_on_changed_by_id (changed_by_id)</code>, <code>idx_action_plan_month_changes_identity (po_id, project_name, statte, user_id, to_id, asa_theme_id, asa_activity_id, month) unique</code>, <code>idx_action_plan_month_changes_project_status (project_name, status)</code>, <code>idx_action_plan_month_changes_status (status, updated_at)</code></p>
+  <h3><code>action_plan_rows</code> <span class="tag">Action Plan &amp; Achievement</span></h3>
+  <p><strong>Purpose:</strong> Main imported action plan data table. This is the core project/vertical action-plan dataset used by submissions and achievements.</p>
+  <p><strong>Related from this table:</strong> <span class=\"small\">None</span></p>
+  <p><strong>Referenced by:</strong> <code>achievement_entry_details.action_plan_row_id -&gt; action_plan_rows.id</code>, <code>achievement_submission_rows.action_plan_row_id -&gt; action_plan_rows.id</code></p>
+  <p><strong>Model associations:</strong></p>
+  <ul>
+    <li><code>ActionPlanRow</code> line 2: has_many :achievement_entry_details, dependent: :destroy</li>
+  </ul>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th></tr></thead>
+    <tbody>
+      <tr><td><code>a_remark</code></td><td>text</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>active</code></td><td>boolean</td><td class="nowrap">No</td><td>true</td></tr>
+      <tr><td><code>activity</code></td><td>text</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>activity_id</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>apr</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>apr_t</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>asa_activity_id</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>asa_activity_name</code></td><td>text</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>asa_theme</code></td><td>text</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>asa_theme_id</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>aug</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>aug_t</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>created_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>dec</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>dec_t</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>feb</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>feb_t</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>id_new</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>import_flag</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>imported_at</code></td><td>datetime</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>jan</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>jan_t</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>jul</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>jul_t</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>jun</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>jun_t</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>mar</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>mar_t</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>may</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>may_t</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>nov</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>nov_t</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>oct</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>oct_t</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>original_apr</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>original_aug</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>original_dec</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>original_feb</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>original_jan</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>original_jul</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>original_jun</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>original_mar</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>original_may</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>original_nov</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>original_oct</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>original_sep</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>planned_total</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>po_id</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>project_id</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>project_name</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>project_owner</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>responsibel</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>sep</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>sep_t</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>statte</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>theme</code></td><td>text</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>theme_id</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>to_id</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>to_name</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>unit_type</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>updated_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>user_id</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>user_name</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+    </tbody>
+  </table>
+  <p><strong>Indexes:</strong> <code>index_action_plan_rows_on_id_new (id_new)</code>, <code>idx_action_plan_rows_active_admin (import_flag, active, project_name, id)</code>, <code>idx_action_plan_rows_active_po_order (import_flag, po_id, id)</code>, <code>idx_action_plan_rows_active_po_project_order (import_flag, po_id, project_name, id)</code>, <code>idx_action_plan_rows_active_project_order (import_flag, project_name, id)</code>, <code>idx_action_plan_rows_active_project_theme (import_flag, project_name, theme)</code>, <code>idx_action_plan_rows_active_to_project (import_flag, to_id, project_name)</code>, <code>idx_action_plan_rows_active_fco_project_order (import_flag, user_id, project_name, id)</code>, <code>idx_action_plan_rows_active_achievement_order (import_flag, user_id, to_id, project_name, asa_theme_id, asa_activity_id, activity_id, id)</code>, <code>idx_action_plan_rows_active_fco_to_project_order (import_flag, user_id, to_id, project_name, id)</code>, <code>idx_action_plan_rows_active_user_to_project (import_flag, user_id, to_id, project_name)</code>, <code>idx_action_plan_rows_active_user_to (import_flag, user_id, to_id)</code>, <code>idx_action_plan_rows_active_user (import_flag, user_id)</code>, <code>index_action_plan_rows_on_import_flag (import_flag)</code>, <code>index_action_plan_rows_on_imported_at (imported_at)</code>, <code>index_action_plan_rows_on_po_id_and_project_name (po_id, project_name)</code>, <code>index_action_plan_rows_on_project_name (project_name)</code>, <code>idx_action_plan_rows_state_theme (statte, asa_theme_id)</code>, <code>index_action_plan_rows_on_to_id (to_id)</code>, <code>index_action_plan_rows_on_user_id (user_id)</code></p>
+  <h3><code>action_plan_submissions</code> <span class="tag">Action Plan &amp; Achievement</span></h3>
+  <p><strong>Purpose:</strong> Action plan submission and approval workflow table. Project/vertical flows are differentiated through plan_type and ownership fields.</p>
+  <p><strong>Related from this table:</strong> <code>action_plan_submissions.coo_approver_id -&gt; employees.id</code>, <code>action_plan_submissions.director_approver_id -&gt; employees.id</code>, <code>action_plan_submissions.employee_id -&gt; employees.id</code>, <code>action_plan_submissions.po_approver_id -&gt; employees.id</code>, <code>action_plan_submissions.project_ownership_id -&gt; project_ownerships.id</code></p>
+  <p><strong>Referenced by:</strong> <code>action_plan_month_changes.action_plan_submission_id -&gt; action_plan_submissions.id</code></p>
+  <p><strong>Model associations:</strong></p>
+  <ul>
+    <li><code>ActionPlanSubmission</code> line 8: belongs_to :employee</li>
+    <li><code>ActionPlanSubmission</code> line 9: belongs_to :project_ownership, optional: true</li>
+    <li><code>ActionPlanSubmission</code> line 10: belongs_to :po_approver, class_name: &quot;Employee&quot;, optional: true</li>
+    <li><code>ActionPlanSubmission</code> line 11: belongs_to :coo_approver, class_name: &quot;Employee&quot;, optional: true</li>
+    <li><code>ActionPlanSubmission</code> line 12: belongs_to :director_approver, class_name: &quot;Employee&quot;, optional: true</li>
+  </ul>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th></tr></thead>
+    <tbody>
+      <tr><td><code>coo_approver_id</code></td><td>bigint</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>coo_remark</code></td><td>text</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>coo_reviewed_at</code></td><td>datetime</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>created_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>current_stage</code></td><td>string</td><td class="nowrap">No</td><td>po</td></tr>
+      <tr><td><code>director_approver_id</code></td><td>bigint</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>director_remark</code></td><td>text</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>director_reviewed_at</code></td><td>datetime</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>employee_id</code></td><td>bigint</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>plan_type</code></td><td>string</td><td class="nowrap">No</td><td>project</td></tr>
+      <tr><td><code>po_approver_id</code></td><td>bigint</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>po_id</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>po_remark</code></td><td>text</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>po_reviewed_at</code></td><td>datetime</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>project_name</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>project_ownership_id</code></td><td>bigint</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>status</code></td><td>string</td><td class="nowrap">No</td><td>pending</td></tr>
+      <tr><td><code>submission_remark</code></td><td>text</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>submitted_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>updated_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+    </tbody>
+  </table>
+  <p><strong>Indexes:</strong> <code>idx_action_plan_coo_pending (coo_approver_id, status, current_stage)</code>, <code>index_action_plan_submissions_on_coo_approver_id (coo_approver_id)</code>, <code>idx_action_plan_director_pending (director_approver_id, status, current_stage)</code>, <code>index_action_plan_submissions_on_director_approver_id (director_approver_id)</code>, <code>idx_action_plan_submissions_employee_type_project (employee_id, plan_type, project_name, submitted_at)</code>, <code>index_action_plan_submissions_on_employee_id (employee_id)</code>, <code>idx_action_plan_submissions_type_stage (plan_type, status, current_stage)</code>, <code>idx_action_plan_po_pending (po_approver_id, status, current_stage)</code>, <code>index_action_plan_submissions_on_po_approver_id (po_approver_id)</code>, <code>idx_action_plan_submissions_project_type_time (project_name, plan_type, submitted_at)</code>, <code>index_action_plan_submissions_on_project_ownership_id (project_ownership_id)</code>, <code>idx_on_status_current_stage_submitted_at_6caf8268b6 (status, current_stage, submitted_at)</code></p>
+  <h3><code>action_plan_vertical_mappings</code> <span class="tag">Employee, Access &amp; Assignment</span></h3>
+  <p><strong>Purpose:</strong> Maps employees to vertical action plan responsibilities.</p>
+  <p><strong>Related from this table:</strong> <code>action_plan_vertical_mappings.employee_id -&gt; employees.id</code></p>
+  <p><strong>Referenced by:</strong> <span class=\"small\">None</span></p>
+  <p><strong>Model associations:</strong></p>
+  <ul>
+    <li><code>ActionPlanVerticalMapping</code> line 2: belongs_to :employee, optional: true</li>
+  </ul>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th></tr></thead>
+    <tbody>
+      <tr><td><code>active</code></td><td>boolean</td><td class="nowrap">No</td><td>true</td></tr>
+      <tr><td><code>asa_theme</code></td><td>text</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>asa_theme_id</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>created_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>employee_code</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>employee_id</code></td><td>bigint</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>state_code</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>updated_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+    </tbody>
+  </table>
+  <p><strong>Indexes:</strong> <code>idx_action_plan_vertical_mappings_active_lookup (active, employee_code, state_code, asa_theme_id)</code>, <code>idx_action_plan_vertical_mappings_employee_code_lookup (employee_code, state_code, asa_theme_id)</code>, <code>idx_action_plan_vertical_mappings_unique (employee_code, state_code, asa_theme_id) unique</code>, <code>idx_action_plan_vertical_mappings_employee_lookup (employee_id, state_code, asa_theme_id)</code>, <code>index_action_plan_vertical_mappings_on_employee_id (employee_id)</code>, <code>idx_action_plan_vertical_mappings_state_theme (state_code, asa_theme_id)</code></p>
+  <h3><code>active_storage_attachments</code> <span class="tag">Reports &amp; Documents</span></h3>
+  <p><strong>Purpose:</strong> Rails Active Storage join table linking uploaded files to application records.</p>
+  <p><strong>Related from this table:</strong> <code>active_storage_attachments.blob_id -&gt; active_storage_blobs.id</code></p>
+  <p><strong>Referenced by:</strong> <span class=\"small\">None</span></p>
+  <p><strong>Model associations:</strong> <span class="small">No direct model association declaration found.</span></p>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th></tr></thead>
+    <tbody>
+      <tr><td><code>blob_id</code></td><td>bigint</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>created_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>name</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>record_id</code></td><td>bigint</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>record_type</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+    </tbody>
+  </table>
+  <p><strong>Indexes:</strong> <code>index_active_storage_attachments_on_blob_id (blob_id)</code>, <code>index_active_storage_attachments_uniqueness (record_type, record_id, name, blob_id) unique</code></p>
+  <h3><code>active_storage_blobs</code> <span class="tag">Reports &amp; Documents</span></h3>
+  <p><strong>Purpose:</strong> Rails Active Storage file metadata table.</p>
+  <p><strong>Related from this table:</strong> <span class=\"small\">None</span></p>
+  <p><strong>Referenced by:</strong> <code>active_storage_attachments.blob_id -&gt; active_storage_blobs.id</code>, <code>active_storage_variant_records.blob_id -&gt; active_storage_blobs.id</code></p>
+  <p><strong>Model associations:</strong> <span class="small">No direct model association declaration found.</span></p>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th></tr></thead>
+    <tbody>
+      <tr><td><code>byte_size</code></td><td>bigint</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>checksum</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>content_type</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>created_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>filename</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>key</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>metadata</code></td><td>text</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>service_name</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+    </tbody>
+  </table>
+  <p><strong>Indexes:</strong> <code>index_active_storage_blobs_on_key (key) unique</code></p>
+  <h3><code>active_storage_variant_records</code> <span class="tag">Reports &amp; Documents</span></h3>
+  <p><strong>Purpose:</strong> Rails Active Storage generated variant tracking table.</p>
+  <p><strong>Related from this table:</strong> <code>active_storage_variant_records.blob_id -&gt; active_storage_blobs.id</code></p>
+  <p><strong>Referenced by:</strong> <span class=\"small\">None</span></p>
+  <p><strong>Model associations:</strong> <span class="small">No direct model association declaration found.</span></p>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th></tr></thead>
+    <tbody>
+      <tr><td><code>blob_id</code></td><td>bigint</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>variation_digest</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+    </tbody>
+  </table>
+  <p><strong>Indexes:</strong> <code>index_active_storage_variant_records_uniqueness (blob_id, variation_digest) unique</code></p>
+  <h3><code>bli_activities</code> <span class="tag">P&amp;B Planning &amp; Summary</span></h3>
+  <p><strong>Purpose:</strong> P&amp;B activity rows assigned to employees, used for plan submission items and budget/target tracking.</p>
+  <p><strong>Related from this table:</strong> <code>bli_activities.employee_id -&gt; employees.id</code></p>
+  <p><strong>Referenced by:</strong> <code>plan_submission_items.bli_activity_id -&gt; bli_activities.id</code></p>
+  <p><strong>Model associations:</strong></p>
+  <ul>
+    <li><code>BliActivity</code> line 2: belongs_to :employee</li>
+  </ul>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th></tr></thead>
+    <tbody>
+      <tr><td><code>active</code></td><td>boolean</td><td class="nowrap">No</td><td>true</td></tr>
+      <tr><td><code>activity_name</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>allocated_fund</code></td><td>decimal(15,2)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>allocating_date</code></td><td>date</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>approved_pdo_amount</code></td><td>decimal(15,2)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>approved_pdo_count</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>approved_rfp_amount</code></td><td>decimal(15,2)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>approved_rfp_count</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>approved_utilised_fund</code></td><td>decimal(15,2)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>bli_code</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>created_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>employee_id</code></td><td>bigint</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>financial_year</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>import_flag</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>name</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>office_name</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>parent_activity</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>pending_pdo_amount</code></td><td>decimal(15,2)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>pending_pdo_count</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>pending_rfp_amount</code></td><td>decimal(15,2)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>pending_rfp_count</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>project_name</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>remaining_fund</code></td><td>decimal(15,2)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>responsible_user_name</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>stakeholder_name</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>total_pdo_amount</code></td><td>decimal(15,2)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>total_pdo_count</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>total_rfp_amount</code></td><td>decimal(15,2)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>total_rfp_count</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>updated_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>utilised_fund</code></td><td>decimal(15,2)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>vertical_name</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+    </tbody>
+  </table>
+  <p><strong>Indexes:</strong> <code>idx_bli_activities_active_admin_lookup (active, project_name, vertical_name, bli_code, id)</code>, <code>idx_bli_activities_employee_budget_order (employee_id, project_name, bli_code, name, activity_name, vertical_name)</code>, <code>idx_bli_activities_employee_export_order (employee_id, project_name, vertical_name, activity_name, bli_code, id)</code>, <code>index_bli_activities_on_employee_project_vertical (employee_id, project_name, vertical_name)</code>, <code>index_bli_activities_on_employee_vertical_project_activity (employee_id, vertical_name, project_name, activity_name)</code>, <code>index_bli_activities_on_employee_id (employee_id)</code>, <code>index_bli_activities_on_financial_year (financial_year)</code>, <code>idx_bli_activities_current_admin_lookup (import_flag, active, project_name, vertical_name, bli_code, id)</code>, <code>idx_bli_activities_project_activity_vertical (project_name, activity_name, vertical_name)</code>, <code>idx_bli_activities_project_budget_order (project_name, bli_code, name, activity_name, vertical_name)</code>, <code>idx_bli_activities_project_code (project_name, bli_code)</code>, <code>idx_bli_activities_project_vertical_code_id (project_name, vertical_name, bli_code, id)</code>, <code>index_bli_activities_on_project_name (project_name)</code>, <code>idx_bli_activities_responsible_user_name (responsible_user_name)</code>, <code>index_bli_activities_on_vertical_project (vertical_name, project_name)</code>, <code>index_bli_activities_on_vertical_name (vertical_name)</code></p>
+  <h3><code>budget_utilizations</code> <span class="tag">P&amp;B Planning &amp; Summary</span></h3>
+  <p><strong>Purpose:</strong> Budget utilization records with submitted/updated user tracking.</p>
+  <p><strong>Related from this table:</strong> <code>budget_utilizations.submitted_by_id -&gt; users.id</code>, <code>budget_utilizations.updated_by_id -&gt; users.id</code></p>
+  <p><strong>Referenced by:</strong> <span class=\"small\">None</span></p>
+  <p><strong>Model associations:</strong></p>
+  <ul>
+    <li><code>BudgetUtilization</code> line 12: belongs_to :updated_by, class_name: &quot;User&quot;, optional: true</li>
+    <li><code>BudgetUtilization</code> line 13: belongs_to :submitted_by, class_name: &quot;User&quot;, optional: true</li>
+  </ul>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th></tr></thead>
+    <tbody>
+      <tr><td><code>activity_name</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>bli_code</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>created_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>month</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>planned_amount</code></td><td>decimal(15,2)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>project_name</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>remark</code></td><td>text</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>status</code></td><td>string</td><td class="nowrap">No</td><td>draft</td></tr>
+      <tr><td><code>submitted_at</code></td><td>datetime</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>submitted_by_id</code></td><td>bigint</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>updated_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>updated_by_id</code></td><td>bigint</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>utilized_amount</code></td><td>decimal(15,2)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>vertical_name</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+    </tbody>
+  </table>
+  <p><strong>Indexes:</strong> <code>index_budget_utilizations_on_month (month)</code>, <code>idx_budget_utilizations_unique_scope (project_name, bli_code, month) unique</code>, <code>index_budget_utilizations_on_project_name_and_month_and_status (project_name, month, status)</code>, <code>index_budget_utilizations_on_project_name_and_month (project_name, month)</code>, <code>idx_budget_utilizations_project_status_updated (project_name, status, updated_at)</code>, <code>idx_budget_utilizations_status_month_project (status, month, project_name)</code>, <code>idx_budget_utilizations_report_lookup (status, project_name, month, bli_code)</code>, <code>index_budget_utilizations_on_status (status)</code>, <code>idx_budget_utilizations_submitter_status_time (submitted_by_id, status, submitted_at)</code>, <code>index_budget_utilizations_on_submitted_by_id (submitted_by_id)</code>, <code>index_budget_utilizations_on_updated_by_id (updated_by_id)</code></p>
+  <h3><code>donor_report_types</code> <span class="tag">Reports &amp; Documents</span></h3>
+  <p><strong>Purpose:</strong> Master list of donor report/document types.</p>
+  <p><strong>Related from this table:</strong> <span class=\"small\">None</span></p>
+  <p><strong>Referenced by:</strong> <code>donor_report_uploads.donor_report_type_id -&gt; donor_report_types.id</code></p>
+  <p><strong>Model associations:</strong></p>
+  <ul>
+    <li><code>DonorReportType</code> line 2: has_many :donor_report_uploads, dependent: :restrict_with_error</li>
+  </ul>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th></tr></thead>
+    <tbody>
+      <tr><td><code>active</code></td><td>boolean</td><td class="nowrap">No</td><td>true</td></tr>
+      <tr><td><code>created_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>name</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>updated_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+    </tbody>
+  </table>
+  <p><strong>Indexes:</strong> <code>idx_donor_report_types_active_name (active, name)</code>, <code>index_donor_report_types_on_active (active)</code>, <code>index_donor_report_types_on_name (name) unique</code></p>
+  <h3><code>donor_report_uploads</code> <span class="tag">Reports &amp; Documents</span></h3>
+  <p><strong>Purpose:</strong> Uploaded donor reports linked to donor report type and uploader.</p>
+  <p><strong>Related from this table:</strong> <code>donor_report_uploads.donor_report_type_id -&gt; donor_report_types.id</code>, <code>donor_report_uploads.uploaded_by_id -&gt; users.id</code></p>
+  <p><strong>Referenced by:</strong> <span class=\"small\">None</span></p>
+  <p><strong>Model associations:</strong></p>
+  <ul>
+    <li><code>DonorReportUpload</code> line 9: belongs_to :donor_report_type</li>
+    <li><code>DonorReportUpload</code> line 10: belongs_to :uploaded_by, class_name: &quot;User&quot;, optional: true</li>
+    <li><code>DonorReportUpload</code> line 12: has_one_attached :document_file</li>
+    <li><code>DonorReportUpload</code> line 13: has_one_attached :screenshot_file</li>
+    <li><code>DonorReportUpload</code> line 14: has_one_attached :file</li>
+  </ul>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th></tr></thead>
+    <tbody>
+      <tr><td><code>created_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>donor_report_type_id</code></td><td>bigint</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>financial_year</code></td><td>string</td><td class="nowrap">No</td><td>2026-2027</td></tr>
+      <tr><td><code>frequency</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>project_name</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>submission_date</code></td><td>date</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>updated_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>uploaded_by_id</code></td><td>bigint</td><td class="nowrap">Yes</td><td></td></tr>
+    </tbody>
+  </table>
+  <p><strong>Indexes:</strong> <code>idx_donor_uploads_recent_order (created_at, id)</code>, <code>index_donor_report_uploads_on_donor_report_type_id (donor_report_type_id)</code>, <code>index_donor_report_uploads_on_frequency (frequency)</code>, <code>idx_donor_uploads_project_year_type_frequency_recent (project_name, financial_year, donor_report_type_id, frequency, created_at)</code>, <code>idx_donor_uploads_filters_recent (project_name, frequency, donor_report_type_id, created_at)</code>, <code>index_donor_report_uploads_on_project_name (project_name)</code>, <code>index_donor_report_uploads_on_submission_date (submission_date)</code>, <code>index_donor_report_uploads_on_uploaded_by_id (uploaded_by_id)</code></p>
+  <h3><code>employee_vertical_mappings</code> <span class="tag">Employee, Access &amp; Assignment</span></h3>
+  <p><strong>Purpose:</strong> Employee-to-vertical mapping table for responsibility and access assignment.</p>
+  <p><strong>Related from this table:</strong> <code>employee_vertical_mappings.employee_id -&gt; employees.id</code>, <code>employee_vertical_mappings.vertical_percent_id -&gt; vertical_percents.id</code></p>
+  <p><strong>Referenced by:</strong> <span class=\"small\">None</span></p>
+  <p><strong>Model associations:</strong></p>
+  <ul>
+    <li><code>EmployeeVerticalMapping</code> line 2: belongs_to :employee</li>
+    <li><code>EmployeeVerticalMapping</code> line 3: belongs_to :vertical_percent</li>
+  </ul>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th></tr></thead>
+    <tbody>
+      <tr><td><code>active</code></td><td>boolean</td><td class="nowrap">No</td><td>true</td></tr>
+      <tr><td><code>created_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>employee_id</code></td><td>bigint</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>updated_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>vertical_percent_id</code></td><td>bigint</td><td class="nowrap">No</td><td></td></tr>
+    </tbody>
+  </table>
+  <p><strong>Indexes:</strong> <code>idx_employee_vertical_mappings_active_lookup (active, employee_id, vertical_percent_id)</code>, <code>index_employee_vertical_mappings_unique (employee_id, vertical_percent_id) unique</code>, <code>index_employee_vertical_mappings_on_employee_id (employee_id)</code>, <code>index_employee_vertical_mappings_on_vertical_percent_id (vertical_percent_id)</code></p>
+  <h3><code>employees</code> <span class="tag">Employee, Access &amp; Assignment</span></h3>
+  <p><strong>Purpose:</strong> Employee master table used across login, assignment, P&amp;B, action plan, and approval flows.</p>
+  <p><strong>Related from this table:</strong> <span class=\"small\">None</span></p>
+  <p><strong>Referenced by:</strong> <code>achievement_submissions.coo_approver_id -&gt; employees.id</code>, <code>achievement_submissions.director_approver_id -&gt; employees.id</code>, <code>achievement_submissions.employee_id -&gt; employees.id</code>, <code>achievement_submissions.po_approver_id -&gt; employees.id</code>, <code>achievement_submissions.vertical_approver_id -&gt; employees.id</code>, <code>action_plan_fco_mappings.employee_id -&gt; employees.id</code>, <code>action_plan_submissions.coo_approver_id -&gt; employees.id</code>, <code>action_plan_submissions.director_approver_id -&gt; employees.id</code>, <code>action_plan_submissions.employee_id -&gt; employees.id</code>, <code>action_plan_submissions.po_approver_id -&gt; employees.id</code>, <code>action_plan_vertical_mappings.employee_id -&gt; employees.id</code>, <code>bli_activities.employee_id -&gt; employees.id</code>, <code>employee_vertical_mappings.employee_id -&gt; employees.id</code>, <code>parent_activity_assignments.employee_id -&gt; employees.id</code>, <code>plan_submissions.employee_id -&gt; employees.id</code>, <code>project_summary_submissions.approver_id -&gt; employees.id</code>, <code>project_summary_submissions.employee_id -&gt; employees.id</code>, <code>project_summary_submissions.first_approver_id -&gt; employees.id</code>, <code>users.employee_id -&gt; employees.id</code></p>
+  <p><strong>Model associations:</strong></p>
+  <ul>
+    <li><code>Employee</code> line 2: has_one :user, dependent: :destroy</li>
+    <li><code>Employee</code> line 3: has_many :bli_activities, dependent: :destroy</li>
+    <li><code>Employee</code> line 4: has_many :plan_submissions, dependent: :destroy</li>
+    <li><code>Employee</code> line 5: has_many :project_summary_submissions, dependent: :destroy</li>
+    <li><code>Employee</code> line 6: has_many :project_summary_approvals, class_name: &quot;ProjectSummarySubmission&quot;, foreign_key: :approver_id, dependent: :nullify</li>
+    <li><code>Employee</code> line 7: has_many :action_plan_submissions, dependent: :destroy</li>
+    <li><code>Employee</code> line 8: has_many :action_plan_vertical_mappings, dependent: :nullify</li>
+    <li><code>Employee</code> line 9: has_many :action_plan_fco_mappings, dependent: :destroy</li>
+    <li><code>Employee</code> line 10: has_many :po_action_plan_approvals, class_name: &quot;ActionPlanSubmission&quot;, foreign_key: :po_approver_id, dependent: :nullify</li>
+    <li><code>Employee</code> line 11: has_many :coo_action_plan_approvals, class_name: &quot;ActionPlanSubmission&quot;, foreign_key: :coo_approver_id, dependent: :nullify</li>
+    <li><code>Employee</code> line 12: has_many :director_action_plan_approvals, class_name: &quot;ActionPlanSubmission&quot;, foreign_key: :director_approver_id, dependent: :nullify</li>
+    <li><code>Employee</code> line 13: has_many :employee_vertical_mappings, dependent: :destroy</li>
+    <li><code>Employee</code> line 14: has_many :mapped_vertical_percents, through: :employee_vertical_mappings, source: :vertical_percent</li>
+    <li><code>Employee</code> line 15: has_many :parent_activity_assignments, dependent: :destroy</li>
+  </ul>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th></tr></thead>
+    <tbody>
+      <tr><td><code>active</code></td><td>boolean</td><td class="nowrap">No</td><td>true</td></tr>
+      <tr><td><code>branch</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>created_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>department</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>designation</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>email</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>employee_code</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>functional_responsibility</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>mobile_number</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>name</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>office_name</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>primary_project</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>primary_vertical</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>sub_branch</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>updated_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>lower((email)::text)</code></td><td>index</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>lower((name)::text)</code></td><td>index</td><td class="nowrap">Yes</td><td></td></tr>
+    </tbody>
+  </table>
+  <p><strong>Indexes:</strong> <code>idx_employees_active_name (active, name)</code>, <code>index_employees_on_department (department)</code>, <code>index_employees_on_email (email)</code>, <code>index_employees_on_employee_code (employee_code) unique</code>, <code>index_employees_on_name (name)</code></p>
+  <h3><code>fund_report_types</code> <span class="tag">Reports &amp; Documents</span></h3>
+  <p><strong>Purpose:</strong> Master list of fund report/document types.</p>
+  <p><strong>Related from this table:</strong> <span class=\"small\">None</span></p>
+  <p><strong>Referenced by:</strong> <code>fund_report_uploads.fund_report_type_id -&gt; fund_report_types.id</code></p>
+  <p><strong>Model associations:</strong></p>
+  <ul>
+    <li><code>FundReportType</code> line 2: has_many :fund_report_uploads, dependent: :restrict_with_error</li>
+  </ul>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th></tr></thead>
+    <tbody>
+      <tr><td><code>active</code></td><td>boolean</td><td class="nowrap">No</td><td>true</td></tr>
+      <tr><td><code>created_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>name</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>updated_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+    </tbody>
+  </table>
+  <p><strong>Indexes:</strong> <code>idx_fund_report_types_active_name (active, name)</code>, <code>index_fund_report_types_on_active (active)</code>, <code>index_fund_report_types_on_name (name) unique</code></p>
+  <h3><code>fund_report_uploads</code> <span class="tag">Reports &amp; Documents</span></h3>
+  <p><strong>Purpose:</strong> Uploaded fund reports linked to report type and uploader.</p>
+  <p><strong>Related from this table:</strong> <code>fund_report_uploads.fund_report_type_id -&gt; fund_report_types.id</code>, <code>fund_report_uploads.uploaded_by_id -&gt; users.id</code></p>
+  <p><strong>Referenced by:</strong> <span class=\"small\">None</span></p>
+  <p><strong>Model associations:</strong></p>
+  <ul>
+    <li><code>FundReportUpload</code> line 2: belongs_to :fund_report_type</li>
+    <li><code>FundReportUpload</code> line 3: belongs_to :uploaded_by, class_name: &quot;User&quot;, optional: true</li>
+    <li><code>FundReportUpload</code> line 5: has_one_attached :document_file</li>
+    <li><code>FundReportUpload</code> line 6: has_one_attached :screenshot_file</li>
+  </ul>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th></tr></thead>
+    <tbody>
+      <tr><td><code>created_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>financial_year</code></td><td>string</td><td class="nowrap">No</td><td>2026-2027</td></tr>
+      <tr><td><code>fund_report_type_id</code></td><td>bigint</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>project_name</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>submission_letter_amount</code></td><td>decimal(15,2)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>submission_letter_date</code></td><td>date</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>submission_receipt_amount</code></td><td>decimal(15,2)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>submission_receipt_date</code></td><td>date</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>updated_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>uploaded_by_id</code></td><td>bigint</td><td class="nowrap">Yes</td><td></td></tr>
+    </tbody>
+  </table>
+  <p><strong>Indexes:</strong> <code>idx_fund_uploads_recent_order (created_at, id)</code>, <code>index_fund_report_uploads_on_fund_report_type_id (fund_report_type_id)</code>, <code>idx_fund_uploads_project_year_type_recent (project_name, financial_year, fund_report_type_id, created_at)</code>, <code>idx_fund_uploads_filters_recent (project_name, fund_report_type_id, created_at)</code>, <code>index_fund_report_uploads_on_project_name (project_name)</code>, <code>index_fund_report_uploads_on_submission_letter_date (submission_letter_date)</code>, <code>index_fund_report_uploads_on_submission_receipt_date (submission_receipt_date)</code>, <code>index_fund_report_uploads_on_uploaded_by_id (uploaded_by_id)</code></p>
+  <h3><code>parent_activity_assignments</code> <span class="tag">Employee, Access &amp; Assignment</span></h3>
+  <p><strong>Purpose:</strong> Assignments connecting employees and verticals to parent activities.</p>
+  <p><strong>Related from this table:</strong> <code>parent_activity_assignments.employee_id -&gt; employees.id</code>, <code>parent_activity_assignments.vertical_percent_id -&gt; vertical_percents.id</code></p>
+  <p><strong>Referenced by:</strong> <span class=\"small\">None</span></p>
+  <p><strong>Model associations:</strong></p>
+  <ul>
+    <li><code>ParentActivityAssignment</code> line 2: belongs_to :employee</li>
+    <li><code>ParentActivityAssignment</code> line 3: belongs_to :vertical_percent</li>
+  </ul>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th></tr></thead>
+    <tbody>
+      <tr><td><code>active</code></td><td>boolean</td><td class="nowrap">No</td><td>true</td></tr>
+      <tr><td><code>created_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>employee_id</code></td><td>bigint</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>source_parent_activity</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>updated_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>vertical_percent_id</code></td><td>bigint</td><td class="nowrap">No</td><td></td></tr>
+    </tbody>
+  </table>
+  <p><strong>Indexes:</strong> <code>idx_parent_activity_assignments_active_lookup (active, source_parent_activity)</code>, <code>index_parent_activity_assignments_on_employee_vertical (employee_id, vertical_percent_id)</code>, <code>index_parent_activity_assignments_on_employee_id (employee_id)</code>, <code>index_parent_activity_assignments_on_source (source_parent_activity) unique</code>, <code>index_parent_activity_assignments_on_vertical_percent_id (vertical_percent_id)</code></p>
+  <h3><code>pb_import_files</code> <span class="tag">P&amp;B Planning &amp; Summary</span></h3>
+  <p><strong>Purpose:</strong> Tracks P&amp;B import file lifecycle, including uploader and approver users.</p>
+  <p><strong>Related from this table:</strong> <code>pb_import_files.approved_by_id -&gt; users.id</code>, <code>pb_import_files.uploaded_by_id -&gt; users.id</code></p>
+  <p><strong>Referenced by:</strong> <span class=\"small\">None</span></p>
+  <p><strong>Model associations:</strong></p>
+  <ul>
+    <li><code>PbImportFile</code> line 8: belongs_to :uploaded_by, class_name: &quot;User&quot;, optional: true</li>
+    <li><code>PbImportFile</code> line 9: belongs_to :approved_by, class_name: &quot;User&quot;, optional: true</li>
+  </ul>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th></tr></thead>
+    <tbody>
+      <tr><td><code>approved_at</code></td><td>datetime</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>approved_by_id</code></td><td>bigint</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>byte_size</code></td><td>integer</td><td class="nowrap">No</td><td>0</td></tr>
+      <tr><td><code>content_type</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>created_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>error_message</code></td><td>text</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>file_kind</code></td><td>string</td><td class="nowrap">No</td><td>source</td></tr>
+      <tr><td><code>financial_year</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>imported_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>original_filename</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>row_count</code></td><td>integer</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>status</code></td><td>string</td><td class="nowrap">No</td><td>saved</td></tr>
+      <tr><td><code>storage_path</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>updated_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>uploaded_by_id</code></td><td>bigint</td><td class="nowrap">Yes</td><td></td></tr>
+    </tbody>
+  </table>
+  <p><strong>Indexes:</strong> <code>index_pb_import_files_on_approved_by_id (approved_by_id)</code>, <code>idx_pb_import_files_kind_status_year_time (file_kind, status, financial_year, imported_at)</code>, <code>index_pb_import_files_on_file_kind (file_kind)</code>, <code>index_pb_import_files_on_financial_year (financial_year)</code>, <code>index_pb_import_files_on_imported_at (imported_at)</code>, <code>index_pb_import_files_on_status (status)</code>, <code>index_pb_import_files_on_storage_path (storage_path) unique</code>, <code>index_pb_import_files_on_uploaded_by_id (uploaded_by_id)</code></p>
+  <h3><code>pis_document_types</code> <span class="tag">Reports &amp; Documents</span></h3>
+  <p><strong>Purpose:</strong> Master list of Project Information Sheet document types.</p>
+  <p><strong>Related from this table:</strong> <span class=\"small\">None</span></p>
+  <p><strong>Referenced by:</strong> <code>pis_report_documents.pis_document_type_id -&gt; pis_document_types.id</code></p>
+  <p><strong>Model associations:</strong></p>
+  <ul>
+    <li><code>PisDocumentType</code> line 2: has_many :pis_report_documents, dependent: :restrict_with_error</li>
+  </ul>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th></tr></thead>
+    <tbody>
+      <tr><td><code>active</code></td><td>boolean</td><td class="nowrap">No</td><td>true</td></tr>
+      <tr><td><code>created_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>name</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>updated_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+    </tbody>
+  </table>
+  <p><strong>Indexes:</strong> <code>idx_pis_document_types_active_name (active, name)</code>, <code>index_pis_document_types_on_active (active)</code>, <code>index_pis_document_types_on_name (name) unique</code></p>
+  <h3><code>pis_report_documents</code> <span class="tag">Reports &amp; Documents</span></h3>
+  <p><strong>Purpose:</strong> Uploaded PIS report documents linked to document type and uploader.</p>
+  <p><strong>Related from this table:</strong> <code>pis_report_documents.pis_document_type_id -&gt; pis_document_types.id</code>, <code>pis_report_documents.uploaded_by_id -&gt; users.id</code></p>
+  <p><strong>Referenced by:</strong> <span class=\"small\">None</span></p>
+  <p><strong>Model associations:</strong></p>
+  <ul>
+    <li><code>PisReportDocument</code> line 2: belongs_to :pis_document_type</li>
+    <li><code>PisReportDocument</code> line 3: belongs_to :uploaded_by, class_name: &quot;User&quot;, optional: true</li>
+    <li><code>PisReportDocument</code> line 5: has_one_attached :file</li>
+    <li><code>PisReportDocument</code> line 6: has_one_attached :screenshot_file</li>
+  </ul>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th></tr></thead>
+    <tbody>
+      <tr><td><code>created_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>financial_year</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>pis_document_type_id</code></td><td>bigint</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>project_name</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>submission_date</code></td><td>date</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>updated_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>uploaded_by_id</code></td><td>bigint</td><td class="nowrap">Yes</td><td></td></tr>
+    </tbody>
+  </table>
+  <p><strong>Indexes:</strong> <code>idx_pis_documents_recent_order (created_at, id)</code>, <code>index_pis_report_documents_on_financial_year (financial_year)</code>, <code>index_pis_report_documents_on_pis_document_type_id (pis_document_type_id)</code>, <code>idx_pis_documents_filters_recent (project_name, financial_year, pis_document_type_id, created_at)</code>, <code>index_pis_report_documents_on_project_name (project_name)</code>, <code>index_pis_report_documents_on_submission_date (submission_date)</code>, <code>index_pis_report_documents_on_uploaded_by_id (uploaded_by_id)</code></p>
+  <h3><code>plan_submission_items</code> <span class="tag">P&amp;B Planning &amp; Summary</span></h3>
+  <p><strong>Purpose:</strong> P&amp;B plan submission line items linked to BLI activities.</p>
+  <p><strong>Related from this table:</strong> <code>plan_submission_items.bli_activity_id -&gt; bli_activities.id</code>, <code>plan_submission_items.plan_submission_id -&gt; plan_submissions.id</code></p>
+  <p><strong>Referenced by:</strong> <span class=\"small\">None</span></p>
+  <p><strong>Model associations:</strong></p>
+  <ul>
+    <li><code>PlanSubmissionItem</code> line 2: belongs_to :plan_submission</li>
+    <li><code>PlanSubmissionItem</code> line 3: belongs_to :bli_activity</li>
+  </ul>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th></tr></thead>
+    <tbody>
+      <tr><td><code>bli_activity_id</code></td><td>bigint</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>changed_fund</code></td><td>decimal(15,2)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>created_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>original_fund</code></td><td>decimal(15,2)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>plan_submission_id</code></td><td>bigint</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>remark</code></td><td>text</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>updated_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+    </tbody>
+  </table>
+  <p><strong>Indexes:</strong> <code>index_plan_submission_items_on_bli_activity_id (bli_activity_id)</code>, <code>index_plan_submission_items_on_submission_activity (plan_submission_id, bli_activity_id)</code>, <code>index_plan_submission_items_on_plan_submission_id (plan_submission_id)</code></p>
+  <h3><code>plan_submissions</code> <span class="tag">P&amp;B Planning &amp; Summary</span></h3>
+  <p><strong>Purpose:</strong> P&amp;B plan submission parent table for employee-wise submitted plan data.</p>
+  <p><strong>Related from this table:</strong> <code>plan_submissions.employee_id -&gt; employees.id</code></p>
+  <p><strong>Referenced by:</strong> <code>plan_submission_items.plan_submission_id -&gt; plan_submissions.id</code></p>
+  <p><strong>Model associations:</strong></p>
+  <ul>
+    <li><code>PlanSubmission</code> line 2: belongs_to :employee</li>
+    <li><code>PlanSubmission</code> line 3: has_many :plan_submission_items, dependent: :destroy</li>
+  </ul>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th></tr></thead>
+    <tbody>
+      <tr><td><code>changed_total</code></td><td>decimal(15,2)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>created_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>employee_id</code></td><td>bigint</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>filter_name</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>mode</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>original_total</code></td><td>decimal(15,2)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>submitted_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>updated_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+    </tbody>
+  </table>
+  <p><strong>Indexes:</strong> <code>index_plan_submissions_lookup_latest (employee_id, mode, filter_name, submitted_at)</code>, <code>index_plan_submissions_on_employee_id (employee_id)</code>, <code>idx_plan_submissions_mode_filter_time (mode, filter_name, submitted_at)</code>, <code>index_plan_submissions_on_mode (mode)</code>, <code>index_plan_submissions_on_submitted_at (submitted_at)</code></p>
+  <h3><code>project_information_sheets</code> <span class="tag">Reports &amp; Documents</span></h3>
+  <p><strong>Purpose:</strong> Project Information Sheet imported/master project data, including project identifiers and metadata.</p>
+  <p><strong>Related from this table:</strong> <code>project_information_sheets.uploaded_by_id -&gt; users.id</code></p>
+  <p><strong>Referenced by:</strong> <span class=\"small\">None</span></p>
+  <p><strong>Model associations:</strong></p>
+  <ul>
+    <li><code>ProjectInformationSheet</code> line 25: belongs_to :uploaded_by, class_name: &quot;User&quot;, optional: true</li>
+  </ul>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th></tr></thead>
+    <tbody>
+      <tr><td><code>annexure</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>category</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>created_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>donor</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>donor_reporting_officer</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>end_date</code></td><td>date</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>fco_name</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>financial</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>households_to_be_covered</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>physical</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>po</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>project_area_map</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>project_id</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>project_location</code></td><td>text</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>project_objectives</code></td><td>text</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>project_period</code></td><td>text</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>project_title</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>reporting_system</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>start_date</code></td><td>date</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>total</code></td><td>decimal(18,2)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>updated_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>uploaded_by_id</code></td><td>bigint</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>yearly_amounts</code></td><td>jsonb</td><td class="nowrap">No</td><td>{}</td></tr>
+    </tbody>
+  </table>
+  <p><strong>Indexes:</strong> <code>index_project_information_sheets_on_donor (donor)</code>, <code>index_project_information_sheets_on_project_id (project_id) unique</code>, <code>index_project_information_sheets_on_project_title (project_title)</code>, <code>index_project_information_sheets_on_updated_at (updated_at)</code>, <code>index_project_information_sheets_on_uploaded_by_id (uploaded_by_id)</code></p>
+  <h3><code>project_ownerships</code> <span class="tag">Employee, Access &amp; Assignment</span></h3>
+  <p><strong>Purpose:</strong> Project ownership mapping data used by action plan submission approvals and project access.</p>
+  <p><strong>Related from this table:</strong> <span class=\"small\">None</span></p>
+  <p><strong>Referenced by:</strong> <code>action_plan_submissions.project_ownership_id -&gt; project_ownerships.id</code></p>
+  <p><strong>Model associations:</strong></p>
+  <ul>
+    <li><code>ProjectOwnership</code> line 2: has_many :action_plan_submissions, dependent: :nullify</li>
+  </ul>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th></tr></thead>
+    <tbody>
+      <tr><td><code>active</code></td><td>boolean</td><td class="nowrap">No</td><td>true</td></tr>
+      <tr><td><code>created_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>email_id</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>po_id</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>po_name</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>project_name</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>project_owner_id</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>updated_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>lower((email_id)::text)</code></td><td>index</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>lower((po_name)::text)</code></td><td>index</td><td class="nowrap">Yes</td><td></td></tr>
+    </tbody>
+  </table>
+  <p><strong>Indexes:</strong> <code>idx_project_ownerships_active_lookup (active, po_id, project_name)</code>, <code>index_project_ownerships_on_email_id (email_id)</code>, <code>index_project_ownerships_on_po_id_and_project_name (po_id, project_name) unique</code>, <code>index_project_ownerships_on_project_name (project_name)</code>, <code>index_project_ownerships_on_project_owner_id (project_owner_id)</code></p>
+  <h3><code>project_summary_submission_items</code> <span class="tag">P&amp;B Planning &amp; Summary</span></h3>
+  <p><strong>Purpose:</strong> Line items captured under a project summary submission.</p>
+  <p><strong>Related from this table:</strong> <code>project_summary_submission_items.project_summary_submission_id -&gt; project_summary_submissions.id</code></p>
+  <p><strong>Referenced by:</strong> <span class=\"small\">None</span></p>
+  <p><strong>Model associations:</strong></p>
+  <ul>
+    <li><code>ProjectSummarySubmissionItem</code> line 2: belongs_to :project_summary_submission</li>
+  </ul>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th></tr></thead>
+    <tbody>
+      <tr><td><code>activity_name</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>apr</code></td><td>decimal(15,2)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>aug</code></td><td>decimal(15,2)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>changed_total</code></td><td>decimal(15,2)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>created_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>dec</code></td><td>decimal(15,2)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>feb</code></td><td>decimal(15,2)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>jan</code></td><td>decimal(15,2)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>jul</code></td><td>decimal(15,2)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>jun</code></td><td>decimal(15,2)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>mar</code></td><td>decimal(15,2)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>may</code></td><td>decimal(15,2)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>nov</code></td><td>decimal(15,2)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>oct</code></td><td>decimal(15,2)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>project_name</code></td><td>string</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>project_summary_submission_id</code></td><td>bigint</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>remark</code></td><td>text</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>sep</code></td><td>decimal(15,2)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>total_amount</code></td><td>decimal(15,2)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>updated_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>vertical_name</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+    </tbody>
+  </table>
+  <p><strong>Indexes:</strong> <code>index_project_summary_items_on_project_activity_vertical (project_name, activity_name, vertical_name)</code>, <code>index_project_summary_submission_items_on_project_name (project_name)</code>, <code>index_project_summary_items_on_submission_project (project_summary_submission_id, project_name)</code>, <code>idx_project_summary_items_submission_vertical_activity (project_summary_submission_id, vertical_name, activity_name)</code>, <code>idx_on_project_summary_submission_id_82944b0850 (project_summary_submission_id)</code>, <code>index_project_summary_items_on_vertical_project (vertical_name, project_name)</code></p>
+  <h3><code>project_summary_submissions</code> <span class="tag">P&amp;B Planning &amp; Summary</span></h3>
+  <p><strong>Purpose:</strong> P&amp;B project summary approval workflow parent table with employee and approver references.</p>
+  <p><strong>Related from this table:</strong> <code>project_summary_submissions.approver_id -&gt; employees.id</code>, <code>project_summary_submissions.employee_id -&gt; employees.id</code>, <code>project_summary_submissions.first_approver_id -&gt; employees.id</code></p>
+  <p><strong>Referenced by:</strong> <code>project_summary_submission_items.project_summary_submission_id -&gt; project_summary_submissions.id</code></p>
+  <p><strong>Model associations:</strong></p>
+  <ul>
+    <li><code>ProjectSummarySubmission</code> line 6: belongs_to :employee</li>
+    <li><code>ProjectSummarySubmission</code> line 7: belongs_to :approver, class_name: &quot;Employee&quot;, optional: true</li>
+    <li><code>ProjectSummarySubmission</code> line 8: belongs_to :first_approver, class_name: &quot;Employee&quot;, optional: true</li>
+    <li><code>ProjectSummarySubmission</code> line 9: has_many :project_summary_submission_items, dependent: :destroy</li>
+  </ul>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th></tr></thead>
+    <tbody>
+      <tr><td><code>approval_remark</code></td><td>text</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>approver_id</code></td><td>bigint</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>created_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>employee_id</code></td><td>bigint</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>first_approved_at</code></td><td>datetime</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>first_approver_id</code></td><td>bigint</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>pb_applied_at</code></td><td>datetime</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>reviewed_at</code></td><td>datetime</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>status</code></td><td>string</td><td class="nowrap">No</td><td>pending</td></tr>
+      <tr><td><code>submission_remark</code></td><td>text</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>submitted_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>total_amount</code></td><td>decimal(15,2)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>updated_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+    </tbody>
+  </table>
+  <p><strong>Indexes:</strong> <code>index_project_summary_submissions_on_approver_status_time (approver_id, status, submitted_at)</code>, <code>index_project_summary_submissions_on_approver_id (approver_id)</code>, <code>index_project_summary_submissions_on_employee_status_time (employee_id, status, submitted_at)</code>, <code>index_project_summary_submissions_on_employee_id (employee_id)</code>, <code>idx_project_summary_first_approver_status_time (first_approver_id, status, submitted_at)</code>, <code>index_project_summary_submissions_on_first_approver_id (first_approver_id)</code>, <code>idx_project_summary_status_time (status, submitted_at)</code>, <code>index_project_summary_submissions_on_status (status)</code>, <code>index_project_summary_submissions_on_submitted_at (submitted_at)</code></p>
+  <h3><code>users</code> <span class="tag">Employee, Access &amp; Assignment</span></h3>
+  <p><strong>Purpose:</strong> Application login/account table linked to employees.</p>
+  <p><strong>Related from this table:</strong> <code>users.employee_id -&gt; employees.id</code></p>
+  <p><strong>Referenced by:</strong> <code>action_plan_import_files.uploaded_by_id -&gt; users.id</code>, <code>action_plan_month_changes.changed_by_id -&gt; users.id</code>, <code>budget_utilizations.submitted_by_id -&gt; users.id</code>, <code>budget_utilizations.updated_by_id -&gt; users.id</code>, <code>donor_report_uploads.uploaded_by_id -&gt; users.id</code>, <code>fund_report_uploads.uploaded_by_id -&gt; users.id</code>, <code>pb_import_files.approved_by_id -&gt; users.id</code>, <code>pb_import_files.uploaded_by_id -&gt; users.id</code>, <code>pis_report_documents.uploaded_by_id -&gt; users.id</code>, <code>project_information_sheets.uploaded_by_id -&gt; users.id</code></p>
+  <p><strong>Model associations:</strong></p>
+  <ul>
+    <li><code>User</code> line 2: belongs_to :employee, optional: true</li>
+  </ul>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th></tr></thead>
+    <tbody>
+      <tr><td><code>created_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>employee_id</code></td><td>bigint</td><td class="nowrap">Yes</td><td></td></tr>
+      <tr><td><code>login</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>password_hash</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>password_salt</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>role</code></td><td>string</td><td class="nowrap">No</td><td>user</td></tr>
+      <tr><td><code>updated_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+    </tbody>
+  </table>
+  <p><strong>Indexes:</strong> <code>index_users_on_employee_id (employee_id)</code>, <code>index_users_on_login (login) unique</code>, <code>index_users_on_role (role)</code></p>
+  <h3><code>vertical_percents</code> <span class="tag">Employee, Access &amp; Assignment</span></h3>
+  <p><strong>Purpose:</strong> Vertical master/percentage data used for employee vertical mappings and parent activity assignments.</p>
+  <p><strong>Related from this table:</strong> <span class=\"small\">None</span></p>
+  <p><strong>Referenced by:</strong> <code>employee_vertical_mappings.vertical_percent_id -&gt; vertical_percents.id</code>, <code>parent_activity_assignments.vertical_percent_id -&gt; vertical_percents.id</code></p>
+  <p><strong>Model associations:</strong></p>
+  <ul>
+    <li><code>VerticalPercent</code> line 4: has_many :employee_vertical_mappings, dependent: :destroy</li>
+    <li><code>VerticalPercent</code> line 5: has_many :employees, through: :employee_vertical_mappings</li>
+    <li><code>VerticalPercent</code> line 6: has_many :parent_activity_assignments, dependent: :destroy</li>
+  </ul>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th></tr></thead>
+    <tbody>
+      <tr><td><code>apr</code></td><td>decimal(10,6)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>aug</code></td><td>decimal(10,6)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>created_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>dec</code></td><td>decimal(10,6)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>feb</code></td><td>decimal(10,6)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>jan</code></td><td>decimal(10,6)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>jul</code></td><td>decimal(10,6)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>jun</code></td><td>decimal(10,6)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>mar</code></td><td>decimal(10,6)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>may</code></td><td>decimal(10,6)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>nov</code></td><td>decimal(10,6)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>oct</code></td><td>decimal(10,6)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>sep</code></td><td>decimal(10,6)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>total</code></td><td>decimal(10,6)</td><td class="nowrap">No</td><td>0.0</td></tr>
+      <tr><td><code>updated_at</code></td><td>datetime</td><td class="nowrap">No</td><td></td></tr>
+      <tr><td><code>vertical_name</code></td><td>string</td><td class="nowrap">No</td><td></td></tr>
+    </tbody>
+  </table>
+  <p><strong>Indexes:</strong> <code>index_vertical_percents_on_vertical_name (vertical_name) unique</code></p>
+</body>
+</html>x

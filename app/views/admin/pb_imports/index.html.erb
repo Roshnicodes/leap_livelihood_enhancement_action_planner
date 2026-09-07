@@ -1,10 +1,20 @@
 <% content_for :title, "P&B Import & Download | LEAP" %>
+<% editing_bli_activity = @bli_activity_form.persisted? %>
+<% show_bli_activity_form = editing_bli_activity || @bli_activity_form.errors.any? || params[:open_bli_activity_form].present? %>
+<% bli_activity_form_url = editing_bli_activity ? admin_pb_bli_activity_path(@bli_activity_form) : admin_pb_bli_activities_path %>
+<% bli_activity_form_method = editing_bli_activity ? :patch : :post %>
+<% editing_parent_activity_assignment = @parent_activity_assignment_form.persisted? %>
+<% show_parent_activity_assignment_form = editing_parent_activity_assignment || @parent_activity_assignment_form.errors.any? || params[:open_parent_activity_assignment_form].present? %>
+<% parent_activity_assignment_form_url = editing_parent_activity_assignment ? admin_parent_activity_assignment_path(@parent_activity_assignment_form) : admin_parent_activity_assignments_path %>
+<% parent_activity_assignment_form_method = editing_parent_activity_assignment ? :patch : :post %>
+<% employee_options = @employee_options.map { |employee| [ "#{employee.name} (#{employee.employee_code})", employee.id ] } %>
+<% vertical_percent_options = @vertical_percent_options.map { |vertical| [ vertical.vertical_name, vertical.id ] } %>
+<% pb_accordion_group = "pb-imports" %>
 
-<section class="page-header">
+<section class="page-header admin-hero">
   <div>
-    <p class="eyebrow">PMC workspace</p>
+    <p class="eyebrow">MIS workspace</p>
     <h1>P&amp;B Import &amp; Download</h1>
-    <p class="muted">Upload or download the latest active P&amp;B Excel. Every import saves the previous active file first, then keeps the new source in history.</p>
   </div>
   <div class="header-card">
     <span>Activities</span>
@@ -14,24 +24,24 @@
 
 <section class="metric-grid admin-grid">
   <article class="metric metric-teal"><span>Projects</span><strong><%= @summary[:projects] %></strong></article>
-  <article class="metric metric-blue"><span>Activities</span><strong><%= @summary[:activities] %></strong></article>
-  <article class="metric metric-gold"><span>Verticals</span><strong><%= @summary[:verticals] %></strong></article>
+  <article class="metric metric-blue"><span>Active Rows</span><strong><%= @summary[:activities] %></strong></article>
+  <article class="metric metric-rose"><span>Disabled Rows</span><strong><%= @summary[:disabled_activities] %></strong></article>
+  <article class="metric metric-gold"><span>Parent Mapping</span><strong><%= @summary[:parent_mappings] %></strong></article>
   <article class="metric metric-ink"><span>Allocated</span><strong><%= currency(@summary[:allocated]) %></strong></article>
 </section>
 
-<section class="table-panel import-panel">
+<section class="table-panel import-panel compact-upload-panel">
   <div class="table-heading">
     <div>
       <h2>Upload P&amp;B file</h2>
-      <p class="muted">PMC can import the P&amp;B source and parent activity mapping here. The previous active P&amp;B file is saved before a new source becomes active.</p>
     </div>
     <div class="table-actions">
       <%= link_to "Download P&B Excel", download_admin_pb_imports_path, class: "submit-plan-button" %>
     </div>
   </div>
 
-  <%= form_with url: admin_pb_imports_path, method: :post, multipart: true, class: "import-form" do |form| %>
-    <div class="import-grid">
+  <%= form_with url: admin_pb_imports_path, method: :post, multipart: true, class: "admin-master-form" do |form| %>
+    <div class="admin-form-grid import-admin-grid">
       <label>
         <span>P&amp;B source file</span>
         <%= form.file_field :pb_file, accept: ".xlsx,.csv", class: "input" %>
@@ -41,26 +51,401 @@
         <%= form.file_field :parent_activity_file, accept: ".xlsx,.csv", class: "input" %>
       </label>
     </div>
-    <div class="submit-panel">
-      <p>
-        Latest P&amp;B import:
-        <strong><%= format_record_datetime(@latest_imported_at) || "Not imported yet" %></strong>
-      </p>
+    <div class="admin-form-footer">
+      <span class="table-count">Latest: <%= format_record_datetime(@latest_imported_at) || "Not imported" %></span>
       <%= form.submit "Import P&B", class: "submit-plan-button" %>
     </div>
   <% end %>
 </section>
 
-<section class="table-panel import-history-panel collapsible-panel is-collapsed" data-searchable-table data-collapsible-panel data-collapsed="true">
+<section
+  class="table-panel admin-editor-panel collapsible-panel <%= "is-collapsed" unless show_bli_activity_form %>"
+  id="pb-main-file"
+  data-collapsible-panel
+  data-collapsible-group="<%= pb_accordion_group %>"
+  data-collapsed="<%= show_bli_activity_form ? "false" : "true" %>"
+>
   <div class="table-heading">
     <div>
-      <h2>P&amp;B file history</h2>
-      <p class="muted">Backend imports save old active snapshots and new source files with date-time stamps.</p>
+      <h2><%= editing_bli_activity ? "Edit P&B row" : "Add P&B row" %></h2>
+    </div>
+    <div class="table-actions">
+      <% if editing_bli_activity %>
+        <%= link_to "Add New", admin_pb_imports_path(open_bli_activity_form: 1, anchor: "pb-main-file"), class: "secondary-button" %>
+      <% end %>
+      <button
+        type="button"
+        class="panel-toggle-button"
+        data-collapsible-toggle
+        data-show-label="Show"
+        data-hide-label="Hide"
+        aria-expanded="<%= show_bli_activity_form ? "true" : "false" %>"
+      >
+        <%= show_bli_activity_form ? "Hide" : "Show" %>
+      </button>
+    </div>
+  </div>
+
+  <div class="collapsible-content" data-collapsible-content <%= "hidden" unless show_bli_activity_form %>>
+    <%= form_with model: @bli_activity_form, url: bli_activity_form_url, method: bli_activity_form_method, class: "admin-master-form pb-activity-form" do |form| %>
+      <div class="admin-form-grid pb-activity-grid">
+        <label>
+          <span>Employee</span>
+          <%= form.select :employee_id, options_for_select(employee_options, @bli_activity_form.employee_id), { include_blank: "Select employee" }, class: "input", required: true %>
+        </label>
+        <label>
+          <span>Project</span>
+          <%= form.text_field :project_name, class: "input" %>
+        </label>
+        <label>
+          <span>Vertical</span>
+          <%= form.text_field :vertical_name, class: "input" %>
+        </label>
+        <label>
+          <span>Activity</span>
+          <%= form.text_field :activity_name, class: "input", required: true %>
+        </label>
+        <label>
+          <span>Project BLI Name</span>
+          <%= form.text_field :name, class: "input" %>
+        </label>
+        <label>
+          <span>BLI Code</span>
+          <%= form.text_field :bli_code, class: "input" %>
+        </label>
+        <label>
+          <span>Financial Year</span>
+          <%= form.text_field :financial_year, class: "input" %>
+        </label>
+        <label>
+          <span>Office</span>
+          <%= form.text_field :office_name, class: "input" %>
+        </label>
+        <label>
+          <span>Stakeholder</span>
+          <%= form.text_field :stakeholder_name, class: "input" %>
+        </label>
+        <label>
+          <span>Allocating Date</span>
+          <%= form.date_field :allocating_date, class: "input" %>
+        </label>
+        <label>
+          <span>Parent Activity</span>
+          <%= form.text_field :parent_activity, class: "input" %>
+        </label>
+        <label>
+          <span>Responsible User</span>
+          <%= form.text_field :responsible_user_name, class: "input" %>
+        </label>
+      </div>
+
+      <div class="admin-form-grid pb-amount-grid">
+        <label>
+          <span>Allocated Fund</span>
+          <%= form.number_field :allocated_fund, class: "input", min: 0, step: "0.01" %>
+        </label>
+        <label>
+          <span>Remaining Fund</span>
+          <%= form.number_field :remaining_fund, class: "input", min: 0, step: "0.01" %>
+        </label>
+        <label>
+          <span>Utilised Fund</span>
+          <%= form.number_field :utilised_fund, class: "input", min: 0, step: "0.01" %>
+        </label>
+        <label>
+          <span>Approved Utilised</span>
+          <%= form.number_field :approved_utilised_fund, class: "input", min: 0, step: "0.01" %>
+        </label>
+        <label>
+          <span>Total PDO Count</span>
+          <%= form.number_field :total_pdo_count, class: "input", min: 0, step: 1 %>
+        </label>
+        <label>
+          <span>Total PDO Amount</span>
+          <%= form.number_field :total_pdo_amount, class: "input", min: 0, step: "0.01" %>
+        </label>
+        <label>
+          <span>Approved PDO Count</span>
+          <%= form.number_field :approved_pdo_count, class: "input", min: 0, step: 1 %>
+        </label>
+        <label>
+          <span>Approved PDO Amount</span>
+          <%= form.number_field :approved_pdo_amount, class: "input", min: 0, step: "0.01" %>
+        </label>
+        <label>
+          <span>Pending PDO Count</span>
+          <%= form.number_field :pending_pdo_count, class: "input", min: 0, step: 1 %>
+        </label>
+        <label>
+          <span>Pending PDO Amount</span>
+          <%= form.number_field :pending_pdo_amount, class: "input", min: 0, step: "0.01" %>
+        </label>
+        <label>
+          <span>Total RFP Count</span>
+          <%= form.number_field :total_rfp_count, class: "input", min: 0, step: 1 %>
+        </label>
+        <label>
+          <span>Total RFP Amount</span>
+          <%= form.number_field :total_rfp_amount, class: "input", min: 0, step: "0.01" %>
+        </label>
+        <label>
+          <span>Approved RFP Count</span>
+          <%= form.number_field :approved_rfp_count, class: "input", min: 0, step: 1 %>
+        </label>
+        <label>
+          <span>Approved RFP Amount</span>
+          <%= form.number_field :approved_rfp_amount, class: "input", min: 0, step: "0.01" %>
+        </label>
+        <label>
+          <span>Pending RFP Count</span>
+          <%= form.number_field :pending_rfp_count, class: "input", min: 0, step: 1 %>
+        </label>
+        <label>
+          <span>Pending RFP Amount</span>
+          <%= form.number_field :pending_rfp_amount, class: "input", min: 0, step: "0.01" %>
+        </label>
+      </div>
+
+      <div class="admin-form-footer">
+        <%= form.submit editing_bli_activity ? "Update Row" : "Add Row", class: "submit-plan-button" %>
+      </div>
+    <% end %>
+  </div>
+</section>
+
+<section
+  class="table-panel admin-data-panel collapsible-panel is-collapsed"
+  data-searchable-table
+  data-collapsible-panel
+  data-collapsible-group="<%= pb_accordion_group %>"
+  data-collapsed="true"
+>
+  <div class="table-heading">
+    <div>
+      <h2>P&amp;B File Data</h2>
+    </div>
+    <div class="table-actions">
+      <span class="table-count" data-filtered-count data-count-label="rows"><%= @bli_activities.size %> rows</span>
+      <button type="button" class="panel-toggle-button" data-collapsible-toggle data-show-label="Show" data-hide-label="Hide" aria-expanded="false">
+        Show
+      </button>
+    </div>
+  </div>
+
+  <div class="collapsible-content" data-collapsible-content hidden>
+    <div class="collapsible-tools">
+      <input type="search" class="table-search" placeholder="Search P&B data" data-table-search-input>
+    </div>
+
+    <div class="responsive-table action-plan-data-scroll">
+      <table class="admin-table pb-main-table">
+        <thead>
+          <tr>
+            <th>Status</th>
+            <th>Project / BLI</th>
+            <th>Vertical / Activity</th>
+            <th>Employee</th>
+            <th>Allocated</th>
+            <th>Remaining</th>
+            <th>Utilised</th>
+            <th>PDO</th>
+            <th>RFP</th>
+            <th>FY</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if @bli_activities.any? %>
+            <% @bli_activities.each do |activity| %>
+              <tr class="<%= "is-disabled-row" unless activity.active? %>">
+                <td><span class="status-badge status-<%= activity.active? ? "approved" : "not_submitted" %>"><%= activity.active? ? "Active" : "Disabled" %></span></td>
+                <td>
+                  <strong><%= activity.project_name.presence || "-" %></strong>
+                  <div class="muted"><%= [ activity.bli_code, activity.name ].compact_blank.join(" - ").presence || "-" %></div>
+                </td>
+                <td>
+                  <%= activity.vertical_name.presence || "-" %>
+                  <div class="muted"><%= activity.activity_name.presence || "-" %></div>
+                </td>
+                <td>
+                  <%= activity.employee&.name || activity.responsible_user_name || "-" %>
+                  <div class="muted"><%= activity.employee&.employee_code || "-" %></div>
+                </td>
+                <td class="numeric-cell"><%= currency(activity.allocated_fund) %></td>
+                <td class="numeric-cell"><%= currency(activity.remaining_fund) %></td>
+                <td class="numeric-cell"><%= currency(activity.utilised_fund) %></td>
+                <td>
+                  <%= activity.total_pdo_count %> / <%= currency(activity.total_pdo_amount) %>
+                  <div class="muted"><%= activity.approved_pdo_count %> approved</div>
+                </td>
+                <td>
+                  <%= activity.total_rfp_count %> / <%= currency(activity.total_rfp_amount) %>
+                  <div class="muted"><%= activity.approved_rfp_count %> approved</div>
+                </td>
+                <td><span class="code-pill"><%= activity.financial_year.presence || "-" %></span></td>
+                <td>
+                  <div class="row-action-group">
+                    <%= link_to "Edit",
+                      admin_pb_imports_path(edit_bli_activity_id: activity.id, anchor: "pb-main-file"),
+                      class: "secondary-button admin-row-button" %>
+                    <%= button_to activity.active? ? "Disable" : "Enable",
+                      admin_toggle_pb_bli_activity_path(activity),
+                      method: :patch,
+                      class: activity.active? ? "return-button admin-row-button" : "submit-plan-button admin-row-button",
+                      form: { data: { turbo_confirm: "#{activity.active? ? "Disable" : "Enable"} this P&B row?" } } %>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          <% else %>
+            <tr>
+              <td colspan="11">No P&amp;B data uploaded yet.</td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section
+  class="table-panel admin-editor-panel collapsible-panel <%= "is-collapsed" unless show_parent_activity_assignment_form %>"
+  id="parent-activity-mapping"
+  data-collapsible-panel
+  data-collapsible-group="<%= pb_accordion_group %>"
+  data-collapsed="<%= show_parent_activity_assignment_form ? "false" : "true" %>"
+>
+  <div class="table-heading">
+    <div>
+      <h2><%= editing_parent_activity_assignment ? "Edit parent activity mapping" : "Add parent activity mapping" %></h2>
+    </div>
+    <div class="table-actions">
+      <% if editing_parent_activity_assignment %>
+        <%= link_to "Add New", admin_pb_imports_path(open_parent_activity_assignment_form: 1, anchor: "parent-activity-mapping"), class: "secondary-button" %>
+      <% end %>
+      <button
+        type="button"
+        class="panel-toggle-button"
+        data-collapsible-toggle
+        data-show-label="Show"
+        data-hide-label="Hide"
+        aria-expanded="<%= show_parent_activity_assignment_form ? "true" : "false" %>"
+      >
+        <%= show_parent_activity_assignment_form ? "Hide" : "Show" %>
+      </button>
+    </div>
+  </div>
+
+  <div class="collapsible-content" data-collapsible-content <%= "hidden" unless show_parent_activity_assignment_form %>>
+    <%= form_with model: @parent_activity_assignment_form, url: parent_activity_assignment_form_url, method: parent_activity_assignment_form_method, class: "admin-master-form" do |form| %>
+      <div class="admin-form-grid parent-activity-form-grid">
+        <label>
+          <span>Parent Activity</span>
+          <%= form.text_field :source_parent_activity, class: "input", required: true %>
+        </label>
+        <label>
+          <span>Employee</span>
+          <%= form.select :employee_id, options_for_select(employee_options, @parent_activity_assignment_form.employee_id), { include_blank: "Select employee" }, class: "input", required: true %>
+        </label>
+        <label>
+          <span>Vertical</span>
+          <%= form.select :vertical_percent_id, options_for_select(vertical_percent_options, @parent_activity_assignment_form.vertical_percent_id), { include_blank: "Select vertical" }, class: "input", required: true %>
+        </label>
+      </div>
+
+      <div class="admin-form-footer">
+        <%= form.submit editing_parent_activity_assignment ? "Update Mapping" : "Add Mapping", class: "submit-plan-button" %>
+      </div>
+    <% end %>
+  </div>
+</section>
+
+<section
+  class="table-panel admin-data-panel collapsible-panel is-collapsed"
+  data-searchable-table
+  data-collapsible-panel
+  data-collapsible-group="<%= pb_accordion_group %>"
+  data-collapsed="true"
+>
+  <div class="table-heading">
+    <div>
+      <h2>Parent Activity Mapping Data</h2>
+    </div>
+    <div class="table-actions">
+      <span class="table-count" data-filtered-count data-count-label="rows"><%= @parent_activity_assignments.size %> rows</span>
+      <button type="button" class="panel-toggle-button" data-collapsible-toggle data-show-label="Show" data-hide-label="Hide" aria-expanded="false">
+        Show
+      </button>
+    </div>
+  </div>
+
+  <div class="collapsible-content" data-collapsible-content hidden>
+    <div class="collapsible-tools">
+      <input type="search" class="table-search" placeholder="Search parent mapping" data-table-search-input>
+    </div>
+
+    <div class="responsive-table">
+      <table class="admin-table parent-activity-table">
+        <thead>
+          <tr>
+            <th>Status</th>
+            <th>Parent Activity</th>
+            <th>Employee</th>
+            <th>Vertical</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if @parent_activity_assignments.any? %>
+            <% @parent_activity_assignments.each do |assignment| %>
+              <tr class="<%= "is-disabled-row" unless assignment.active? %>">
+                <td><span class="status-badge status-<%= assignment.active? ? "approved" : "not_submitted" %>"><%= assignment.active? ? "Active" : "Disabled" %></span></td>
+                <td><strong><%= assignment.source_parent_activity %></strong></td>
+                <td>
+                  <%= assignment.employee&.name || "-" %>
+                  <div class="muted"><%= assignment.employee&.employee_code || "-" %></div>
+                </td>
+                <td><%= assignment.vertical_percent&.vertical_name || "-" %></td>
+                <td>
+                  <div class="row-action-group">
+                    <%= link_to "Edit",
+                      admin_pb_imports_path(edit_parent_activity_assignment_id: assignment.id, anchor: "parent-activity-mapping"),
+                      class: "secondary-button admin-row-button" %>
+                    <%= button_to assignment.active? ? "Disable" : "Enable",
+                      admin_toggle_parent_activity_assignment_path(assignment),
+                      method: :patch,
+                      class: assignment.active? ? "return-button admin-row-button" : "submit-plan-button admin-row-button",
+                      form: { data: { turbo_confirm: "#{assignment.active? ? "Disable" : "Enable"} this parent activity mapping?" } } %>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          <% else %>
+            <tr>
+              <td colspan="5">No parent activity mapping data uploaded yet.</td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section
+  class="table-panel import-history-panel collapsible-panel is-collapsed"
+  data-searchable-table
+  data-collapsible-panel
+  data-collapsible-group="<%= pb_accordion_group %>"
+  data-collapsed="true"
+>
+  <div class="table-heading">
+    <div>
+      <h2>P&amp;B File History</h2>
     </div>
     <div class="table-actions">
       <span class="table-count" data-filtered-count data-count-label="files"><%= @import_files.size %> files</span>
-      <button type="button" class="panel-toggle-button" data-collapsible-toggle data-show-label="Show history" data-hide-label="Hide history" aria-expanded="false">
-        Show history
+      <button type="button" class="panel-toggle-button" data-collapsible-toggle data-show-label="Show" data-hide-label="Hide" aria-expanded="false">
+        Show
       </button>
     </div>
   </div>
@@ -97,7 +482,7 @@
                 </td>
                 <td><span class="code-pill"><%= import_file.file_kind.to_s.humanize %></span></td>
                 <td><span class="code-pill"><%= import_file.financial_year %></span></td>
-                <td><%= import_file.uploaded_by&.admin? ? "PMC" : import_file.uploaded_by&.employee&.name || "-" %></td>
+                <td><%= import_file.uploaded_by&.admin? ? "MIS" : import_file.uploaded_by&.employee&.name || "-" %></td>
                 <td><%= import_file.row_count || "-" %></td>
                 <td><span class="status-badge status-<%= import_file.status == "failed" ? "returned" : "approved" %>"><%= import_file.status.titleize %></span></td>
                 <td><%= format_record_datetime(import_file.imported_at) %></td>

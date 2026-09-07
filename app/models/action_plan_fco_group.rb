@@ -2,7 +2,8 @@ class ActionPlanFcoGroup
   GROUPS = {
     "16" => { ids: %w[16 17], name: "Jobat - FCO" },
     "14" => { ids: %w[14 11], name: "Bhawanipatna - FCO" },
-    "15" => { ids: %w[15 12], name: "Mandla - FCO" }
+    "15" => { ids: %w[15 12], name: "Mandla - FCO" },
+    "28" => { ids: %w[28], name: "Financial Inclusion" }
   }.freeze
 
   ID_TO_GROUP = GROUPS.each_with_object({}) do |(canonical_id, group), lookup|

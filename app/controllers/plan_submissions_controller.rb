@@ -28,7 +28,7 @@ class PlanSubmissionsController < ApplicationController
 
   def create
     employee = current_user.employee
-    activities = employee.bli_activities.where(id: item_params.map { |item| item[:bli_activity_id] })
+    activities = employee.bli_activities.active.where(id: item_params.map { |item| item[:bli_activity_id] })
     activities_by_id = activities.index_by { |activity| activity.id.to_s }
     original_total = activities.sum(:allocated_fund)
     changed_total = item_params.sum { |item| BigDecimal(item[:changed_fund].presence || "0") }
@@ -78,7 +78,7 @@ class PlanSubmissionsController < ApplicationController
   end
 
   def global_unique_activities
-    BliActivity.order(:project_name, :vertical_name, :activity_name, :bli_code, :id).to_a
+    BliActivity.active.order(:project_name, :vertical_name, :activity_name, :bli_code, :id).to_a
   end
 
   def submission_scope
@@ -94,7 +94,7 @@ class PlanSubmissionsController < ApplicationController
   def require_employee_budget_edit_access
     return if current_user.employee.present? && !current_user.admin?
 
-    redirect_to plan_submissions_path, alert: "PMC can view records but cannot edit."
+    redirect_to plan_submissions_path, alert: "MIS can view records but cannot edit."
   end
 
   def allocated_pb_csv

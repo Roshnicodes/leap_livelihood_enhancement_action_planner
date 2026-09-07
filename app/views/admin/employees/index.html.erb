@@ -1,31 +1,105 @@
-<% content_for :title, "PMC Employees | LEAP" %>
+<% content_for :title, "MIS Employees | LEAP" %>
+<% editing_employee = @employee_form.persisted? %>
+<% employee_form_url = editing_employee ? admin_employee_path(@employee_form) : admin_employees_path %>
+<% employee_form_method = editing_employee ? :patch : :post %>
 
-<section class="page-header">
+<section class="page-header admin-hero">
   <div>
-    <p class="eyebrow">PMC workspace</p>
-    <h1>Employee details</h1>
-      <p class="muted">All seeded employees, login IDs, contact details, departments, and mapped BLI activity counts.</p>
+    <p class="eyebrow">MIS workspace</p>
+    <h1>Employee Control</h1>
   </div>
   <div class="header-card">
-    <span>Signed in as</span>
-    <strong>PMC</strong>
+    <span>Active</span>
+    <strong><%= @summary[:active_employees] %></strong>
   </div>
 </section>
 
 <section class="metric-grid admin-grid">
-  <article class="metric metric-teal"><span>Employees</span><strong><%= @summary[:employees] %></strong></article>
+  <article class="metric metric-teal"><span>Total Employees</span><strong><%= @summary[:employees] %></strong></article>
   <article class="metric metric-blue"><span>Active</span><strong><%= @summary[:active_employees] %></strong></article>
-  <article class="metric metric-blue"><span>Activities</span><strong><%= @summary[:activities] %></strong></article>
-  <article class="metric metric-gold"><span>Project P&B</span><strong><%= @summary[:verticals] %></strong></article>
-  <article class="metric metric-rose"><span>Action Plans</span><strong><%= @summary[:projects] %></strong></article>
+  <article class="metric metric-rose"><span>Disabled</span><strong><%= @summary[:inactive_employees] %></strong></article>
+  <article class="metric metric-gold"><span>Activities</span><strong><%= @summary[:activities] %></strong></article>
   <article class="metric metric-ink"><span>Utilised</span><strong><%= currency(@summary[:utilised]) %></strong></article>
 </section>
 
-<section class="table-panel" data-searchable-table>
+<section class="table-panel admin-editor-panel">
   <div class="table-heading">
     <div>
-      <h2>Users and employee mapping</h2>
-      <p class="muted">User password defaults to the lowercase employee code after seeding.</p>
+      <h2><%= editing_employee ? "Edit employee" : "Add employee" %></h2>
+    </div>
+    <% if editing_employee %>
+      <div class="table-actions">
+        <%= link_to "Add New", admin_employees_path, class: "secondary-button" %>
+      </div>
+    <% end %>
+  </div>
+
+  <%= form_with model: @employee_form, url: employee_form_url, method: employee_form_method, class: "admin-master-form employee-admin-form" do |form| %>
+    <div class="admin-form-grid employee-form-grid">
+      <label>
+        <span>Employee ID</span>
+        <%= form.text_field :employee_code, class: "input", required: true %>
+      </label>
+      <label>
+        <span>Name</span>
+        <%= form.text_field :name, class: "input", required: true %>
+      </label>
+      <label>
+        <span>Email</span>
+        <%= form.email_field :email, class: "input" %>
+      </label>
+      <label>
+        <span>Mobile</span>
+        <%= form.telephone_field :mobile_number, class: "input" %>
+      </label>
+      <label>
+        <span>Designation</span>
+        <%= form.text_field :designation, class: "input" %>
+      </label>
+      <label>
+        <span>Responsibility</span>
+        <%= form.text_field :functional_responsibility, class: "input" %>
+      </label>
+      <label>
+        <span>Department</span>
+        <%= form.text_field :department, class: "input" %>
+      </label>
+      <label>
+        <span>Branch</span>
+        <%= form.text_field :branch, class: "input" %>
+      </label>
+      <label>
+        <span>Sub Branch</span>
+        <%= form.text_field :sub_branch, class: "input" %>
+      </label>
+      <label>
+        <span>Office</span>
+        <%= form.text_field :office_name, class: "input" %>
+      </label>
+      <label>
+        <span>Primary P&amp;B</span>
+        <%= form.text_field :primary_vertical, class: "input" %>
+      </label>
+      <label>
+        <span>Primary Action Plan</span>
+        <%= form.text_field :primary_project, class: "input" %>
+      </label>
+    </div>
+
+    <div class="admin-form-footer">
+      <label class="toggle-line">
+        <%= form.check_box :active %>
+        <span>Active login</span>
+      </label>
+      <%= form.submit editing_employee ? "Update Employee" : "Add Employee", class: "submit-plan-button" %>
+    </div>
+  <% end %>
+</section>
+
+<section class="table-panel admin-data-panel" data-searchable-table>
+  <div class="table-heading">
+    <div>
+      <h2>Employees</h2>
     </div>
     <div class="table-actions">
       <input type="search" class="table-search" placeholder="Search employees" data-table-search-input>
@@ -34,44 +108,55 @@
   </div>
 
   <div class="responsive-table">
-    <table>
+    <table class="admin-table employee-admin-table">
       <thead>
         <tr>
           <th>Employee ID</th>
           <th>Status</th>
-          <th>Name</th>
-          <th>Email</th>
-          <th>Mobile</th>
-          <th>Designation</th>
-          <th>Functional Responsibility</th>
-          <th>Department</th>
-          <th>Branch</th>
-          <th>Sub Branch</th>
-          <th>Login</th>
-          <th>Office</th>
-          <th>Primary Project P&B</th>
+          <th>Employee</th>
+          <th>Contact</th>
+          <th>Role</th>
+          <th>Location</th>
+          <th>Primary P&amp;B</th>
           <th>Primary Action Plan</th>
           <th>Activities</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
         <% @employees.each do |employee| %>
-          <tr>
+          <tr class="<%= "is-disabled-row" unless employee.active? %>">
             <td><span class="code-pill"><%= employee.employee_code %></span></td>
-            <td><span class="status-badge status-<%= employee.active? ? "approved" : "not_submitted" %>"><%= employee.active? ? "Active" : "Inactive" %></span></td>
-            <td><%= employee.name %></td>
-            <td><%= employee.email %></td>
-            <td><%= employee.mobile_number %></td>
-            <td><%= employee.designation %></td>
-            <td><%= employee.functional_responsibility %></td>
-            <td><%= employee.department %></td>
-            <td><%= employee.branch %></td>
-            <td><%= employee.sub_branch %></td>
-            <td><%= employee.user&.login %></td>
-            <td><%= employee.office_name %></td>
-            <td><%= employee.primary_vertical %></td>
-            <td><%= employee.primary_project %></td>
+            <td><span class="status-badge status-<%= employee.active? ? "approved" : "not_submitted" %>"><%= employee.active? ? "Active" : "Disabled" %></span></td>
+            <td>
+              <strong><%= employee.name %></strong>
+              <div class="muted"><%= employee.office_name.presence || "Office not set" %></div>
+            </td>
+            <td>
+              <%= employee.email.presence || "-" %>
+              <div class="muted"><%= employee.mobile_number.presence || "-" %></div>
+            </td>
+            <td>
+              <%= employee.designation.presence || "-" %>
+              <div class="muted"><%= employee.functional_responsibility.presence || "-" %></div>
+            </td>
+            <td>
+              <%= employee.department.presence || "-" %>
+              <div class="muted"><%= [ employee.branch, employee.sub_branch ].compact_blank.join(" / ").presence || "-" %></div>
+            </td>
+            <td><%= employee.primary_vertical.presence || "-" %></td>
+            <td><%= employee.primary_project.presence || "-" %></td>
             <td><%= employee.activities_count %></td>
+            <td>
+              <div class="row-action-group">
+                <%= link_to "Edit", admin_employees_path(edit_id: employee.id), class: "secondary-button admin-row-button" %>
+                <%= button_to employee.active? ? "Disable" : "Enable",
+                  toggle_active_admin_employee_path(employee),
+                  method: :patch,
+                  class: employee.active? ? "return-button admin-row-button" : "submit-plan-button admin-row-button",
+                  form: { data: { turbo_confirm: "#{employee.active? ? "Disable" : "Enable"} #{employee.name}?" } } %>
+              </div>
+            </td>
           </tr>
         <% end %>
       </tbody>

@@ -90,7 +90,7 @@
                     { label: "Email/Application Screenshot", attachment: document.screenshot_file }
                   ] %>
               </td>
-              <td><%= document.uploaded_by&.admin? ? "PMC" : document.uploaded_by&.employee&.name || "-" %></td>
+              <td><%= document.uploaded_by&.admin? ? "MIS" : document.uploaded_by&.employee&.name || "-" %></td>
               <td><%= format_record_datetime(document.created_at) %></td>
             </tr>
           <% end %>

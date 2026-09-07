@@ -107,8 +107,8 @@ class ActionPlansController < ApplicationController
     po_ids = rows.reorder(nil).reselect(:po_id).distinct.pluck(:po_id).compact_blank
     project_names = rows.reorder(nil).reselect(:project_name).distinct.pluck(:project_name).compact_blank
     ownerships = []
-    ownerships.concat(ProjectOwnership.where(po_id: po_ids).to_a) if po_ids.any?
-    ownerships.concat(ProjectOwnership.where(project_name: project_names).to_a) if project_names.any?
+    ownerships.concat(ProjectOwnership.active.where(po_id: po_ids).to_a) if po_ids.any?
+    ownerships.concat(ProjectOwnership.active.where(project_name: project_names).to_a) if project_names.any?
 
     ownerships.uniq.each_with_object({}) do |ownership, lookup|
       lookup[project_ownership_lookup_key(ownership.po_id, ownership.project_name)] = ownership
