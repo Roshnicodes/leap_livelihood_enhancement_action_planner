@@ -1,4 +1,5 @@
 require "test_helper"
+require "csv"
 
 class AchievementMisEditTest < ActionDispatch::IntegrationTest
   setup do

@@ -280,7 +280,7 @@
     });
 
     projectSelect?.addEventListener("change", () => {
-      if (toSelect) toSelect.value = "";
+      if (adminEntry && toSelect) toSelect.value = "";
       if (monthSelect) monthSelect.value = "";
       submitFilters();
     });

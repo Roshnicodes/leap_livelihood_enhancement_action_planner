@@ -140,6 +140,18 @@ class AchievementReturnFlowTest < ActionDispatch::IntegrationTest
     assert_select ".achievement-return-panel", 0
   end
 
+  test "fco project filter keeps selected to and month" do
+    login_as(@fco)
+
+    get achievement_entry_path(to_id: @row.to_id, project: @row.project_name, month: "apr")
+
+    assert_response :success
+    assert_select "select[name=to_id] option[value=?][selected]", @row.to_id
+    assert_select "select[name=project] option[value=?][selected]", @row.project_name
+    assert_select "select[name=month] option[value='apr'][selected]"
+    assert_select "input[name=?]", "achievements[#{@row.id}]"
+  end
+
   private
 
   def login_as(employee)
