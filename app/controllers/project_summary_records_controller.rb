@@ -18,8 +18,8 @@ class ProjectSummaryRecordsController < ApplicationController
     @selected_verticals = selected_verticals_for_records
     @summary_vertical_label = summary_vertical_label
     @record_groups = @selected_verticals.any? ? filter_record_groups_by_verticals(@all_record_groups, @selected_verticals) : []
-    @total_records = @record_groups.size
     @overall_summary = overall_record_summary(@record_groups)
+    @total_records = @overall_summary[:total_projects]
     @activity_summaries = activity_summaries_for(@record_groups)
 
     respond_to do |format|
@@ -255,14 +255,18 @@ class ProjectSummaryRecordsController < ApplicationController
   end
 
   def baseline_employees
-    return privileged_baseline_employees if privileged_record_view?
+    return employees_with_active_pb_rows if privileged_record_view?
     return [ current_user.employee ] if current_user.employee.accessible_bli_activities.any?
 
-    Employee.where(active: true).joins(:bli_activities).distinct.order(:name)
+    employees_with_active_pb_rows
   end
 
-  def privileged_baseline_employees
-    Employee.where(active: true).joins(:bli_activities).distinct.order(:name)
+  def employees_with_active_pb_rows
+    Employee
+      .joins(:bli_activities)
+      .merge(BliActivity.active)
+      .distinct
+      .order(:name)
   end
 
   def privileged_record_view?
@@ -270,11 +274,36 @@ class ProjectSummaryRecordsController < ApplicationController
   end
 
   def rows_from_submission(submission, project_name = nil)
-    items = submission.project_summary_submission_items
-    items = items.select { |item| item.project_name == project_name } if project_name.present?
+    current_rows = calculated_summary_rows(submission.employee, project_name)
+    saved_items_by_key = submission_items_for(submission, project_name).index_by do |item|
+      [ item.project_name, item.activity_name, item.vertical_name ]
+    end
+
+    return submitted_rows_without_current_pb(submission, project_name) if current_rows.blank?
+
+    current_rows.map do |row|
+      item = saved_items_by_key[[ row[:project_name], row[:activity_name], row[:vertical_name] ]]
+      next row if item.blank?
+
+      month_amounts = align_month_amounts_to_total(
+        VerticalPercent::MONTH_COLUMNS.index_with { |month| item.public_send(month) },
+        row[:total_amount]
+      )
+
+      row.merge(
+        item: item,
+        month_amounts: month_amounts,
+        month_deltas: month_deltas_for(month_amounts, row[:planned_month_amounts]),
+        changed_total: month_amounts.values.sum,
+        remark: item.remark
+      )
+    end
+  end
+
+  def submitted_rows_without_current_pb(submission, project_name = nil)
     bli_code_lookup = bli_code_lookup_for(submission.employee)
 
-    items.map do |item|
+    submission_items_for(submission, project_name).map do |item|
       planned_month_amounts = planned_month_amounts_for(item.total_amount, item.vertical_name)
       month_amounts = VerticalPercent::MONTH_COLUMNS.index_with { |month| item.public_send(month) }
 
@@ -284,6 +313,7 @@ class ProjectSummaryRecordsController < ApplicationController
         activity_name: item.activity_name,
         vertical_name: item.vertical_name,
         bli_code: bli_code_lookup[[ item.project_name, item.activity_name, item.vertical_name ]],
+        activity_count: 1,
         total_amount: item.total_amount,
         month_amounts: month_amounts,
         planned_month_amounts: planned_month_amounts,
@@ -292,6 +322,12 @@ class ProjectSummaryRecordsController < ApplicationController
         remark: item.remark
       }
     end
+  end
+
+  def submission_items_for(submission, project_name = nil)
+    items = submission.project_summary_submission_items
+    items = items.select { |item| item.project_name == project_name } if project_name.present?
+    items
   end
 
   def calculated_summary_rows(employee, project_name)
@@ -310,6 +346,7 @@ class ProjectSummaryRecordsController < ApplicationController
           activity_name: activity_name,
           vertical_name: vertical_name,
           bli_code: bli_codes.one? ? bli_codes.first : bli_codes.join(", "),
+          activity_count: activities.size,
           total_amount: total_amount,
           month_amounts: month_amounts,
           planned_month_amounts: month_amounts,
@@ -319,6 +356,16 @@ class ProjectSummaryRecordsController < ApplicationController
         }
       end
       .sort_by { |row| [ -row[:total_amount], row[:activity_name].to_s ] }
+  end
+
+  def align_month_amounts_to_total(month_amounts, total_amount)
+    amounts = month_amounts.transform_values(&:to_d)
+    delta = total_amount.to_d - amounts.values.sum
+    return amounts if delta.abs < BigDecimal("0.01")
+
+    last_month = VerticalPercent::MONTH_COLUMNS.last
+    amounts[last_month] = amounts[last_month].to_d + delta
+    amounts
   end
 
   def month_amounts_for(total_amount, percent)
@@ -388,8 +435,11 @@ class ProjectSummaryRecordsController < ApplicationController
     end
 
     {
-      total_projects: record_groups.size,
+      total_projects: unique_project_count_for(record_groups),
+      total_record_groups: record_groups.size,
+      total_verticals: unique_vertical_count_for(record_groups),
       total_rows: record_groups.sum { |record| record[:rows].size },
+      total_activity_rows: record_groups.sum { |record| record[:rows].sum { |row| summary_activity_count(row) } },
       total_amount: record_groups.sum { |record| record[:total_amount].to_d },
       changed_projects: record_groups.count { |record| record[:change_summary][:changed_row_count].positive? },
       changed_rows: record_groups.sum { |record| record[:change_summary][:changed_row_count] },
@@ -399,6 +449,26 @@ class ProjectSummaryRecordsController < ApplicationController
         record_groups.sum { |record| record[:month_totals][month].to_d }
       end
     }
+  end
+
+  def unique_project_count_for(record_groups)
+    record_groups
+      .map { |record| record[:project_name].presence }
+      .compact
+      .uniq
+      .size
+  end
+
+  def unique_vertical_count_for(record_groups)
+    record_groups
+      .flat_map { |record| record[:rows].map { |row| row[:vertical_name].presence || "Unassigned Vertical" } }
+      .uniq
+      .size
+  end
+
+  def summary_activity_count(row)
+    count = row[:activity_count].to_i
+    count.positive? ? count : 1
   end
 
   def activity_summaries_for(record_groups)
@@ -467,6 +537,7 @@ class ProjectSummaryRecordsController < ApplicationController
         "Status",
         "Submitted At",
         "Project BLI Code",
+        "P&B Activity Count",
         "ASA Activity",
         "Project P&B",
         "Total Amount",
@@ -483,6 +554,7 @@ class ProjectSummaryRecordsController < ApplicationController
             record[:status_label],
             helpers.format_record_datetime(record[:submitted_at]),
             row[:bli_code],
+            summary_activity_count(row),
             row[:activity_name],
             row[:vertical_name],
             row[:total_amount],

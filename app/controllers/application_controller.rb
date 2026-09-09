@@ -152,7 +152,7 @@ class ApplicationController < ActionController::Base
   end
 
   def menu_show_achievement_entry?
-    !current_user&.admin? && menu_employee&.action_plan_fco?
+    current_user&.admin? || menu_employee&.action_plan_fco?
   end
 
   def menu_show_achievement_entry_record?

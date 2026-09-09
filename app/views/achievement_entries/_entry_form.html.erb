@@ -1,0 +1,186 @@
+<% achievement_column = "#{selected_month}_t" %>
+<% returned_submissions = Array(selected_returned_submissions) %>
+<% locked_row_ids = Array(locked_submission_row_ids) %>
+<% form_class = local_assigns.fetch(:form_class, "table-panel achievement-entry-panel") %>
+<% form_id = local_assigns[:form_id] %>
+<% field_id_prefix = local_assigns.fetch(:field_id_prefix, "achievement_entry") %>
+<% show_search = local_assigns.fetch(:show_search, true) %>
+<% selected_to_label = local_assigns[:selected_to_label] %>
+<% selected_fco_id = local_assigns[:selected_fco_id] %>
+<% mode_label = local_assigns.fetch(:mode_label, "Achievement Entry") %>
+<% save_label = local_assigns.fetch(:save_label, "Save Draft") %>
+<% submit_label = local_assigns.fetch(:submit_label, "Submit for Approval") %>
+
+<%= form_with url: achievement_entry_path,
+      method: :patch,
+      class: form_class,
+      id: form_id,
+      data: { searchable_table: true },
+      html: { multipart: true } do %>
+  <%= hidden_field_tag :to_id, selected_to_id %>
+  <%= hidden_field_tag :project, selected_project %>
+  <%= hidden_field_tag :month, selected_month %>
+  <%= hidden_field_tag :fco_id, selected_fco_id if selected_fco_id.present? %>
+
+  <div class="table-heading">
+    <div>
+      <p class="eyebrow"><%= mode_label %></p>
+      <h2><%= selected_project %> • <%= selected_month.capitalize %></h2>
+      <p class="muted">
+        <%= selected_to_label %>
+        • Total Activity Target: <strong><%= target_rows_count %></strong>
+        <% if returned_submissions.present? %>
+          • Returned for correction
+        <% elsif locked_submission_count.to_i.positive? && submission_candidate_row_count.to_i.zero? %>
+          • Locked after vertical approval
+        <% elsif active_submission_count.to_i.positive? %>
+          • Submitted for approval
+        <% end %>
+      </p>
+      <p class="achievement-legend">
+        <span class="achievement-legend-dot"></span>
+        Highlighted activities have a target greater than 0
+      </p>
+    </div>
+    <% if show_search %>
+      <div class="table-actions">
+        <input type="search" class="table-search" placeholder="Search activities" data-table-search-input>
+        <span class="table-count" data-filtered-count data-count-label="activities"><%= rows.size %> activities</span>
+      </div>
+    <% end %>
+  </div>
+
+  <% if returned_submissions.present? %>
+    <div class="achievement-return-alert">
+      <div class="achievement-return-alert-heading">
+        <span class="status-badge status-returned">Returned</span>
+        <div>
+          <strong>Correction Required</strong>
+          <p class="muted">Update the returned achievement details and submit again.</p>
+        </div>
+      </div>
+      <div class="achievement-return-alert-list">
+        <% returned_submissions.each do |submission| %>
+          <article>
+            <strong>
+              <%= submission.returned_by&.name || submission.returned_stage.to_s.titleize %>
+              <% if submission.returned_at.present? %>
+                • <%= format_record_datetime(submission.returned_at) %>
+              <% end %>
+            </strong>
+            <p><%= submission.state_code %> / <%= submission.theme_label %></p>
+            <%= simple_format(submission.returned_remark.presence || "-", class: "achievement-return-note") %>
+          </article>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="responsive-table achievement-table-wrap">
+    <table class="action-plan-table achievement-entry-table">
+      <thead>
+        <tr>
+          <th>S.No.</th>
+          <th>Project</th>
+          <th>TO</th>
+          <th>ASA Theme ID / ASA Theme</th>
+          <th>ASA Activity ID / ASA Activity</th>
+          <th>Project Activity</th>
+          <th>Unit</th>
+          <th><%= selected_month.capitalize %> Target</th>
+          <th><%= selected_month.capitalize %> Achievement</th>
+          <th>Means of Verification</th>
+          <th>Remark</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% rows.each_with_index do |row, index| %>
+          <% month_target = row.public_send(selected_month).to_i %>
+          <% has_target = month_target.positive? %>
+          <% detail = entry_details_by_row_id[row.id] %>
+          <% row_locked = locked_row_ids.include?(row.id) %>
+          <tr class="<%= "achievement-row-has-target" if has_target %>">
+            <td><span class="code-pill"><%= index + 1 %></span></td>
+            <td><strong><%= row.project_name %></strong></td>
+            <td>
+              <span class="code-pill"><%= row.to_id %></span>
+              <div><%= row.to_name %></div>
+            </td>
+            <td>
+              <span class="code-pill"><%= action_plan_cell(row.asa_theme_id, decimal: true) %></span>
+              <div><%= row.asa_theme %></div>
+            </td>
+            <td>
+              <span class="code-pill"><%= action_plan_cell(row.asa_activity_id, decimal: true) %></span>
+              <div><%= row.asa_activity_name %></div>
+            </td>
+            <td><%= row.activity.presence || row.activity_id.presence || "-" %></td>
+            <td><%= row.unit_type.presence || "-" %></td>
+            <td class="achievement-target-cell <%= "has-target" if has_target %>">
+              <span class="achievement-target-pill" <%= raw('style="color:#ffffff;-webkit-text-fill-color:#ffffff;"') if has_target %>><%= whole_number(month_target) %></span>
+            </td>
+            <td class="achievement-input-cell <%= "has-target" if has_target %>">
+              <%= number_field_tag "achievements[#{row.id}]",
+                row.public_send(achievement_column),
+                id: "#{field_id_prefix}_achievement_#{row.id}",
+                min: 0,
+                step: 1,
+                class: "achievement-input #{'is-priority' if has_target}",
+                disabled: row_locked,
+                aria: { label: "#{selected_month.capitalize} achievement for #{row.asa_activity_name.presence || row.activity}" } %>
+            </td>
+            <td class="achievement-file-cell">
+              <div class="achievement-file-stack" data-file-stack>
+                <% if detail&.files&.attached? %>
+                  <%= render "shared/attachment_previews",
+                    attachments: detail.files.attachments,
+                    removable: !row_locked %>
+                <% end %>
+                <div class="achievement-local-previews" data-local-file-previews></div>
+                <%= file_field_tag "files[#{row.id}][]",
+                  id: "#{field_id_prefix}_files_#{row.id}",
+                  multiple: true,
+                  disabled: row_locked,
+                  class: "achievement-file-input",
+                  data: { local_file_input: true },
+                  aria: { label: "Upload supporting files for #{row.asa_activity_name.presence || row.activity}" } %>
+                <small class="muted">Any file type • preview on select • Save Draft to keep • max 10 / 50 MB</small>
+              </div>
+            </td>
+            <td class="achievement-remark-cell">
+              <%= text_area_tag "remarks[#{row.id}]",
+                detail&.remark,
+                id: "#{field_id_prefix}_remark_#{row.id}",
+                rows: 2,
+                class: "achievement-remark-input",
+                disabled: row_locked,
+                placeholder: "Remark",
+                aria: { label: "Remark for #{row.asa_activity_name.presence || row.activity}" } %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="submit-panel achievement-submit-panel">
+    <p class="muted">
+      <% if returned_submissions.present? && submission_candidate_row_count.to_i.positive? %>
+        This request was returned. Update values, remarks or files, then submit again.
+      <% elsif locked_submission_count.to_i.positive? && editable_row_count.to_i.zero? %>
+        Vertical approval is done. Achievements are locked for this month.
+      <% elsif active_submission_count.to_i.positive? %>
+        Already submitted for approval. Changes are allowed only until vertical approval.
+      <% else %>
+        Save as draft, or submit for approval when ready.
+      <% end %>
+    </p>
+    <div class="achievement-submit-actions">
+      <%= text_field_tag :submission_remark, nil, class: "remark-input achievement-submit-remark", placeholder: "Remark for approvers (optional)", disabled: submission_candidate_row_count.to_i.zero? %>
+      <%= submit_tag save_label, class: "secondary-button", disabled: editable_row_count.to_i.zero? %>
+      <%= submit_tag submit_label,
+        class: "submit-plan-button",
+        disabled: submission_candidate_row_count.to_i.zero? %>
+    </div>
+  </div>
+<% end %>

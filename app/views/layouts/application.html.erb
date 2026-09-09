@@ -36,7 +36,7 @@
             <% if current_user.admin? %>
               <% admin_open = controller_path.in?(%w[admin/employees admin/action_plan_fco_mappings]) %>
               <% pb_controllers = %w[plan_submissions budget_utilizations budget_utilization_reports project_summary_records project_summary_approvals] %>
-              <% ap_controllers = %w[action_plans vertical_action_plans action_plan_records action_plan_reports achievement_approvals project_summary_approval_records] %>
+              <% ap_controllers = %w[action_plans vertical_action_plans action_plan_records action_plan_reports achievement_entries achievement_entry_records achievement_approvals project_summary_approval_records] %>
               <% report_controllers = %w[pis_report_uploads donor_report_uploads fund_report_uploads report_masters report_information project_information_sheets] %>
               <% pb_open = pb_controllers.include?(controller_name) || controller_path == "admin/pb_imports" %>
               <% ap_open = ap_controllers.include?(controller_name) || controller_path == "admin/action_plan_imports" %>
@@ -117,6 +117,14 @@
                   <%= link_to action_plan_records_path, class: controller_name == "action_plan_records" ? "side-link active" : "side-link" do %>
                     <span class="side-icon">R</span>
                     <span>Vertical Action Plan Record</span>
+                  <% end %>
+                  <%= link_to achievement_entry_path, class: controller_name == "achievement_entries" ? "side-link active" : "side-link", data: { turbo: false } do %>
+                    <span class="side-icon">E</span>
+                    <span>Achievement Entry</span>
+                  <% end %>
+                  <%= link_to achievement_entry_records_path, class: controller_name == "achievement_entry_records" ? "side-link active" : "side-link" do %>
+                    <span class="side-icon">N</span>
+                    <span>Achievement Entry Record</span>
                   <% end %>
                   <%= link_to achievement_approvals_path(stage: default_achievement_approval_stage), class: controller_name == "achievement_approvals" ? "side-link active" : "side-link" do %>
                     <span class="side-icon">A</span>

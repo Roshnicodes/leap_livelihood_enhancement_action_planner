@@ -12,7 +12,8 @@ class AchievementEntryRecordsController < ApplicationController
     [ "Saved Draft", "draft" ],
     [ "Pending Approval", "pending" ],
     [ "Approved", "approved" ],
-    [ "Returned", "returned" ]
+    [ "Returned", "returned" ],
+    [ "Replaced after MIS Edit", "superseded" ]
   ].freeze
 
   def index
@@ -159,7 +160,7 @@ class AchievementEntryRecordsController < ApplicationController
 
   def achievement_record_status_key(submission)
     return "draft" if submission.blank?
-    return submission.status if submission.returned? || submission.approved?
+    return submission.status if submission.returned? || submission.approved? || submission.superseded?
 
     "pending"
   end

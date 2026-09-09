@@ -220,12 +220,22 @@ class ActionPlanStatusReport
       .distinct
       .order(:statte, :user_name, :user_id)
       .pluck(:statte, :user_id, :user_name)
-      .group_by { |state, fco_id, _fco_name| [ state, ActionPlanFcoGroup.canonical_id(fco_id) ] }
-      .map do |(state, canonical_id), rows|
+      .group_by { |_state, fco_id, _fco_name| ActionPlanFcoGroup.canonical_id(fco_id) }
+      .map do |canonical_id, rows|
+        state = rows.map(&:first).compact_blank.uniq.sort.join(", ")
         ids = rows.flat_map { |_row_state, fco_id, _fco_name| ActionPlanFcoGroup.ids_for(fco_id) }.uniq
-        [ state, canonical_id, ActionPlanFcoGroup.name_for(canonical_id, rows.first.third), ids ]
+        [ state, canonical_id, ActionPlanFcoGroup.name_for(canonical_id, preferred_fco_name(rows)), ids ]
       end
       .sort_by { |state, _fco_id, fco_name, _ids| [ state.to_s, fco_name.to_s ] }
+  end
+
+  def preferred_fco_name(rows)
+    rows
+      .map(&:third)
+      .compact_blank
+      .tally
+      .max_by { |name, count| [ count, name ] }
+      &.first
   end
 
   def achievement_submissions

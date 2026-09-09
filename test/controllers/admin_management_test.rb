@@ -132,6 +132,20 @@ class AdminManagementTest < ActionDispatch::IntegrationTest
     assert_not ActionPlanFcoMapping.ensure_for_employee(employee).exists?
   end
 
+  test "fco admin page shows one checkbox for one fco id" do
+    employee = Employee.create!(employee_code: "1002A", name: "FCO Option Employee")
+    ActionPlanRow.create!(po_id: "PO-2A", project_name: "Betul Project", user_id: "7", user_name: "Betul-FCO")
+    ActionPlanRow.create!(po_id: "PO-2B", project_name: "FI Project", user_id: "28", user_name: "Betul-FCO")
+    ActionPlanRow.create!(po_id: "PO-2C", project_name: "FI Project 2", user_id: "28", user_name: "Pakur - FCO")
+
+    get admin_action_plan_fco_mapping_path(employee_id: employee.id)
+
+    assert_response :success
+    assert_select "input[type=checkbox][value='28']", 1
+    assert_select ".fco-check-card strong", text: "Financial Inclusion", count: 1
+    assert_select ".fco-check-card strong", text: "Betul-FCO", count: 1
+  end
+
   test "action plan import page shows main file rows and disables without deleting" do
     row = ActionPlanRow.create!(
       po_id: "PO-2",

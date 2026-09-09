@@ -1,5 +1,5 @@
 class AchievementSubmission < ApplicationRecord
-  STATUSES = %w[pending approved returned].freeze
+  STATUSES = %w[pending approved returned superseded].freeze
   STAGES = %w[vertical po coo director complete].freeze
 
   belongs_to :employee
@@ -89,6 +89,10 @@ class AchievementSubmission < ApplicationRecord
     status == "returned"
   end
 
+  def superseded?
+    status == "superseded"
+  end
+
   def locked_for_fco_edit?
     vertical_reviewed_at.present? && !returned?
   end
@@ -96,6 +100,7 @@ class AchievementSubmission < ApplicationRecord
   def status_label
     return "Approved" if approved?
     return "Returned" if returned?
+    return "Replaced after MIS Edit" if superseded?
 
     {
       "vertical" => "Pending Vertical Approval",

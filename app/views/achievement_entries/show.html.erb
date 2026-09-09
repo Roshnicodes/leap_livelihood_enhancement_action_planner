@@ -3,25 +3,33 @@
 
 <section class="page-header achievement-header">
   <div>
-    <p class="eyebrow">FCO Workspace</p>
+    <p class="eyebrow"><%= current_user.admin? ? "MIS Workspace" : "FCO Workspace" %></p>
     <h1>Achievement Entry</h1>
-    <p class="muted">Select TO, project and month to update field achievements against action plan targets.</p>
+    <p class="muted">
+      <% if current_user.admin? %>
+        Select FCO, TO, project and month to correct achievement entries.
+      <% else %>
+        Select TO, project and month to update field achievements against action plan targets.
+      <% end %>
+    </p>
   </div>
   <div class="header-card">
     <span>FCO</span>
-    <strong><%= @fco_display_mappings.size %></strong>
+    <strong><%= current_user.admin? ? (@selected_fco_id.present? ? 1 : @fco_options.size) : @fco_display_mappings.size %></strong>
   </div>
 </section>
 
-<section class="achievement-context">
-  <% @fco_display_mappings.each do |mapping| %>
-    <article>
-      <span>Mapped FCO</span>
-      <strong><%= mapping[:fco_name] %></strong>
-      <small>ID <%= mapping[:fco_id] %></small>
-    </article>
-  <% end %>
-</section>
+<% if @fco_display_mappings.present? %>
+  <section class="achievement-context">
+    <% @fco_display_mappings.each do |mapping| %>
+      <article>
+        <span><%= current_user.admin? ? "Selected FCO" : "Mapped FCO" %></span>
+        <strong><%= mapping[:fco_name] %></strong>
+        <small>ID <%= mapping[:fco_id] %></small>
+      </article>
+    <% end %>
+  </section>
+<% end %>
 
 <% if @open_returned_submissions.present? %>
   <section class="table-panel achievement-return-panel">
@@ -48,6 +56,7 @@
         </thead>
         <tbody>
           <% @open_returned_submissions.each do |submission| %>
+            <% modal_id = "achievement-return-entry-#{submission.id}" %>
             <tr>
               <td><strong><%= submission.project_name %></strong></td>
               <td>
@@ -68,8 +77,9 @@
               <td class="achievement-return-remark"><%= simple_format(submission.returned_remark.presence || "-", class: "muted") %></td>
               <td>
                 <%= link_to "Open Entry",
-                  achievement_entry_path(to_id: submission.to_id, project: submission.project_name, month: submission.month),
-                  class: "approval-review-button achievement-open-return-link" %>
+                  achievement_entry_path({ to_id: submission.to_id, project: submission.project_name, month: submission.month }.merge(current_user.admin? ? { fco_id: @selected_fco_id } : {})),
+                  class: "approval-review-button achievement-open-return-link",
+                  data: { open_returned_achievement_modal: modal_id } %>
               </td>
             </tr>
           <% end %>
@@ -77,6 +87,80 @@
       </table>
     </div>
   </section>
+
+  <% @open_returned_submissions.each do |submission| %>
+    <% context = @returned_entry_contexts[submission.id] %>
+    <% next if context.blank? || context[:rows].blank? %>
+    <% modal_id = "achievement-return-entry-#{submission.id}" %>
+    <section id="<%= modal_id %>" class="activity-modal is-hidden achievement-return-entry-modal" data-returned-achievement-modal aria-hidden="true">
+      <div class="activity-modal-backdrop" data-close-returned-achievement-modal></div>
+      <div class="activity-modal-panel achievement-return-entry-panel" role="dialog" aria-modal="true" aria-labelledby="<%= modal_id %>-title">
+        <div class="activity-modal-heading">
+          <div>
+            <p class="eyebrow">Returned Achievement</p>
+            <h2 id="<%= modal_id %>-title"><%= submission.project_name %></h2>
+            <p class="muted"><%= ActionPlanFcoGroup.name_for(submission.fco_id, submission.fco_name) %> • <%= submission.to_name %> • <%= submission.month.capitalize %></p>
+          </div>
+          <button type="button" class="modal-close-button" data-close-returned-achievement-modal aria-label="Close entry">×</button>
+        </div>
+        <div class="achievement-return-entry-body">
+          <%= render "entry_form",
+            rows: context[:rows],
+            selected_to_id: context[:selected_to_id],
+            selected_to_label: context[:selected_to_label],
+            selected_project: context[:selected_project],
+            selected_month: context[:selected_month],
+            target_rows_count: context[:target_rows_count],
+            entry_details_by_row_id: context[:entry_details_by_row_id],
+            locked_submission_row_ids: context[:locked_submission_row_ids],
+            editable_row_count: context[:editable_row_count],
+            submission_candidate_row_count: context[:submission_candidate_row_count],
+            locked_submission_count: context[:locked_submission_count],
+            active_submission_count: context[:active_submission_count],
+            selected_returned_submissions: context[:selected_returned_submissions],
+            selected_fco_id: @selected_fco_id,
+            mode_label: current_user.admin? ? "MIS Excel Edit" : "Achievement Entry",
+            save_label: current_user.admin? ? "Save Changes" : "Save Draft",
+            submit_label: "Submit for Approval",
+            form_class: "achievement-entry-panel achievement-return-modal-form",
+            form_id: "achievement-return-form-#{submission.id}",
+            field_id_prefix: "achievement_return_#{submission.id}" %>
+        </div>
+      </div>
+    </section>
+  <% end %>
+
+  <script>
+    (() => {
+      function closeReturnedAchievementModals() {
+        document.querySelectorAll("[data-returned-achievement-modal]").forEach((modal) => {
+          modal.classList.add("is-hidden");
+          modal.setAttribute("aria-hidden", "true");
+        });
+      }
+
+      document.querySelectorAll("[data-open-returned-achievement-modal]").forEach((trigger) => {
+        trigger.addEventListener("click", (event) => {
+          const modal = document.getElementById(trigger.dataset.openReturnedAchievementModal);
+          if (!modal) return;
+
+          event.preventDefault();
+          closeReturnedAchievementModals();
+          modal.classList.remove("is-hidden");
+          modal.setAttribute("aria-hidden", "false");
+          modal.querySelector("input:not([type='hidden']):not([disabled]), textarea:not([disabled]), button:not([disabled])")?.focus({ preventScroll: true });
+        });
+      });
+
+      document.querySelectorAll("[data-close-returned-achievement-modal]").forEach((trigger) => {
+        trigger.addEventListener("click", closeReturnedAchievementModals);
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") closeReturnedAchievementModals();
+      });
+    })();
+  </script>
 <% end %>
 
 <section class="toolbar achievement-toolbar records-filter-toolbar">
@@ -85,6 +169,28 @@
         local: true,
         class: "achievement-filter-form",
         html: { autocomplete: "off", "data-achievement-filters": true } do |form| %>
+    <% if current_user.admin? %>
+      <label>
+        <span class="filter-label">Choose Project</span>
+        <%= form.select :project,
+          options_for_select(@project_options.map { |project| [project, project] }, @selected_project.to_s),
+          { prompt: "Select Project" },
+          class: "select",
+          autocomplete: "off",
+          data: { filter: "project" } %>
+      </label>
+
+      <label>
+        <span class="filter-label">Choose FCO</span>
+        <%= form.select :fco_id,
+          options_for_select(@fco_options, @selected_fco_id.to_s),
+          { prompt: "Select FCO" },
+          class: "select",
+          autocomplete: "off",
+          data: { filter: "fco" } %>
+      </label>
+    <% end %>
+
     <label>
       <span class="filter-label">Choose TO</span>
       <%= form.select :to_id,
@@ -95,15 +201,17 @@
         data: { filter: "to" } %>
     </label>
 
-    <label>
-      <span class="filter-label">Choose Project</span>
-      <%= form.select :project,
-        options_for_select(@project_options.map { |project| [project, project] }, @selected_project.to_s),
-        { prompt: "Select Project" },
-        class: "select",
-        autocomplete: "off",
-        data: { filter: "project" } %>
-    </label>
+    <% unless current_user.admin? %>
+      <label>
+        <span class="filter-label">Choose Project</span>
+        <%= form.select :project,
+          options_for_select(@project_options.map { |project| [project, project] }, @selected_project.to_s),
+          { prompt: "Select Project" },
+          class: "select",
+          autocomplete: "off",
+          data: { filter: "project" } %>
+      </label>
+    <% end %>
 
     <label>
       <span class="filter-label">Choose Month</span>
@@ -117,7 +225,28 @@
   <% end %>
   <% if @rows.present? %>
     <div class="toolbar-actions">
-      <%= link_to "Download Excel Sheet", achievement_entry_path(request.query_parameters.merge(format: :xlsx)), class: "secondary-button" %>
+      <%= link_to current_user.admin? ? "Download Excel Format" : "Download Excel Sheet",
+        achievement_entry_path(request.query_parameters.merge(format: :xlsx)),
+        class: "secondary-button" %>
+      <% if current_user.admin? %>
+        <%= form_with url: import_excel_achievement_entry_path,
+          method: :post,
+          local: true,
+          html: { multipart: true },
+          class: "achievement-excel-upload-form" do %>
+          <%= hidden_field_tag :fco_id, @selected_fco_id %>
+          <%= hidden_field_tag :to_id, @selected_to_id %>
+          <%= hidden_field_tag :project, @selected_project %>
+          <%= hidden_field_tag :month, @selected_month %>
+          <label>
+            <span class="filter-label">Upload Edited Excel</span>
+            <%= file_field_tag :achievement_excel_file,
+              accept: ".xlsx,.csv",
+              class: "input achievement-excel-file-input" %>
+          </label>
+          <%= submit_tag "Upload Excel", class: "secondary-button" %>
+        <% end %>
+      <% end %>
     </div>
   <% end %>
 </section>
@@ -127,22 +256,31 @@
     const form = document.querySelector("[data-achievement-filters]");
     if (!form) return;
 
+    const fcoSelect = form.querySelector('[data-filter="fco"]');
     const toSelect = form.querySelector('[data-filter="to"]');
     const projectSelect = form.querySelector('[data-filter="project"]');
     const monthSelect = form.querySelector('[data-filter="month"]');
+    const adminEntry = <%= current_user.admin? ? "true" : "false" %>;
 
     function submitFilters() {
       form.submit();
     }
 
+    fcoSelect?.addEventListener("change", () => {
+      if (toSelect) toSelect.value = "";
+      if (monthSelect) monthSelect.value = "";
+      submitFilters();
+    });
+
     toSelect?.addEventListener("change", () => {
       // Changing TO should reset project/month so old values don't stick.
-      if (projectSelect) projectSelect.value = "";
+      if (!adminEntry && projectSelect) projectSelect.value = "";
       if (monthSelect) monthSelect.value = "";
       submitFilters();
     });
 
     projectSelect?.addEventListener("change", () => {
+      if (toSelect) toSelect.value = "";
       if (monthSelect) monthSelect.value = "";
       submitFilters();
     });
@@ -152,175 +290,32 @@
 </script>
 
 <% if @rows.present? %>
-  <%= form_with url: achievement_entry_path,
-        method: :patch,
-        class: "table-panel achievement-entry-panel",
-        html: { multipart: true } do %>
-    <%= hidden_field_tag :to_id, @selected_to_id %>
-    <%= hidden_field_tag :project, @selected_project %>
-    <%= hidden_field_tag :month, @selected_month %>
-
-    <div class="table-heading">
-      <div>
-        <p class="eyebrow">Achievement Entry</p>
-        <h2><%= @selected_project %> • <%= @selected_month.capitalize %></h2>
-        <p class="muted">
-          <%= @to_options.assoc(@selected_to_id)&.first %>
-          • Total Activity Target: <strong><%= @target_rows_count %></strong>
-          <% if @selected_returned_submissions.present? %>
-            • Returned for correction
-          <% elsif @locked_submission_count.to_i.positive? && @submission_candidate_row_count.to_i.zero? %>
-            • Locked after vertical approval
-          <% elsif @active_submission_count.to_i.positive? %>
-            • Submitted for approval
-          <% end %>
-        </p>
-        <p class="achievement-legend">
-          <span class="achievement-legend-dot"></span>
-          Highlighted activities have a target greater than 0
-        </p>
-      </div>
-      <div class="table-actions">
-        <input type="search" class="table-search" placeholder="Search activities" data-table-search-input>
-        <span class="table-count" data-filtered-count data-count-label="activities"><%= @rows.size %> activities</span>
-      </div>
-    </div>
-
-    <% if @selected_returned_submissions.present? %>
-      <div class="achievement-return-alert">
-        <div class="achievement-return-alert-heading">
-          <span class="status-badge status-returned">Returned</span>
-          <div>
-            <strong>Correction Required</strong>
-            <p class="muted">Update the returned achievement details and submit again.</p>
-          </div>
-        </div>
-        <div class="achievement-return-alert-list">
-          <% @selected_returned_submissions.each do |submission| %>
-            <article>
-              <strong>
-                <%= submission.returned_by&.name || submission.returned_stage.to_s.titleize %>
-                <% if submission.returned_at.present? %>
-                  • <%= format_record_datetime(submission.returned_at) %>
-                <% end %>
-              </strong>
-              <p><%= submission.state_code %> / <%= submission.theme_label %></p>
-              <%= simple_format(submission.returned_remark.presence || "-", class: "achievement-return-note") %>
-            </article>
-          <% end %>
-        </div>
-      </div>
-    <% end %>
-
-    <div class="responsive-table achievement-table-wrap" data-searchable-table>
-      <table class="action-plan-table achievement-entry-table">
-        <thead>
-          <tr>
-            <th>S.No.</th>
-            <th>Project</th>
-            <th>TO</th>
-            <th>ASA Theme ID / ASA Theme</th>
-            <th>ASA Activity ID / ASA Activity</th>
-            <th>Project Activity</th>
-            <th>Unit</th>
-            <th><%= @selected_month.capitalize %> Target</th>
-            <th><%= @selected_month.capitalize %> Achievement</th>
-            <th>Means of Verification</th>
-            <th>Remark</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% locked_row_ids = @locked_submission_row_ids || [] %>
-          <% @rows.each_with_index do |row, index| %>
-            <% month_target = row.public_send(@selected_month).to_i %>
-            <% has_target = month_target.positive? %>
-            <% detail = @entry_details_by_row_id[row.id] %>
-            <% row_locked = locked_row_ids.include?(row.id) %>
-            <tr class="<%= "achievement-row-has-target" if has_target %>">
-              <td><span class="code-pill"><%= index + 1 %></span></td>
-              <td><strong><%= row.project_name %></strong></td>
-              <td>
-                <span class="code-pill"><%= row.to_id %></span>
-                <div><%= row.to_name %></div>
-              </td>
-              <td>
-                <span class="code-pill"><%= action_plan_cell(row.asa_theme_id, decimal: true) %></span>
-                <div><%= row.asa_theme %></div>
-              </td>
-              <td>
-                <span class="code-pill"><%= action_plan_cell(row.asa_activity_id, decimal: true) %></span>
-                <div><%= row.asa_activity_name %></div>
-              </td>
-              <td><%= row.activity.presence || row.activity_id.presence || "-" %></td>
-              <td><%= row.unit_type.presence || "-" %></td>
-              <td class="achievement-target-cell <%= "has-target" if has_target %>">
-                <span class="achievement-target-pill" <%= raw('style="color:#ffffff;-webkit-text-fill-color:#ffffff;"') if has_target %>><%= whole_number(month_target) %></span>
-              </td>
-              <td class="achievement-input-cell <%= "has-target" if has_target %>">
-                <%= number_field_tag "achievements[#{row.id}]",
-                  row.public_send(achievement_column),
-                  min: 0,
-                  step: 1,
-                  class: "achievement-input #{'is-priority' if has_target}",
-                  disabled: row_locked,
-                  aria: { label: "#{@selected_month.capitalize} achievement for #{row.asa_activity_name.presence || row.activity}" } %>
-              </td>
-              <td class="achievement-file-cell">
-                <div class="achievement-file-stack" data-file-stack>
-                  <% if detail&.files&.attached? %>
-                    <%= render "shared/attachment_previews",
-                      attachments: detail.files.attachments,
-                      removable: !row_locked %>
-                  <% end %>
-                  <div class="achievement-local-previews" data-local-file-previews></div>
-                  <%= file_field_tag "files[#{row.id}][]",
-                    multiple: true,
-                    disabled: row_locked,
-                    class: "achievement-file-input",
-                    data: { local_file_input: true },
-                    aria: { label: "Upload supporting files for #{row.asa_activity_name.presence || row.activity}" } %>
-                  <small class="muted">Any file type • preview on select • Save Draft to keep • max 10 / 50 MB</small>
-                </div>
-              </td>
-              <td class="achievement-remark-cell">
-                <%= text_area_tag "remarks[#{row.id}]",
-                  detail&.remark,
-                  rows: 2,
-                  class: "achievement-remark-input",
-                  disabled: row_locked,
-                  placeholder: "Remark",
-                  aria: { label: "Remark for #{row.asa_activity_name.presence || row.activity}" } %>
-              </td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
-    </div>
-
-    <div class="submit-panel achievement-submit-panel">
-      <p class="muted">
-        <% if @selected_returned_submissions.present? && @submission_candidate_row_count.to_i.positive? %>
-          This request was returned. Update values, remarks or files, then submit again.
-        <% elsif @locked_submission_count.to_i.positive? && @editable_row_count.to_i.zero? %>
-          Vertical approval is done. Achievements are locked for this month.
-        <% elsif @active_submission_count.to_i.positive? %>
-          Already submitted for approval. Changes are allowed only until vertical approval.
-        <% else %>
-          Save as draft, or submit for approval when ready.
-        <% end %>
-      </p>
-      <div class="achievement-submit-actions">
-        <%= text_field_tag :submission_remark, nil, class: "remark-input achievement-submit-remark", placeholder: "Remark for approvers (optional)", disabled: @submission_candidate_row_count.to_i.zero? %>
-        <%= submit_tag "Save Draft", class: "secondary-button", disabled: @editable_row_count.to_i.zero? %>
-        <%= submit_tag "Submit for Approval",
-          class: "submit-plan-button",
-          disabled: @submission_candidate_row_count.to_i.zero? %>
-      </div>
-    </div>
-  <% end %>
+  <%= render "entry_form",
+    rows: @rows,
+    selected_to_id: @selected_to_id,
+    selected_to_label: @to_options.assoc(@selected_to_id)&.first,
+    selected_project: @selected_project,
+    selected_month: @selected_month,
+    target_rows_count: @target_rows_count,
+    entry_details_by_row_id: @entry_details_by_row_id,
+    locked_submission_row_ids: @locked_submission_row_ids,
+    editable_row_count: @editable_row_count,
+    submission_candidate_row_count: @submission_candidate_row_count,
+    locked_submission_count: @locked_submission_count,
+    active_submission_count: @active_submission_count,
+    selected_returned_submissions: @selected_returned_submissions,
+    selected_fco_id: @selected_fco_id,
+    mode_label: current_user.admin? ? "MIS Excel Edit" : "Achievement Entry",
+    save_label: current_user.admin? ? "Save Changes" : "Save Draft",
+    submit_label: "Submit for Approval",
+    form_class: "table-panel achievement-entry-panel#{' achievement-excel-edit-panel' if current_user.admin?}",
+    field_id_prefix: "achievement_entry_page" %>
 <% else %>
   <section class="empty-state">
-    <% if @selected_to_id.blank? %>
+    <% if current_user.admin? && @selected_fco_id.blank? %>
+      <h2>Select FCO</h2>
+      <p class="muted">Choose an FCO first, then TO, project and month.</p>
+    <% elsif @selected_to_id.blank? %>
       <h2>Select TO</h2>
       <p class="muted">Choose a TO first, then project and month.</p>
     <% elsif @selected_project.blank? %>

@@ -102,6 +102,14 @@ class AchievementReturnFlowTest < ActionDispatch::IntegrationTest
     assert_select ".achievement-return-panel"
     assert_includes response.body, "Achievement Return Project"
     assert_includes response.body, "Please correct evidence"
+    assert_select "a.achievement-open-return-link[href=?][data-open-returned-achievement-modal]", achievement_entry_path(to_id: @row.to_id, project: @row.project_name, month: "apr"), 1
+    assert_select ".achievement-return-entry-modal", 1
+    assert_select ".achievement-return-entry-modal input[name=?][value=?]", "to_id", @row.to_id
+    assert_select ".achievement-return-entry-modal input[name=?][value=?]", "project", @row.project_name
+    assert_select ".achievement-return-entry-modal input[name=?][value=?]", "month", "apr"
+    assert_select ".achievement-return-entry-modal input[name=?]", "achievements[#{@row.id}]"
+    assert_select ".achievement-return-entry-modal textarea[name=?]", "remarks[#{@row.id}]"
+    assert_select ".achievement-return-entry-modal input[type='submit'][value='Submit for Approval'][disabled]", 0
 
     get achievement_entry_records_path(status: "returned")
 

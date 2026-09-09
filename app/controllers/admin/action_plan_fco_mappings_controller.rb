@@ -26,8 +26,11 @@ module Admin
 
     def update
       @selected_employee = Employee.find(params[:employee_id])
-      selected_fco_ids = Array(params[:fco_ids]).map(&:to_s).map(&:squish).compact_blank.uniq
-      fcos_by_id = ActionPlanFcoMapping.action_plan_fcos.index_by { |fco| fco[:fco_id] }
+      selected_fco_ids = Array(params[:fco_ids])
+        .map { |fco_id| ActionPlanFcoMapping.normalize_fco_id(fco_id) }
+        .compact_blank
+        .uniq
+      fcos_by_id = ActionPlanFcoMapping.action_plan_fcos_by_id
 
       ActionPlanFcoMapping.transaction do
         existing_mappings = @selected_employee.action_plan_fco_mappings
@@ -68,8 +71,7 @@ module Admin
     end
 
     def create
-      mapping = ActionPlanFcoMapping.new
-      save_mapping!(mapping)
+      mapping = save_mapping!(ActionPlanFcoMapping.new)
 
       redirect_to admin_action_plan_fco_mapping_path(employee_id: mapping.employee_id),
         notice: "#{mapping.employee&.name} FCO access added."
@@ -80,7 +82,7 @@ module Admin
     end
 
     def update_mapping
-      save_mapping!(@mapping)
+      @mapping = save_mapping!(@mapping)
 
       redirect_to admin_action_plan_fco_mapping_path(employee_id: @mapping.employee_id),
         notice: "#{@mapping.employee&.name} FCO access updated."
@@ -91,15 +93,16 @@ module Admin
     end
 
     def toggle_active
-      @mapping.update!(active: !@mapping.active?)
-      ActionPlanFcoMapping.enable_login_for!(@mapping.employee) if @mapping.active?
+      active = !@mapping.active?
+      @mapping.update_columns(active: active, updated_at: Time.current)
+      ActionPlanFcoMapping.enable_login_for!(@mapping.employee) if active
 
       redirect_to admin_action_plan_fco_mapping_path(employee_id: @mapping.employee_id),
-        notice: "#{@mapping.fco_name} access #{@mapping.active? ? "enabled" : "disabled"}."
+        notice: "#{@mapping.fco_name} access #{active ? "enabled" : "disabled"}."
     end
 
     def destroy
-      @mapping.update!(active: false)
+      @mapping.update_columns(active: false, updated_at: Time.current)
 
       redirect_to admin_action_plan_fco_mapping_path(employee_id: @mapping.employee_id),
         notice: "#{@mapping.employee&.name} - #{@mapping.fco_name} access disabled."
@@ -111,7 +114,7 @@ module Admin
       @employees = Employee.order(:name)
       @selected_employee = selected_employee
       @fco_options = ActionPlanFcoMapping.action_plan_fcos
-      @selected_fco_ids = @selected_employee ? @selected_employee.action_plan_fco_mappings.active.pluck(:fco_id) : []
+      @selected_fco_ids = selected_fco_ids_for(@selected_employee)
       @mapping_rows = ActionPlanFcoMapping
         .joins(:employee)
         .includes(:employee)
@@ -126,6 +129,17 @@ module Admin
       return Employee.find_by(id: params[:employee_id]) if params[:employee_id].present?
 
       Employee.order(:name).first
+    end
+
+    def selected_fco_ids_for(employee)
+      return [] if employee.blank?
+
+      employee
+        .action_plan_fco_mappings
+        .active
+        .pluck(:fco_id)
+        .map { |fco_id| ActionPlanFcoMapping.normalize_fco_id(fco_id) }
+        .uniq
     end
 
     def fco_mappings_csv
@@ -171,15 +185,29 @@ module Admin
     def save_mapping!(mapping)
       attributes = fco_mapping_params
       employee = Employee.find(attributes.delete(:employee_id))
-      fco = ActionPlanFcoMapping.action_plan_fcos.find { |option| option[:fco_id] == attributes[:fco_id].to_s.squish }
+      fco_id = ActionPlanFcoMapping.normalize_fco_id(attributes.delete(:fco_id))
+      fco = ActionPlanFcoMapping.action_plan_fcos_by_id[fco_id]
+      mapping = editable_mapping(mapping, employee, fco_id)
 
       mapping.assign_attributes(attributes)
       mapping.employee = employee
       mapping.employee_code = employee.employee_code
+      mapping.fco_id = fco_id
       mapping.fco_name = mapping.fco_name.presence || fco&.fetch(:fco_name)
       mapping.active = true
       mapping.save!
       ActionPlanFcoMapping.enable_login_for!(employee)
+      mapping
+    end
+
+    def editable_mapping(mapping, employee, fco_id)
+      return ActionPlanFcoMapping.find_or_initialize_by(employee: employee, fco_id: fco_id) if mapping.new_record?
+
+      duplicate = ActionPlanFcoMapping.where(employee: employee, fco_id: fco_id).where.not(id: mapping.id).first
+      return mapping if duplicate.blank?
+
+      mapping.update_columns(active: false, updated_at: Time.current)
+      duplicate
     end
 
     def fco_mapping_params

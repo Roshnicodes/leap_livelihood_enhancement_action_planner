@@ -43,6 +43,7 @@ Rails.application.routes.draw do
     get :download, on: :collection
   end
   resource :achievement_entry, only: %i[show update] do
+    post :import_excel
     post :submit
   end
   get "achievement_entry_records" => "achievement_entry_records#index"

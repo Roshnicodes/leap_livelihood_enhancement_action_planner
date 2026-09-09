@@ -12,7 +12,7 @@
 </section>
 
 <% editable_records = @record_groups.select { |record| record[:editable] } %>
-<% total_record_rows = @record_groups.sum { |record| record[:rows].size } %>
+<% total_record_rows = @overall_summary&.dig(:total_rows).to_i %>
 
 <% if @show_vertical_filter %>
   <section class="toolbar vertical-filter-toolbar records-filter-toolbar">
@@ -34,10 +34,17 @@
 <% elsif @record_groups.any? %>
   <section class="toolbar records-search-toolbar">
     <input type="search" class="table-search records-global-search" placeholder="Search records" data-global-record-search>
-    <span class="table-count" data-global-record-count data-count-label="activities"><%= total_record_rows %> activities</span>
+    <span class="table-count" data-global-record-count data-count-label="summary rows"><%= total_record_rows %> summary rows</span>
     <% unless @show_vertical_filter %>
       <%= link_to "Download Excel Sheet", project_summary_records_path(request.query_parameters.merge(format: :xlsx)), class: "secondary-button" %>
     <% end %>
+  </section>
+
+  <section class="metric-grid metric-grid-compact project-summary-record-metrics">
+    <article class="metric metric-teal"><span>Projects</span><strong><%= @overall_summary[:total_projects] %></strong></article>
+    <article class="metric metric-ink"><span>Verticals</span><strong><%= @overall_summary[:total_verticals] %></strong></article>
+    <article class="metric metric-rose"><span>No of Activity</span><strong><%= @overall_summary[:total_activity_rows] %></strong></article>
+    <article class="metric metric-blue"><span>Allocated Total</span><strong><%= currency(@overall_summary[:total_amount]) %></strong></article>
   </section>
 
   <% if editable_records.any? %>
@@ -71,6 +78,7 @@
             <tr>
               <th>S.No.</th>
               <th>Project BLI Code</th>
+              <th>P&B Activities</th>
               <th>Project</th>
               <th>ASA Activity</th>
               <th>Project P&B</th>
@@ -95,6 +103,7 @@
                 <% end %>
                 <td><span class="code-pill"><%= index + 1 %></span></td>
                 <td><span class="code-pill"><%= row[:bli_code].presence || "-" %></span></td>
+                <td><span class="code-pill"><%= row[:activity_count].presence || 1 %></span></td>
                 <td><%= row[:project_name].presence || "-" %></td>
                 <td><%= row[:activity_name] %></td>
                 <td><%= row[:vertical_name] %></td>
