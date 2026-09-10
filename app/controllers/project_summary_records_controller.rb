@@ -5,6 +5,20 @@ class ProjectSummaryRecordsController < ApplicationController
   before_action :require_employee_budget_edit_access, only: %i[update bulk_update]
   before_action :set_editable_submission, only: :update
 
+  SOURCE_EXPORT_HEADERS = [
+    "Project ID",
+    "Project Name",
+    "Office Name",
+    "Project Bli Code",
+    "Project_Bli_Name",
+    "Bli Allocated Fund",
+    "ASA Theme ID",
+    "ASA Theme",
+    "ASA Activity ID",
+    "ASA Activity",
+    "Responsible Users"
+  ].freeze
+
   def index
     ProjectSummarySubmissionItem.reset_column_information
 
@@ -181,11 +195,12 @@ class ProjectSummaryRecordsController < ApplicationController
 
       projects.map do |project_name|
         submission = submissions_by_project[project_name]
-        rows = submission ? rows_from_submission(submission, project_name) : calculated_summary_rows(employee, project_name)
-        editable = if submission
-          submission.editable_by?(current_user)
+        editable = record_group_editable?(employee, submission)
+        detailed_rows = detailed_record_rows? && !editable
+        rows = if submission
+          rows_from_submission(submission, project_name, detailed: detailed_rows)
         else
-          current_user.employee_id == employee.id
+          calculated_summary_rows(employee, project_name, detailed: detailed_rows)
         end
 
         {
@@ -273,29 +288,42 @@ class ProjectSummaryRecordsController < ApplicationController
     current_user.admin? || ProjectSummarySubmission.summary_access?(current_user.employee)
   end
 
-  def rows_from_submission(submission, project_name = nil)
-    current_rows = calculated_summary_rows(submission.employee, project_name)
-    saved_items_by_key = submission_items_for(submission, project_name).index_by do |item|
-      [ item.project_name, item.activity_name, item.vertical_name ]
+  def record_group_editable?(employee, submission)
+    return false if privileged_record_view?
+
+    if submission
+      submission.editable_by?(current_user)
+    else
+      current_user.employee_id == employee.id
     end
+  end
+
+  def detailed_record_rows?
+    privileged_record_view?
+  end
+
+  def rows_from_submission(submission, project_name = nil, detailed: false)
+    current_rows = calculated_summary_rows(submission.employee, project_name, detailed: detailed)
+    saved_items_by_key = submission_items_for(submission, project_name).group_by { |item| submission_item_key(item) }
 
     return submitted_rows_without_current_pb(submission, project_name) if current_rows.blank?
+    return merge_submission_items_into_detailed_rows(current_rows, saved_items_by_key) if detailed
 
     current_rows.map do |row|
-      item = saved_items_by_key[[ row[:project_name], row[:activity_name], row[:vertical_name] ]]
-      next row if item.blank?
+      items = saved_items_by_key[row_submission_key(row)]
+      next row if items.blank?
 
       month_amounts = align_month_amounts_to_total(
-        VerticalPercent::MONTH_COLUMNS.index_with { |month| item.public_send(month) },
+        combined_submission_month_amounts(items),
         row[:total_amount]
       )
 
       row.merge(
-        item: item,
+        item: items.first,
         month_amounts: month_amounts,
         month_deltas: month_deltas_for(month_amounts, row[:planned_month_amounts]),
         changed_total: month_amounts.values.sum,
-        remark: item.remark
+        remark: first_submission_remark(items)
       )
     end
   end
@@ -315,6 +343,7 @@ class ProjectSummaryRecordsController < ApplicationController
         bli_code: bli_code_lookup[[ item.project_name, item.activity_name, item.vertical_name ]],
         activity_count: 1,
         total_amount: item.total_amount,
+        bli_allocated_fund: item.total_amount,
         month_amounts: month_amounts,
         planned_month_amounts: planned_month_amounts,
         month_deltas: month_deltas_for(month_amounts, planned_month_amounts),
@@ -330,22 +359,64 @@ class ProjectSummaryRecordsController < ApplicationController
     items
   end
 
-  def calculated_summary_rows(employee, project_name)
-    employee.accessible_bli_activities
-      .select { |activity| activity.project_name == project_name }
-      .group_by { |activity| [ activity.project_name, activity.activity_name, activity.vertical_name ] }
-      .map do |(row_project_name, activity_name, vertical_name), activities|
-        total_amount = activities.sum(&:allocated_fund)
-        bli_codes = activities.map(&:bli_code).compact_blank.uniq
-        percent = VerticalPercent.find_by(vertical_name: vertical_name)
+  def calculated_summary_rows(employee, project_name, detailed: false)
+    activities = employee.accessible_bli_activities.select { |activity| activity.project_name == project_name }
+    return calculated_activity_rows(activities) if detailed
+
+    calculated_grouped_summary_rows(activities)
+  end
+
+  def calculated_activity_rows(activities)
+    sort_summary_rows(
+      activities.map do |activity|
+        total_amount = activity.allocated_fund.to_d
+        percent = vertical_percent_for(activity.vertical_name)
         month_amounts = month_amounts_for(total_amount, percent)
 
         {
           item: nil,
+          source_bli_activity: activity,
+          source_activity_id: activity.id,
+          project_name: activity.project_name,
+          office_name: activity.office_name,
+          activity_name: activity.activity_name,
+          vertical_name: activity.vertical_name,
+          bli_code: activity.bli_code,
+          project_bli_name: activity.name,
+          responsible_user_name: activity.responsible_user_name,
+          bli_allocated_fund: activity.allocated_fund,
+          activity_count: 1,
+          total_amount: total_amount,
+          month_amounts: month_amounts,
+          planned_month_amounts: month_amounts,
+          month_deltas: month_deltas_for(month_amounts, month_amounts),
+          changed_total: month_amounts.values.sum,
+          remark: nil
+        }
+      end
+    )
+  end
+
+  def calculated_grouped_summary_rows(activities)
+    activities
+      .group_by { |activity| [ activity.project_name, activity.activity_name, activity.vertical_name ] }
+      .map do |(row_project_name, activity_name, vertical_name), activities|
+        total_amount = activities.sum { |activity| activity.allocated_fund.to_d }
+        bli_codes = activities.map(&:bli_code).compact_blank.uniq
+        percent = vertical_percent_for(vertical_name)
+        month_amounts = month_amounts_for(total_amount, percent)
+
+        {
+          item: nil,
+          source_bli_activity: activities.first,
           project_name: row_project_name,
+          office_name: aggregate_label(activities.map(&:office_name)),
           activity_name: activity_name,
           vertical_name: vertical_name,
           bli_code: bli_codes.one? ? bli_codes.first : bli_codes.join(", "),
+          project_bli_name: aggregate_label(activities.map(&:name)),
+          responsible_user_name: aggregate_label(activities.map(&:responsible_user_name)),
+          bli_allocated_fund: total_amount,
           activity_count: activities.size,
           total_amount: total_amount,
           month_amounts: month_amounts,
@@ -355,7 +426,88 @@ class ProjectSummaryRecordsController < ApplicationController
           remark: nil
         }
       end
-      .sort_by { |row| [ -row[:total_amount], row[:activity_name].to_s ] }
+      .then { |rows| sort_summary_rows(rows) }
+  end
+
+  def merge_submission_items_into_detailed_rows(current_rows, saved_items_by_key)
+    current_rows
+      .group_by { |row| row_submission_key(row) }
+      .values
+      .flat_map do |activity_rows|
+        items = saved_items_by_key[row_submission_key(activity_rows.first)]
+        next activity_rows if items.blank?
+
+        group_total = activity_rows.sum { |row| row[:total_amount].to_d }
+        group_month_amounts = align_month_amounts_to_total(
+          combined_submission_month_amounts(items),
+          group_total
+        )
+
+        activity_rows.map do |row|
+          month_amounts = proportional_month_amounts(group_month_amounts, row[:total_amount].to_d, group_total)
+
+          row.merge(
+            item: items.first,
+            month_amounts: month_amounts,
+            month_deltas: month_deltas_for(month_amounts, row[:planned_month_amounts]),
+            changed_total: month_amounts.values.sum,
+            remark: first_submission_remark(items)
+          )
+        end
+      end
+  end
+
+  def submission_item_key(item)
+    [ item.project_name, item.activity_name, item.vertical_name ]
+  end
+
+  def row_submission_key(row)
+    [ row[:project_name], row[:activity_name], row[:vertical_name] ]
+  end
+
+  def combined_submission_month_amounts(items)
+    VerticalPercent::MONTH_COLUMNS.index_with do |month|
+      items.sum { |item| item.public_send(month).to_d }
+    end
+  end
+
+  def first_submission_remark(items)
+    items.map(&:remark).compact_blank.first
+  end
+
+  def proportional_month_amounts(month_amounts, row_total, group_total)
+    zero_amounts = VerticalPercent::MONTH_COLUMNS.index_with { BigDecimal("0") }
+    return zero_amounts if group_total.zero?
+
+    scaled = VerticalPercent::MONTH_COLUMNS.index_with do |month|
+      (month_amounts[month].to_d * row_total / group_total).round(2)
+    end
+
+    align_month_amounts_to_total(scaled, row_total)
+  end
+
+  def sort_summary_rows(rows)
+    rows.sort_by do |row|
+      [
+        -row[:total_amount].to_d,
+        row[:activity_name].to_s,
+        row[:bli_code].to_s,
+        row[:source_activity_id].to_i
+      ]
+    end
+  end
+
+  def aggregate_label(values)
+    labels = values.compact_blank.uniq
+    labels.one? ? labels.first : labels.join(", ")
+  end
+
+  def vertical_percent_for(vertical_name)
+    @vertical_percent_cache ||= {}
+    key = vertical_name.to_s
+    @vertical_percent_cache.fetch(key) do
+      @vertical_percent_cache[key] = VerticalPercent.find_by(vertical_name: vertical_name)
+    end
   end
 
   def align_month_amounts_to_total(month_amounts, total_amount)
@@ -388,7 +540,7 @@ class ProjectSummaryRecordsController < ApplicationController
   end
 
   def planned_month_amounts_for(total_amount, vertical_name)
-    month_amounts_for(total_amount, VerticalPercent.find_by(vertical_name: vertical_name))
+    month_amounts_for(total_amount, vertical_percent_for(vertical_name))
   end
 
   def month_deltas_for(month_amounts, planned_month_amounts)
@@ -532,6 +684,7 @@ class ProjectSummaryRecordsController < ApplicationController
   def project_summary_records_csv
     CSV.generate(headers: true) do |csv|
       csv << [
+        *SOURCE_EXPORT_HEADERS,
         "Project",
         "Employee",
         "Status",
@@ -548,14 +701,27 @@ class ProjectSummaryRecordsController < ApplicationController
 
       @record_groups.each do |record|
         record[:rows].each do |row|
+          metadata = export_metadata_for(row)
+
           csv << [
+            metadata[:project_id],
+            row[:project_name],
+            metadata[:office_name],
+            metadata[:project_bli_code],
+            metadata[:project_bli_name],
+            metadata[:bli_allocated_fund],
+            metadata[:asa_theme_id],
+            metadata[:asa_theme],
+            metadata[:asa_activity_id],
+            metadata[:asa_activity],
+            metadata[:responsible_user_name],
             record[:project_name],
             record[:employee].name,
             record[:status_label],
             helpers.format_record_datetime(record[:submitted_at]),
-            row[:bli_code],
+            metadata[:project_bli_code],
             summary_activity_count(row),
-            row[:activity_name],
+            metadata[:asa_activity],
             row[:vertical_name],
             row[:total_amount],
             *VerticalPercent::MONTH_COLUMNS.map { |month| row[:month_amounts][month] },
@@ -565,5 +731,96 @@ class ProjectSummaryRecordsController < ApplicationController
         end
       end
     end
+  end
+
+  def export_metadata_for(row)
+    activity = row[:source_bli_activity] || source_activity_for(row[:project_name], row[:activity_name], row[:vertical_name])
+    action_plan_details = action_plan_details_for(row)
+
+    {
+      project_id: project_id_for(row[:project_name]),
+      office_name: row[:office_name].presence || activity&.office_name,
+      project_bli_code: row[:bli_code].presence || activity&.bli_code,
+      project_bli_name: row[:project_bli_name].presence || activity&.name,
+      bli_allocated_fund: row[:bli_allocated_fund].presence || activity&.allocated_fund || row[:total_amount],
+      asa_theme_id: action_plan_details[:asa_theme_id],
+      asa_theme: action_plan_details[:asa_theme],
+      asa_activity_id: action_plan_details[:asa_activity_id],
+      asa_activity: action_plan_details[:asa_activity],
+      responsible_user_name: row[:responsible_user_name].presence || activity&.responsible_user_name
+    }
+  end
+
+  def source_activity_for(project_name, activity_name, vertical_name)
+    source_activity_cache.fetch([ project_name.to_s, activity_name.to_s, vertical_name.to_s ]) do |key|
+      source_activity_cache[key] = BliActivity.active.find_by(
+        project_name: project_name,
+        activity_name: activity_name,
+        vertical_name: vertical_name
+      )
+    end
+  end
+
+  def source_activity_cache
+    @source_activity_cache ||= {}
+  end
+
+  def action_plan_details_for(row)
+    activity_match, theme_match = action_plan_matches_for(row[:project_name], row[:activity_name], row[:vertical_name])
+
+    {
+      asa_theme_id: ActionPlanRow.format_decimal_string(theme_match&.asa_theme_id).presence,
+      asa_theme: theme_match&.asa_theme.presence || row[:vertical_name],
+      asa_activity_id: ActionPlanRow.format_decimal_string(activity_match&.asa_activity_id).presence,
+      asa_activity: activity_match&.asa_activity_name.presence || row[:activity_name]
+    }
+  end
+
+  def action_plan_matches_for(project_name, activity_name, vertical_name)
+    activity_key = ActionPlanText.group_key(activity_name)
+    vertical_key = ActionPlanText.group_key(vertical_name)
+    rows = action_plan_rows_for_project(project_name)
+
+    activity_match = rows.find do |row|
+      activity_key.present? && [ row.asa_activity_name, row.activity ].any? { |value| ActionPlanText.group_key(value) == activity_key }
+    end
+
+    theme_match = activity_match || rows.find do |row|
+      vertical_key.present? && [ row.asa_theme, row.theme ].any? { |value| ActionPlanText.group_key(value) == vertical_key }
+    end
+
+    [ activity_match, theme_match ]
+  end
+
+  def action_plan_rows_for_project(project_name)
+    action_plan_rows_by_project.fetch(project_name.to_s) do |key|
+      action_plan_rows_by_project[key] = ActionPlanRow.active_import
+        .where(project_name: project_name)
+        .select(:project_id, :asa_theme_id, :asa_theme, :asa_activity_id, :asa_activity_name, :theme, :activity)
+        .order(:id)
+        .to_a
+    end
+  end
+
+  def action_plan_rows_by_project
+    @action_plan_rows_by_project ||= {}
+  end
+
+  def project_id_for(project_name)
+    normalized_name = project_name.to_s.squish
+    return if normalized_name.blank?
+
+    project_id_cache.fetch(normalized_name) do |key|
+      project_id_cache[key] =
+        ProjectInformationSheet
+          .where("LOWER(project_title) = :project OR LOWER(project_id) = :project", project: key.downcase)
+          .pick(:project_id) ||
+        ActionPlanRow.active_import.where(project_name: key).where.not(project_id: [ nil, "" ]).pick(:project_id) ||
+        ProjectOwnership.active.where(project_name: key).pick(:po_id)
+    end
+  end
+
+  def project_id_cache
+    @project_id_cache ||= {}
   end
 end
