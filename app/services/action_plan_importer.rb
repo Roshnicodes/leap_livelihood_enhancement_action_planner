@@ -182,7 +182,7 @@ class ActionPlanImporter
       end
       target_values = TARGET_MONTH_COLUMNS.index_with do |month|
         label = month.delete_suffix("_t").capitalize
-        integer_value(row, "#{label}_T", "#{label} Achievement", "#{label}_Achievement")
+        decimal_value(row, "#{label}_T", "#{label} Achievement", "#{label}_Achievement")
       end
 
       {
@@ -306,6 +306,10 @@ class ActionPlanImporter
     Integer(value(row, *headers).presence || 0)
   rescue ArgumentError
     0
+  end
+
+  def decimal_value(row, *headers)
+    BigDecimal(value(row, *headers).to_s.delete(",").presence || "0", exception: false)&.round(2) || 0.to_d
   end
 
   def original_month_values(month_values)

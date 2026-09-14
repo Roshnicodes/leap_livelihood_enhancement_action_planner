@@ -27,7 +27,7 @@
     <% rows.each do |row| %>
       <% visible_target_total = month_display_pairs.sum { |pair| row.public_send(pair[:target_column]).to_i } %>
       <% visible_planned_total = month_display_pairs.sum { |pair| row.public_send("original_#{pair[:target_column]}").to_i } %>
-      <% visible_achievement_total = month_display_pairs.sum { |pair| row.public_send(pair[:achievement_column]).to_i } %>
+      <% visible_achievement_total = month_display_pairs.sum { |pair| row.public_send(pair[:achievement_column]).to_d } %>
       <tr data-plan-row data-planned-total="<%= visible_planned_total %>">
         <% row_project_ownership = if show_admin_columns
           project_ownership_lookup["po_project:#{row.po_id}:#{ProjectOwnership.normalize_project_key(row.project_name)}"] ||
@@ -59,14 +59,14 @@
             <% end %>
           </td>
           <% if show_achievement %>
-            <td class="month-col"><%= row.public_send(pair[:achievement_column]) %></td>
+            <td class="month-col"><%= whole_number(row.public_send(pair[:achievement_column])) %></td>
           <% end %>
         <% end %>
         <td class="month-col total-col">
           <strong data-row-total><%= visible_target_total %></strong>
         </td>
         <% if show_achievement %>
-          <td class="month-col total-col"><strong><%= visible_achievement_total %></strong></td>
+          <td class="month-col total-col"><strong><%= whole_number(visible_achievement_total) %></strong></td>
         <% end %>
         <% if editable_targets %>
           <td>

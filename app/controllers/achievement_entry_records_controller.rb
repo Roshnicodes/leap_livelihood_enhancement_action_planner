@@ -138,7 +138,7 @@ class AchievementEntryRecordsController < ApplicationController
 
     rows.flat_map do |row|
       months.filter_map do |month|
-        achievement_value = row.public_send("#{month}_t").to_i
+        achievement_value = row.public_send("#{month}_t").to_d
         detail = details_by_key[[ row.id, month ]]
         submission_row = submission_rows_by_key[[ row.id, month ]]
         next if achievement_value.zero? && detail.blank? && submission_row.blank?

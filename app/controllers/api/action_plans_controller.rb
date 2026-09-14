@@ -132,7 +132,7 @@ module Api
           }
         end,
         total_target: month_pairs.sum { |pair| row.public_send(pair[:target_column]).to_i },
-        total_achievement: month_pairs.sum { |pair| row.public_send(pair[:achievement_column]).to_i }
+        total_achievement: month_pairs.sum { |pair| row.public_send(pair[:achievement_column]).to_d }
       }
     end
   end

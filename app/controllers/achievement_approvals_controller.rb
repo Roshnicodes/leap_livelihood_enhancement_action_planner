@@ -165,7 +165,7 @@ class AchievementApprovalsController < ApplicationController
       {
         row: row,
         target_value: row.public_send(submission.month).to_i,
-        achievement_value: row.public_send("#{submission.month}_t").to_i,
+        achievement_value: row.public_send("#{submission.month}_t").to_d,
         remark: detail&.remark,
         files: detail&.files
       }

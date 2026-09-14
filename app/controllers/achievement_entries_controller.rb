@@ -10,6 +10,7 @@ class AchievementEntriesController < ApplicationController
   ACHIEVEMENT_ROW_ID_HEADER = "Row ID".freeze
   ACHIEVEMENT_REMARK_HEADER = "Remark".freeze
   ACHIEVEMENT_UPLOAD_EXTENSIONS = %w[.csv .xlsx].freeze
+  MAX_ACHIEVEMENT_VALUE = BigDecimal("2147483647")
   MONTH_OPTIONS = ActionPlanRow::MONTH_COLUMNS.map { |month| [ month.capitalize, month ] }.freeze
 
   def show
@@ -263,9 +264,12 @@ class AchievementEntriesController < ApplicationController
     @selected_month = selected_value(params[:month], ActionPlanRow::MONTH_COLUMNS)
 
     @rows = if @selected_to_id.present? && @selected_project.present? && @selected_month.present? && (!@admin_entry || @selected_fco_id.present?)
-      to_rows.where(project_name: @selected_project)
-        .order(:asa_theme_id, :asa_activity_id, :activity_id, :id)
-        .to_a
+      visible_achievement_rows_for(
+        to_rows.where(project_name: @selected_project)
+          .order(:asa_theme_id, :asa_activity_id, :activity_id, :id)
+          .to_a,
+        @selected_month
+      )
     else
       []
     end
@@ -321,7 +325,8 @@ class AchievementEntriesController < ApplicationController
   end
 
   def clean_achievement_value(value)
-    Integer(value.presence || 0, exception: false).to_i.clamp(0, 2_147_483_647)
+    parsed_value = BigDecimal(value.to_s.delete(",").presence || "0", exception: false) || 0.to_d
+    parsed_value.clamp(0.to_d, MAX_ACHIEVEMENT_VALUE).round(2)
   end
 
   def fco_filter_options_for(rows)
@@ -345,6 +350,78 @@ class AchievementEntriesController < ApplicationController
 
   def fco_filter_ids(fco_id)
     fco_id.to_s.split(",").flat_map { |id| ActionPlanFcoGroup.ids_for(id) }.compact_blank.uniq
+  end
+
+  def visible_achievement_rows_for(rows, month)
+    rows = Array(rows)
+    return rows if rows.size <= 1 || month.blank?
+
+    row_ids = rows.map(&:id)
+    returned_ids = returned_submission_row_ids_for(row_ids, month)
+    active_ids = active_submission_row_ids_for(row_ids, month)
+    detail_ids = AchievementEntryDetail.where(action_plan_row_id: row_ids, month: month).pluck(:action_plan_row_id)
+
+    rows
+      .group_by { |row| achievement_activity_key(row) }
+      .values
+      .map do |group|
+        group.max_by do |row|
+          [
+            returned_ids.include?(row.id) ? 1 : 0,
+            active_ids.include?(row.id) ? 1 : 0,
+            detail_ids.include?(row.id) ? 1 : 0,
+            row.public_send("#{month}_t").to_d,
+            row.public_send(month).to_i,
+            -row.id
+          ]
+        end
+      end
+      .sort_by { |row| achievement_row_sort_key(row) }
+  end
+
+  def achievement_activity_key(row)
+    [
+      identity_text(row.po_id),
+      identity_text(row.project_name),
+      identity_text(row.statte),
+      identity_text(row.user_id),
+      identity_text(row.to_id),
+      identity_text(row.asa_theme_id, decimal: true),
+      identity_text(row.asa_theme),
+      identity_text(row.asa_activity_id, decimal: true),
+      identity_text(row.asa_activity_name),
+      identity_text(row.activity_id, decimal: true),
+      identity_text(row.activity),
+      identity_text(row.unit_type),
+      row.planned_total.to_i,
+      *ActionPlanRow::MONTH_COLUMNS.map { |month| row.public_send(month).to_i }
+    ]
+  end
+
+  def achievement_row_sort_key(row)
+    [
+      ActionPlanRow.format_decimal_string(row.asa_theme_id).to_f,
+      ActionPlanRow.format_decimal_string(row.asa_activity_id).to_f,
+      ActionPlanRow.format_decimal_string(row.activity_id).to_f,
+      row.id
+    ]
+  end
+
+  def identity_text(value, decimal: false)
+    text = ActionPlanText.group_key(value)
+    decimal ? ActionPlanRow.format_decimal_string(text) : text
+  end
+
+  def returned_submission_row_ids_for(row_ids, month)
+    ids = row_ids.map(&:to_i).uniq
+    return [] if ids.blank? || month.blank?
+
+    AchievementSubmissionRow
+      .joins(:achievement_submission)
+      .where(action_plan_row_id: ids, month: month)
+      .where(achievement_submissions: { status: "returned" })
+      .distinct
+      .pluck(:action_plan_row_id)
   end
 
   def selected_fco_display_mappings
@@ -380,7 +457,7 @@ class AchievementEntriesController < ApplicationController
     current_values = @scoped_rows.where(id: value_ids).pluck(:id, achievement_column).to_h
 
     value_ids.each do |row_id|
-      changed_ids << row_id if current_values[row_id].to_i != clean_achievement_value(permitted_values[row_id.to_s])
+      changed_ids << row_id if current_values[row_id].to_d != clean_achievement_value(permitted_values[row_id.to_s])
     end
 
     remarks = params[:remarks].respond_to?(:to_unsafe_h) ? params[:remarks].to_unsafe_h : {}
@@ -519,8 +596,8 @@ class AchievementEntriesController < ApplicationController
         change = changes[row_id]
         next if row.blank? || change.blank?
 
-        if change.key?(:achievement_value) && row.public_send(achievement_column).to_i != change[:achievement_value].to_i
-          row.update!(achievement_column => change[:achievement_value].to_i)
+        if change.key?(:achievement_value) && row.public_send(achievement_column).to_d != change[:achievement_value].to_d
+          row.update!(achievement_column => change[:achievement_value])
           changed_row_ids << row.id
         end
 
@@ -676,7 +753,7 @@ class AchievementEntriesController < ApplicationController
             action_plan_row: row,
             month: @selected_month,
             target_value: row.public_send(@selected_month).to_i,
-            achievement_value: row.public_send("#{@selected_month}_t").to_i
+            achievement_value: row.public_send("#{@selected_month}_t").to_d
           )
         end
 
@@ -805,7 +882,7 @@ class AchievementEntriesController < ApplicationController
         row = submission_row.action_plan_row
         submission_row.update!(
           target_value: row.public_send(@selected_month).to_i,
-          achievement_value: row.public_send("#{@selected_month}_t").to_i
+          achievement_value: row.public_send("#{@selected_month}_t").to_d
         )
       end
   end
@@ -895,10 +972,13 @@ class AchievementEntriesController < ApplicationController
 
   def returned_entry_context_for(submission)
     month = submission.month.to_s
-    rows = @scoped_rows
-      .where(to_id: submission.to_id, project_name: submission.project_name)
-      .order(:asa_theme_id, :asa_activity_id, :activity_id, :id)
-      .to_a
+    rows = visible_achievement_rows_for(
+      @scoped_rows
+        .where(to_id: submission.to_id, project_name: submission.project_name)
+        .order(:asa_theme_id, :asa_activity_id, :activity_id, :id)
+        .to_a,
+      month
+    )
     row_ids = rows.map(&:id)
     locked_row_ids = locked_submission_row_ids_for(row_ids, month)
     active_row_ids = active_submission_row_ids_for(row_ids, month)
@@ -945,7 +1025,7 @@ class AchievementEntriesController < ApplicationController
           row.activity.presence || row.activity_id,
           row.unit_type,
           @selected_month.present? ? row.public_send(@selected_month).to_i : nil,
-          @selected_month.present? ? row.public_send("#{@selected_month}_t").to_i : nil,
+          @selected_month.present? ? row.public_send("#{@selected_month}_t").to_d : nil,
           detail&.remark
         ]
         values.unshift(row.id) if current_user.admin?

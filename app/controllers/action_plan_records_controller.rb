@@ -187,7 +187,7 @@ class ActionPlanRecordsController < ApplicationController
     month_amounts = ActionPlanRow::MONTH_COLUMNS.index_with { |month| row.public_send(month).to_i }
     original_month_amounts = ActionPlanRow::MONTH_COLUMNS.index_with { |month| original_month_value(row, month) }
     achievement_month_amounts = ActionPlanRow::MONTH_DISPLAY_PAIRS.index_with do |pair|
-      row.public_send(pair[:achievement_column]).to_i
+      row.public_send(pair[:achievement_column]).to_d
     end.transform_keys { |pair| pair[:target_column] }
     month_deltas = ActionPlanRow::MONTH_COLUMNS.index_with { |month| month_amounts[month] - original_month_amounts[month] }
 
@@ -225,7 +225,8 @@ class ActionPlanRecordsController < ApplicationController
 
   def month_totals_for(rows, key)
     ActionPlanRow::MONTH_COLUMNS.index_with do |month|
-      rows.sum { |row| row[key][month].to_i }
+      total = rows.sum { |row| row[key][month].to_d }
+      key == :achievement_month_amounts ? total : total.to_i
     end
   end
 

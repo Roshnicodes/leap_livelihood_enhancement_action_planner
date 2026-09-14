@@ -12,9 +12,16 @@ module ApplicationHelper
   end
 
   def whole_number(amount)
-    value = amount.to_d.round
+    value = amount.to_d
     sign = value.negative? ? "-" : ""
-    "#{sign}#{indian_number_delimiter(value.abs.to_i)}"
+    formatted = number_with_precision(
+      value.abs,
+      precision: 2,
+      delimiter: ",",
+      separator: ".",
+      strip_insignificant_zeros: true
+    )
+    "#{sign}#{formatted}"
   end
 
   def action_plan_cell(value, pill: false, decimal: false)

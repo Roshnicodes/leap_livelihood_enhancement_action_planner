@@ -161,7 +161,7 @@ class ActionPlanRow < ApplicationRecord
   end
 
   def target_total
-    TARGET_MONTH_COLUMNS.sum { |month| public_send(month).to_i }
+    TARGET_MONTH_COLUMNS.sum { |month| public_send(month).to_d }
   end
 
   # Month-wise targets may be redistributed, but they must always add up to the

@@ -173,7 +173,7 @@ class VerticalActionPlansController < ApplicationController
           *ActionPlanRow.display_columns(admin: current_user.admin?).map { |column| row.public_send(column[:attribute]) },
           *month_pairs.flat_map { |pair| [ row.public_send(pair[:target_column]), row.public_send(pair[:achievement_column]) ] },
           month_pairs.sum { |pair| row.public_send(pair[:target_column]).to_i },
-          month_pairs.sum { |pair| row.public_send(pair[:achievement_column]).to_i }
+          month_pairs.sum { |pair| row.public_send(pair[:achievement_column]).to_d }
         ]
       end
     end

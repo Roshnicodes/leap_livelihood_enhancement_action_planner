@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_31_143000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_14_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -26,7 +26,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_31_143000) do
 
   create_table "achievement_submission_rows", force: :cascade do |t|
     t.bigint "achievement_submission_id", null: false
-    t.integer "achievement_value", default: 0, null: false
+    t.decimal "achievement_value", precision: 12, scale: 2, default: "0.0", null: false
     t.bigint "action_plan_row_id", null: false
     t.datetime "created_at", null: false
     t.string "month", null: false
@@ -153,35 +153,35 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_31_143000) do
     t.text "activity"
     t.string "activity_id"
     t.integer "apr", default: 0, null: false
-    t.integer "apr_t", default: 0, null: false
+    t.decimal "apr_t", precision: 12, scale: 2, default: "0.0", null: false
     t.string "asa_activity_id"
     t.text "asa_activity_name"
     t.text "asa_theme"
     t.string "asa_theme_id"
     t.integer "aug", default: 0, null: false
-    t.integer "aug_t", default: 0, null: false
+    t.decimal "aug_t", precision: 12, scale: 2, default: "0.0", null: false
     t.datetime "created_at", null: false
     t.integer "dec", default: 0, null: false
-    t.integer "dec_t", default: 0, null: false
+    t.decimal "dec_t", precision: 12, scale: 2, default: "0.0", null: false
     t.integer "feb", default: 0, null: false
-    t.integer "feb_t", default: 0, null: false
+    t.decimal "feb_t", precision: 12, scale: 2, default: "0.0", null: false
     t.string "id_new"
     t.integer "import_flag", default: 0, null: false
     t.datetime "imported_at"
     t.integer "jan", default: 0, null: false
-    t.integer "jan_t", default: 0, null: false
+    t.decimal "jan_t", precision: 12, scale: 2, default: "0.0", null: false
     t.integer "jul", default: 0, null: false
-    t.integer "jul_t", default: 0, null: false
+    t.decimal "jul_t", precision: 12, scale: 2, default: "0.0", null: false
     t.integer "jun", default: 0, null: false
-    t.integer "jun_t", default: 0, null: false
+    t.decimal "jun_t", precision: 12, scale: 2, default: "0.0", null: false
     t.integer "mar", default: 0, null: false
-    t.integer "mar_t", default: 0, null: false
+    t.decimal "mar_t", precision: 12, scale: 2, default: "0.0", null: false
     t.integer "may", default: 0, null: false
-    t.integer "may_t", default: 0, null: false
+    t.decimal "may_t", precision: 12, scale: 2, default: "0.0", null: false
     t.integer "nov", default: 0, null: false
-    t.integer "nov_t", default: 0, null: false
+    t.decimal "nov_t", precision: 12, scale: 2, default: "0.0", null: false
     t.integer "oct", default: 0, null: false
-    t.integer "oct_t", default: 0, null: false
+    t.decimal "oct_t", precision: 12, scale: 2, default: "0.0", null: false
     t.integer "original_apr", default: 0, null: false
     t.integer "original_aug", default: 0, null: false
     t.integer "original_dec", default: 0, null: false
@@ -201,7 +201,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_31_143000) do
     t.string "project_owner"
     t.string "responsibel"
     t.integer "sep", default: 0, null: false
-    t.integer "sep_t", default: 0, null: false
+    t.decimal "sep_t", precision: 12, scale: 2, default: "0.0", null: false
     t.string "statte"
     t.text "theme"
     t.string "theme_id"

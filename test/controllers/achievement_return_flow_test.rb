@@ -150,6 +150,49 @@ class AchievementReturnFlowTest < ActionDispatch::IntegrationTest
     assert_select "select[name=project] option[value=?][selected]", @row.project_name
     assert_select "select[name=month] option[value='apr'][selected]"
     assert_select "input[name=?]", "achievements[#{@row.id}]"
+    assert_select "input[name=?][step='0.01']", "achievements[#{@row.id}]"
+  end
+
+  test "fco can submit decimal achievement values" do
+    login_as(@fco)
+
+    assert_difference -> { AchievementSubmission.count }, 2 do
+      patch achievement_entry_path, params: submission_params(achievement: "3.5", remark: "Decimal field note")
+    end
+
+    assert_redirected_to achievement_entry_path(to_id: @row.to_id, project: @row.project_name, month: "apr")
+    assert_equal BigDecimal("3.5"), @row.reload.apr_t
+
+    submitted_value = AchievementSubmissionRow.find_by!(action_plan_row: @row, month: "apr").achievement_value
+    assert_equal BigDecimal("3.5"), submitted_value
+  end
+
+  test "achievement entry collapses exact duplicate imported activities" do
+    duplicate = ActionPlanRow.create!(
+      po_id: @row.po_id,
+      project_name: @row.project_name,
+      user_id: @row.user_id,
+      user_name: @row.user_name,
+      to_id: @row.to_id,
+      to_name: @row.to_name,
+      statte: @row.statte,
+      asa_theme_id: @row.asa_theme_id,
+      asa_theme: @row.asa_theme,
+      asa_activity_id: @row.asa_activity_id,
+      asa_activity_name: @row.asa_activity_name,
+      activity: @row.activity,
+      unit_type: @row.unit_type,
+      apr: @row.apr,
+      planned_total: @row.planned_total
+    )
+
+    login_as(@fco)
+    get achievement_entry_path(to_id: @row.to_id, project: @row.project_name, month: "apr")
+
+    assert_response :success
+    assert_select ".achievement-entry-table tbody tr", 2
+    assert_select "input[name=?]", "achievements[#{@row.id}]"
+    assert_select "input[name=?]", "achievements[#{duplicate.id}]", count: 0
   end
 
   private

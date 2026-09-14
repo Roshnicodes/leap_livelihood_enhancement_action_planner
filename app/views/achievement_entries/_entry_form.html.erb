@@ -124,7 +124,7 @@
                 row.public_send(achievement_column),
                 id: "#{field_id_prefix}_achievement_#{row.id}",
                 min: 0,
-                step: 1,
+                step: "0.01",
                 class: "achievement-input #{'is-priority' if has_target}",
                 disabled: row_locked,
                 aria: { label: "#{selected_month.capitalize} achievement for #{row.asa_activity_name.presence || row.activity}" } %>

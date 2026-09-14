@@ -78,7 +78,7 @@
 <% if selected_project.present? %>
   <% planned_total = rows.sum { |row| month_display_pairs.sum { |pair| row.public_send("original_#{pair[:target_column]}").to_i } } %>
   <% current_total = rows.sum { |row| month_display_pairs.sum { |pair| row.public_send(pair[:target_column]).to_i } } %>
-  <% achievement_total = rows.sum { |row| month_display_pairs.sum { |pair| row.public_send(pair[:achievement_column]).to_i } } %>
+  <% achievement_total = rows.sum { |row| month_display_pairs.sum { |pair| row.public_send(pair[:achievement_column]).to_d } } %>
 
   <section class="metric-grid metric-grid-compact">
     <% if selected_project == "all" %>
@@ -91,7 +91,7 @@
     <article class="metric metric-blue"><span>Activities</span><strong><%= rows.size %></strong></article>
     <article class="metric"><span>Themes</span><strong><%= theme_count %></strong></article>
     <% if show_achievement %>
-      <article class="metric metric-rose"><span>Achievement Total</span><strong><%= achievement_total %></strong></article>
+      <article class="metric metric-rose"><span>Achievement Total</span><strong><%= whole_number(achievement_total) %></strong></article>
     <% end %>
   </section>
 
