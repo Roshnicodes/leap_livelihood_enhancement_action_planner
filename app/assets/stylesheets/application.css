@@ -8207,6 +8207,75 @@ body.app-body {
   overflow: hidden;
 }
 
+.action-plan-upload-panel {
+  border: 1px solid rgba(185, 207, 220, 0.95);
+  background: #ffffff;
+  box-shadow: 0 14px 32px rgba(8, 38, 51, 0.07);
+}
+
+.action-plan-upload-heading {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.5fr) minmax(0, 1.5fr);
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(216, 226, 234, 0.95);
+  background: linear-gradient(135deg, #fbfefd 0%, #f4f9fb 100%);
+}
+
+.action-plan-upload-heading h2 {
+  font-size: 1.18rem;
+}
+
+.action-plan-download-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(132px, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+
+.action-plan-upload-panel .action-plan-download-button {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  box-shadow: none;
+  line-height: 1.2;
+  white-space: normal;
+}
+
+.action-plan-upload-panel .submit-plan-button.action-plan-download-button {
+  min-width: 0;
+  border: 1px solid #0b7f73;
+  background: #0b7f73;
+}
+
+.action-plan-upload-form {
+  padding: 16px 20px 18px;
+}
+
+.action-plan-upload-form .import-admin-grid {
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.action-plan-upload-form .input[type="file"] {
+  min-height: 44px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.action-plan-upload-form .admin-form-footer {
+  margin-top: 2px;
+  padding-top: 14px;
+}
+
+.action-plan-upload-form .admin-form-footer .submit-plan-button {
+  min-height: 44px;
+  border-radius: 8px;
+}
+
 .admin-editor-panel.collapsible-panel,
 .admin-data-panel.collapsible-panel {
   border-color: rgba(177, 200, 214, 0.95);
@@ -8450,6 +8519,14 @@ body.app-body {
 }
 
 @media (max-width: 980px) {
+  .action-plan-upload-heading {
+    grid-template-columns: 1fr;
+  }
+
+  .action-plan-download-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .fco-form-grid,
   .fco-import-grid {
     grid-template-columns: 1fr;
@@ -8469,6 +8546,8 @@ body.app-body {
     padding: 0 14px 14px;
   }
 
+  .action-plan-download-actions,
+  .action-plan-upload-form .import-admin-grid,
   .admin-form-grid,
   .month-input-grid {
     grid-template-columns: 1fr;

@@ -1,9 +1,7 @@
 class ActionPlanImporter
   MONTH_COLUMNS = %w[apr may jun jul aug sep oct nov dec jan feb mar].freeze
   TARGET_MONTH_COLUMNS = MONTH_COLUMNS.map { |month| "#{month}_t" }.freeze
-  # The admin UI currently forces "append" so imports only insert new rows.
-  # Keep replace/update modes available here for the future mode-wise workflow.
-  ACTION_PLAN_IMPORT_MODES = %w[replace append update].freeze
+  ACTION_PLAN_IMPORT_MODES = %w[replace append update merge].freeze
 
   def initialize(project_file: nil, action_plan_file: nil, vertical_mapping_file: nil, action_plan_import_mode: "replace", uploaded_by: nil)
     @project_file = project_file
@@ -39,13 +37,13 @@ class ActionPlanImporter
     seen_po_ids = {}
     seen_projects = {}
 
-    rows = SpreadsheetRows.read(file_path(@project_file)).filter_map do |row|
+    rows = SpreadsheetRows.read(file_path(@project_file), header_match: [ "Project" ]).filter_map do |row|
       po_id = value(row, "PO_ID").presence || value(row, "Project_ID", "Project ID")
       project_name = value(row, "Project")
       next if po_id.blank? || project_name.blank?
 
-      # Full replace already clears the table; within the file, the first row for
-      # a PO_ID / project wins so later duplicates cannot override it.
+      # Within a partial merge file, the first row for a PO_ID / project wins so
+      # later duplicates cannot override it.
       project_key = ProjectOwnership.normalize_project_key(project_name)
       next if seen_po_ids[po_id] || seen_projects[project_key]
 
@@ -72,8 +70,7 @@ class ActionPlanImporter
     end
 
     timestamp = Time.current
-    ProjectOwnership.update_all(active: false, updated_at: timestamp)
-    ProjectOwnership.upsert_all!(
+    ProjectOwnership.upsert_all(
       rows.map { |row| row.merge(active: true, updated_at: timestamp) },
       unique_by: :index_project_ownerships_on_po_id_and_project_name
     ) if rows.any?
@@ -158,6 +155,8 @@ class ActionPlanImporter
       append_new_action_plan_rows!(rows)
     when "update"
       update_existing_action_plan_rows!(rows)
+    when "merge"
+      merge_action_plan_rows!(rows)
     else
       replace_action_plan_rows!(rows)
     end
@@ -172,7 +171,7 @@ class ActionPlanImporter
   end
 
   def action_plan_rows_from_file(imported_at)
-    SpreadsheetRows.read(file_path(@action_plan_file), sheet: :first).filter_map do |row|
+    SpreadsheetRows.read(file_path(@action_plan_file), sheet: :first, header_match: [ "Project" ]).filter_map do |row|
       po_id = value(row, "PO_ID").presence || value(row, "Project_ID", "Project ID")
       project_name = value(row, "Project")
       next if po_id.blank? || project_name.blank?
@@ -251,6 +250,34 @@ class ActionPlanImporter
     updated_count
   end
 
+  def merge_action_plan_rows!(rows)
+    current_rows = action_plan_rows_by_identity(ActionPlanRow.current_import)
+    seen_keys = {}
+    new_rows = []
+    changed_count = 0
+
+    rows.each do |attributes|
+      key = action_plan_identity_key(attributes)
+      next if seen_keys[key]
+
+      seen_keys[key] = true
+      matches = current_rows[key] || []
+
+      if matches.size == 1
+        row = matches.first
+        row.assign_attributes(attributes.except(:id, :created_at, :import_flag, :active))
+        row.import_flag = 0
+        row.save!
+        changed_count += 1
+      elsif matches.empty?
+        new_rows << attributes
+      end
+    end
+
+    ActionPlanRow.insert_all!(new_rows) if new_rows.any?
+    changed_count + new_rows.size
+  end
+
   def raise_empty_action_plan_import!
     row = ActionPlanRow.new
     row.errors.add(
@@ -261,7 +288,7 @@ class ActionPlanImporter
   end
 
   def import_vertical_mappings!
-    rows = SpreadsheetRows.read(file_path(@vertical_mapping_file), sheet: :first).filter_map do |row|
+    rows = SpreadsheetRows.read(file_path(@vertical_mapping_file), sheet: :first, header_match: [ "State" ]).filter_map do |row|
       employee_code = ActionPlanVerticalMapping.normalize_code(value(row, "emp_id", "Employee ID", "Employee Code"))
       state_code = value(row, "State")
       asa_theme_id = ActionPlanRow.format_decimal_string(value(row, "ASA_Theme_ID", "ASA Theme ID"))
@@ -283,8 +310,7 @@ class ActionPlanImporter
     unique_rows = rows.uniq { |row| [ row[:employee_code], row[:state_code], row[:asa_theme_id] ] }
 
     timestamp = Time.current
-    ActionPlanVerticalMapping.update_all(active: false, updated_at: timestamp)
-    ActionPlanVerticalMapping.upsert_all!(
+    ActionPlanVerticalMapping.upsert_all(
       unique_rows.map { |row| row.merge(active: true, updated_at: timestamp) },
       unique_by: :idx_action_plan_vertical_mappings_unique
     ) if unique_rows.any?

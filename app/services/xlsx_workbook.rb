@@ -4,7 +4,7 @@ require "zip"
 class XlsxWorkbook
   CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet".freeze
 
-  def self.from_csv(csv_data, title:, sheet_name: "Report")
+  def self.from_csv(csv_data, title:, sheet_name: "Report", include_title: true)
     rows = CSV.parse(csv_data.to_s)
     headers = rows.shift || []
 
@@ -12,6 +12,7 @@ class XlsxWorkbook
       {
         name: sheet_name,
         title: title,
+        include_title: include_title,
         headers: headers,
         rows: rows,
         widths: inferred_widths(headers, rows)
@@ -56,22 +57,31 @@ class XlsxWorkbook
     rows = sheet.fetch(:rows)
     title = sheet[:title].presence || sheet[:name]
     generated_at = "Generated at #{Time.current.in_time_zone('Asia/Kolkata').strftime('%d %b %Y, %I:%M %p')}"
-    all_rows = [
-      { values: [ title ], style: 1 },
-      { values: [ generated_at ], style: 2 },
-      { values: [] },
-      { values: sheet.fetch(:headers), style: 3 },
-      *rows.map { |row| { values: row, style: nil } }
-    ]
+    all_rows = if sheet.fetch(:include_title, true)
+      [
+        { values: [ title ], style: 1 },
+        { values: [ generated_at ], style: 2 },
+        { values: [] },
+        { values: sheet.fetch(:headers), style: 3 },
+        *rows.map { |row| { values: row, style: nil } }
+      ]
+    else
+      [
+        { values: sheet.fetch(:headers), style: 3 },
+        *rows.map { |row| { values: row, style: nil } }
+      ]
+    end
     last_column = [ sheet.fetch(:headers).size, rows.map(&:size).max.to_i, 1 ].max
-    auto_filter_ref = "A4:#{cell_reference(last_column - 1, all_rows.size)}"
+    header_row_number = sheet.fetch(:include_title, true) ? 4 : 1
+    first_data_cell = "A#{header_row_number + 1}"
+    auto_filter_ref = "A#{header_row_number}:#{cell_reference(last_column - 1, all_rows.size)}"
 
     <<~XML
       <?xml version="1.0" encoding="UTF-8"?>
       <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
         <sheetViews>
           <sheetView workbookViewId="0">
-            <pane ySplit="4" topLeftCell="A5" activePane="bottomLeft" state="frozen"/>
+            <pane ySplit="#{header_row_number}" topLeftCell="#{first_data_cell}" activePane="bottomLeft" state="frozen"/>
           </sheetView>
         </sheetViews>
         #{columns_xml(sheet[:widths], last_column)}

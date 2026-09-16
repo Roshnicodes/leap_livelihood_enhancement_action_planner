@@ -32,18 +32,20 @@
   <article class="metric metric-ink"><span>Archived Rows</span><strong><%= @summary[:archived_action_plan_rows] %></strong></article>
 </section>
 
-<section class="table-panel import-panel compact-upload-panel">
-  <div class="table-heading">
+<section class="table-panel import-panel compact-upload-panel action-plan-upload-panel">
+  <div class="table-heading action-plan-upload-heading">
     <div>
       <h2>Upload Files</h2>
     </div>
-    <div class="table-actions">
-      <%= link_to "Uploaded Files", download_latest_files_admin_action_plan_imports_path, class: "approval-review-button" %>
-      <%= link_to "Download Action Plan", download_admin_action_plan_imports_path, class: "submit-plan-button" %>
+    <div class="table-actions action-plan-download-actions">
+      <%= link_to "Uploaded Files", download_latest_files_admin_action_plan_imports_path, class: "approval-review-button action-plan-download-button" %>
+      <%= link_to "Project Owners Excel", download_project_ownerships_admin_action_plan_imports_path, class: "approval-review-button action-plan-download-button" %>
+      <%= link_to "Action Plan Excel", download_admin_action_plan_imports_path, class: "submit-plan-button action-plan-download-button" %>
+      <%= link_to "User Verticals Excel", download_vertical_mappings_admin_action_plan_imports_path, class: "approval-review-button action-plan-download-button" %>
     </div>
   </div>
 
-  <%= form_with url: admin_action_plan_imports_path, method: :post, multipart: true, class: "admin-master-form" do |form| %>
+  <%= form_with url: admin_action_plan_imports_path, method: :post, multipart: true, class: "admin-master-form action-plan-upload-form" do |form| %>
     <div class="admin-form-grid import-admin-grid">
       <label>
         <span>Project owner file</span>

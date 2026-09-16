@@ -146,6 +146,37 @@ class AdminManagementTest < ActionDispatch::IntegrationTest
     assert_select ".fco-check-card strong", text: "Betul-FCO", count: 1
   end
 
+  test "action plan import page exposes separate editable Excel downloads" do
+    get admin_action_plan_imports_path
+
+    assert_response :success
+    assert_select "a[href='#{download_project_ownerships_admin_action_plan_imports_path}']", text: "Project Owners Excel"
+    assert_select "a[href='#{download_admin_action_plan_imports_path}']", text: "Action Plan Excel"
+    assert_select "a[href='#{download_vertical_mappings_admin_action_plan_imports_path}']", text: "User Verticals Excel"
+  end
+
+  test "downloads separate action plan master Excel files" do
+    employee = Employee.create!(employee_code: "1002V", name: "Vertical Employee")
+    ProjectOwnership.create!(po_id: "PO-1", project_name: "Project A", project_owner_id: employee.employee_code)
+    ActionPlanVerticalMapping.create!(
+      employee: employee,
+      employee_code: employee.employee_code,
+      state_code: "MP",
+      asa_theme_id: "1",
+      asa_theme: "Theme"
+    )
+
+    get download_project_ownerships_admin_action_plan_imports_path
+    assert_response :success
+    assert_equal XlsxWorkbook::CONTENT_TYPE, response.media_type
+    assert_includes response.headers["Content-Disposition"], "project_owners_"
+
+    get download_vertical_mappings_admin_action_plan_imports_path
+    assert_response :success
+    assert_equal XlsxWorkbook::CONTENT_TYPE, response.media_type
+    assert_includes response.headers["Content-Disposition"], "user_vertical_mapping_"
+  end
+
   test "action plan import page shows main file rows and disables without deleting" do
     row = ActionPlanRow.create!(
       po_id: "PO-2",

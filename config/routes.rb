@@ -105,6 +105,8 @@ Rails.application.routes.draw do
     patch "pb_imports/parent_activity_assignments/:id/toggle_active" => "pb_imports#toggle_parent_activity_assignment", as: :toggle_parent_activity_assignment
     resources :action_plan_imports, only: %i[index create] do
       get :download, on: :collection
+      get :download_project_ownerships, on: :collection
+      get :download_vertical_mappings, on: :collection
       get :download_latest_files, on: :collection
       get :download_file, on: :member
     end

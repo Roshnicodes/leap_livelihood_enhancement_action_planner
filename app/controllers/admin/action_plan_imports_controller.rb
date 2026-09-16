@@ -39,10 +39,33 @@ module Admin
     end
 
     def download
-      filename = "action_plan_#{Time.current.strftime("%Y%m%d_%H%M%S")}.xlsx"
-      send_data XlsxWorkbook.from_csv(ActionPlanExporter.active_csv, title: "Action Plan", sheet_name: "Action Plan"),
-        filename: filename,
-        type: XlsxWorkbook::CONTENT_TYPE
+      send_export_xlsx(
+        ActionPlanExporter.active_csv,
+        filename_prefix: "action_plan",
+        title: "Action Plan",
+        sheet_name: "Action Plan",
+        include_title: false
+      )
+    end
+
+    def download_project_ownerships
+      send_export_xlsx(
+        ActionPlanExporter.project_ownerships_csv,
+        filename_prefix: "project_owners",
+        title: "Project Owners",
+        sheet_name: "Project Owners",
+        include_title: false
+      )
+    end
+
+    def download_vertical_mappings
+      send_export_xlsx(
+        ActionPlanExporter.vertical_mappings_csv,
+        filename_prefix: "user_vertical_mapping",
+        title: "User Vertical Mapping",
+        sheet_name: "User Verticals",
+        include_title: false
+      )
     end
 
     def create_action_plan_row
@@ -207,7 +230,7 @@ module Admin
         project_file: saved_files[:project_file]&.absolute_path,
         action_plan_file: saved_files[:action_plan_file]&.absolute_path,
         vertical_mapping_file: saved_files[:vertical_mapping_file]&.absolute_path,
-        action_plan_import_mode: "append",
+        action_plan_import_mode: "merge",
         uploaded_by: current_user
       ).import!
 
@@ -236,6 +259,13 @@ module Admin
     end
 
     private
+
+    def send_export_xlsx(csv_data, filename_prefix:, title:, sheet_name:, include_title: true)
+      filename = "#{filename_prefix}_#{Time.current.strftime("%Y%m%d_%H%M%S")}.xlsx"
+      send_data XlsxWorkbook.from_csv(csv_data, title: title, sheet_name: sheet_name, include_title: include_title),
+        filename: filename,
+        type: XlsxWorkbook::CONTENT_TYPE
+    end
 
     def load_action_plan_import_context(form_row: nil, project_ownership_form: nil, vertical_mapping_form: nil)
       @project_ownerships = ProjectOwnership.order(active: :desc, po_id: :asc, project_name: :asc)

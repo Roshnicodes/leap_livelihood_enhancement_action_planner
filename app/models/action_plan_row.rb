@@ -18,6 +18,7 @@ class ActionPlanRow < ApplicationRecord
     { header: "State", attribute: :statte },
     { header: "Project_Owner", attribute: :project_owner }
   ].freeze
+  PO_ID_COLUMN = { header: "PO_ID", attribute: :po_id }.freeze
   PROJECT_ID_COLUMN = { header: "Project_ID", attribute: :project_id }.freeze
   USER_PROJECT_COLUMNS = [
     { header: "Project", attribute: :project_name }
@@ -59,6 +60,7 @@ class ActionPlanRow < ApplicationRecord
   end
 
   EXPORT_COLUMNS = [
+    PO_ID_COLUMN,
     *display_columns(admin: true),
     *MONTH_DISPLAY_PAIRS.flat_map do |pair|
       [
