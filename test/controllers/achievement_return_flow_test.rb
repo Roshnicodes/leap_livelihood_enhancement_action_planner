@@ -149,6 +149,7 @@ class AchievementReturnFlowTest < ActionDispatch::IntegrationTest
     assert_select "select[name=to_id] option[value=?][selected]", @row.to_id
     assert_select "select[name=project] option[value=?][selected]", @row.project_name
     assert_select "select[name=month] option[value='apr'][selected]"
+    assert_select "select[name=month] option[value='all']", count: 0
     assert_select "input[name=?]", "achievements[#{@row.id}]"
     assert_select "input[name=?][step='0.01']", "achievements[#{@row.id}]"
   end

@@ -55,4 +55,18 @@ class ActionPlanFcoMappingTest < ActiveSupport::TestCase
   ensure
     file&.unlink
   end
+
+  test "jamtara fco ids use canonical jamtara name" do
+    ActionPlanRow.create!(
+      po_id: "PO-JAM-1",
+      project_name: "Jamtara Project",
+      user_id: "18",
+      user_name: "Pakur - FCO"
+    )
+
+    fcos = ActionPlanFcoMapping.action_plan_fcos
+
+    assert_includes fcos, { fco_id: "18", fco_name: "Jamtara - FCO", fco_ids: [ "18" ] }
+    assert_equal "Jamtara - FCO", ActionPlanFcoGroup.name_for("18", "Pakur - FCO")
+  end
 end

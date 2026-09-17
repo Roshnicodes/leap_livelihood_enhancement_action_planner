@@ -43,6 +43,9 @@ class AchievementMisEditTest < ActionDispatch::IntegrationTest
       asa_theme: "Livelihood",
       asa_activity_id: "1.1",
       asa_activity_name: "Field training",
+      theme_id: "PT-1",
+      theme: "Project Theme Alpha",
+      activity_id: "7.1",
       activity: "Training completed",
       unit_type: "Nos",
       apr: 5,
@@ -81,6 +84,10 @@ class AchievementMisEditTest < ActionDispatch::IntegrationTest
     assert_select "input[type='submit'][value='Save Changes']"
     assert_select "form[action=?]", import_excel_achievement_entry_path
     assert_select "input[type='file'][name='achievement_excel_file']"
+    assert_select "th", text: "Project Theme ID / Project Theme Name"
+    assert_select "th", text: "Project Activity ID"
+    assert_includes response.body, "Project Theme Alpha"
+    assert_includes response.body, "7.1"
 
     assert_difference -> { AchievementSubmission.count }, 1 do
       patch achievement_entry_path,
@@ -106,6 +113,99 @@ class AchievementMisEditTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_includes response.body, "MIS Achievement Project"
     assert_includes response.body, "Corrected by MIS"
+  end
+
+  test "achievement entry export includes project theme fields" do
+    login_as_admin
+
+    get achievement_entry_path(fco_id: "9", to_id: @row.to_id, project: @row.project_name, month: "apr", format: :csv)
+
+    assert_response :success
+    csv = CSV.parse(response.body, headers: true)
+    assert_equal "Project Theme ID", csv.headers[8]
+    assert_equal "Project Theme Name", csv.headers[9]
+    assert_equal "Project Activity ID", csv.headers[10]
+    assert_equal "PT-1", csv.first["Project Theme ID"]
+    assert_equal "Project Theme Alpha", csv.first["Project Theme Name"]
+    assert_equal "7.1", csv.first["Project Activity ID"]
+  end
+
+  test "mis can save and submit all months at once" do
+    @row.update!(may: 4, planned_total: 9)
+    login_as_admin
+
+    get achievement_entry_path(fco_id: "9", to_id: @row.to_id, project: @row.project_name, month: "all")
+
+    assert_response :success
+    assert_select "select[name=month] option[value='all'][selected]"
+    assert_select "input[name=?]", "achievements_all[#{@row.id}][apr]"
+    assert_select "input[name=?]", "achievements_all[#{@row.id}][may]"
+
+    patch achievement_entry_path,
+      params: selection_params.merge(
+        month: "all",
+        achievements_all: {
+          @row.id.to_s => {
+            "apr" => "6.5",
+            "may" => "2"
+          }
+        },
+        commit: "Save All Months"
+      )
+
+    assert_redirected_to achievement_entry_path(fco_id: "9", to_id: @row.to_id, project: @row.project_name, month: "all")
+    assert_equal BigDecimal("6.5"), @row.reload.apr_t
+    assert_equal BigDecimal("2"), @row.reload.may_t
+
+    assert_difference -> { AchievementSubmission.count }, 2 do
+      patch achievement_entry_path,
+        params: selection_params.merge(
+          month: "all",
+          achievements_all: {
+            @row.id.to_s => {
+              "apr" => "6.5",
+              "may" => "2"
+            }
+          },
+          submission_remark: "All month MIS submit",
+          commit: "Submit All Months"
+        )
+    end
+
+    assert_redirected_to achievement_entry_path(fco_id: "9", to_id: @row.to_id, project: @row.project_name, month: "all")
+    assert_equal %w[apr may], AchievementSubmission.order(:month).pluck(:month)
+    assert_equal [ true, true ], AchievementSubmission.order(:month).pluck(:mis_submitted)
+  end
+
+  test "achievement entry can sort activities descending" do
+    later_row = ActionPlanRow.create!(
+      po_id: "PO-MIS-ID",
+      project_name: @row.project_name,
+      user_id: "9",
+      user_name: "MIS Edit FCO",
+      to_id: @row.to_id,
+      to_name: @row.to_name,
+      statte: "MP",
+      asa_theme_id: "1",
+      asa_theme: "Livelihood",
+      asa_activity_id: "1.9",
+      asa_activity_name: "Later activity",
+      activity_id: "9.1",
+      activity: "Later work",
+      unit_type: "Nos",
+      apr: 1,
+      planned_total: 1
+    )
+
+    login_as_admin
+    get achievement_entry_path(fco_id: "9", to_id: @row.to_id, project: @row.project_name, month: "apr", sort_direction: "desc")
+
+    assert_response :success
+    assert_select "select[name=sort_direction]", count: 0
+    assert_includes response.body, "column-filter-sort"
+    assert_includes response.body, "Descending"
+    assert_select ".achievement-entry-table tbody tr:first-child input[name=?]", "achievements[#{later_row.id}]"
+    assert_select ".achievement-entry-table tbody tr:last-child input[name=?]", "achievements[#{@row.id}]"
   end
 
   test "mis can filter achievement entry by project before choosing fco" do

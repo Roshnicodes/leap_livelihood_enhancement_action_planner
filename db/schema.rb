@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_14_090000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_17_110000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -51,6 +51,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_14_090000) do
     t.bigint "employee_id", null: false
     t.string "fco_id", null: false
     t.string "fco_name", null: false
+    t.boolean "mis_submitted", default: false, null: false
     t.string "month", null: false
     t.bigint "po_approver_id"
     t.string "po_id", null: false
@@ -73,6 +74,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_14_090000) do
     t.index ["director_approver_id"], name: "index_achievement_submissions_on_director_approver_id"
     t.index ["employee_id", "project_name", "to_id", "month"], name: "idx_achievement_submission_employee_scope"
     t.index ["employee_id"], name: "index_achievement_submissions_on_employee_id"
+    t.index ["mis_submitted", "submitted_at"], name: "idx_achievement_submissions_mis_submitted_time"
     t.index ["po_approver_id", "status", "current_stage"], name: "idx_achievement_po_pending"
     t.index ["po_approver_id"], name: "index_achievement_submissions_on_po_approver_id"
     t.index ["project_name", "month", "submitted_at"], name: "idx_achievement_submissions_project_month_time"

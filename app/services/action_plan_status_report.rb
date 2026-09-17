@@ -240,6 +240,7 @@ class ActionPlanStatusReport
 
   def achievement_submissions
     @achievement_submissions ||= AchievementSubmission
+      .where(mis_submitted: false)
       .includes(:employee, :vertical_approver, :po_approver, :coo_approver, :director_approver)
       .order(submitted_at: :desc)
       .to_a

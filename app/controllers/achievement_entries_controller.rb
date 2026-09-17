@@ -11,7 +11,10 @@ class AchievementEntriesController < ApplicationController
   ACHIEVEMENT_REMARK_HEADER = "Remark".freeze
   ACHIEVEMENT_UPLOAD_EXTENSIONS = %w[.csv .xlsx].freeze
   MAX_ACHIEVEMENT_VALUE = BigDecimal("2147483647")
+  ALL_MONTHS_PARAM = "all".freeze
   MONTH_OPTIONS = ActionPlanRow::MONTH_COLUMNS.map { |month| [ month.capitalize, month ] }.freeze
+  MIS_MONTH_OPTIONS = [ [ "All Months", ALL_MONTHS_PARAM ], *MONTH_OPTIONS ].freeze
+  SORT_DIRECTION_OPTIONS = [ [ "Ascending", "asc" ], [ "Descending", "desc" ] ].freeze
 
   def show
     # Opening Achievement Entry from menu (no filters) must start blank.
@@ -50,6 +53,11 @@ class AchievementEntriesController < ApplicationController
 
     if @selected_to_id.blank? || @selected_project.blank? || @selected_month.blank?
       redirect_to achievement_entry_path, alert: "Please choose TO, project and month."
+      return
+    end
+
+    if all_months_selected?
+      update_all_month_achievements!
       return
     end
 
@@ -106,6 +114,11 @@ class AchievementEntriesController < ApplicationController
 
     if @selected_to_id.blank? || @selected_project.blank? || @selected_month.blank?
       redirect_to achievement_entry_path(fco_id: @selected_fco_id), alert: "Please choose TO, project and month before uploading edited Excel."
+      return
+    end
+
+    if all_months_selected?
+      import_all_month_excel!
       return
     end
 
@@ -175,6 +188,11 @@ class AchievementEntriesController < ApplicationController
       return
     end
 
+    if all_months_selected?
+      update_all_month_achievements!(submit: true)
+      return
+    end
+
     changed_row_ids = changed_entry_row_ids_from_params
     save_achievement_values!
     save_entry_details!
@@ -218,8 +236,10 @@ class AchievementEntriesController < ApplicationController
   end
 
   def load_selection
-    @month_options = MONTH_OPTIONS
     @admin_entry = current_user.admin?
+    @month_options = @admin_entry ? MIS_MONTH_OPTIONS : MONTH_OPTIONS
+    @sort_direction_options = SORT_DIRECTION_OPTIONS
+    @selected_sort_direction = selected_value(params[:sort_direction], @sort_direction_options.map(&:last)) || "asc"
 
     if @admin_entry
       all_rows = ActionPlanRow.active_import
@@ -261,44 +281,73 @@ class AchievementEntriesController < ApplicationController
       @selected_project = selected_value(params[:project], @project_options)
     end
 
-    @selected_month = selected_value(params[:month], ActionPlanRow::MONTH_COLUMNS)
+    @selected_month = selected_value(params[:month], @month_options.map(&:last))
+    @all_months_selected = all_months_selected?
+    @selected_months = @all_months_selected ? ActionPlanRow::MONTH_COLUMNS : Array(@selected_month).compact
 
     @rows = if @selected_to_id.present? && @selected_project.present? && @selected_month.present? && (!@admin_entry || @selected_fco_id.present?)
-      visible_achievement_rows_for(
-        to_rows.where(project_name: @selected_project)
-          .order(:asa_theme_id, :asa_activity_id, :activity_id, :id)
-          .to_a,
-        @selected_month
-      )
+      selected_rows = to_rows.where(project_name: @selected_project)
+        .order(:asa_theme_id, :asa_activity_id, :activity_id, :id)
+        .to_a
+
+      visible_rows = if @all_months_selected
+        visible_all_month_achievement_rows_for(selected_rows)
+      else
+        visible_achievement_rows_for(selected_rows, @selected_month)
+      end
+
+      sort_achievement_rows(visible_rows)
     else
       []
     end
 
-    @entry_details_by_row_id = if @rows.present? && @selected_month.present?
+    @entry_details_by_row_id = if @rows.present? && single_month_selected?
       AchievementEntryDetail.for_rows(@rows.map(&:id), @selected_month)
     else
       {}
     end
 
-    target_rows = @selected_month.present? ? @rows.select { |row| row.public_send(@selected_month).to_i.positive? } : []
+    target_rows = if @all_months_selected
+      @rows.select { |row| ActionPlanRow::MONTH_COLUMNS.any? { |month| row.public_send(month).to_i.positive? } }
+    elsif @selected_month.present?
+      @rows.select { |row| row.public_send(@selected_month).to_i.positive? }
+    else
+      []
+    end
     @target_rows_count = target_rows.size
     row_ids = @rows.map(&:id)
-    actual_locked_row_ids = @rows.present? && @selected_month.present? ? locked_submission_row_ids_for(row_ids, @selected_month) : []
+    actual_locked_row_ids = if @rows.present? && single_month_selected?
+      locked_submission_row_ids_for(row_ids, @selected_month)
+    else
+      []
+    end
     @locked_submission_row_ids = current_user.admin? ? [] : actual_locked_row_ids
-    @active_submission_row_ids = @rows.present? && @selected_month.present? ? active_submission_row_ids_for(row_ids, @selected_month) : []
+    @active_submission_row_ids = if @rows.present? && single_month_selected?
+      active_submission_row_ids_for(row_ids, @selected_month)
+    else
+      []
+    end
     @editable_row_count = row_ids.size - @locked_submission_row_ids.size
     @submission_candidate_row_count = if current_user.admin?
-      admin_submission_candidate_row_count(row_ids, @selected_month)
+      @all_months_selected ? admin_all_month_submission_candidate_count(row_ids) : admin_submission_candidate_row_count(row_ids, @selected_month)
     else
       (row_ids - @active_submission_row_ids).size
     end
-    @locked_submission_count = @rows.present? && @selected_month.present? ? AchievementSubmission.locked_for_rows(row_ids, @selected_month).count : 0
-    @active_submission_count = if @rows.present? && @selected_month.present?
-      AchievementSubmission.active_for_rows(row_ids, @selected_month).count
+    @locked_submission_count = if @rows.present? && single_month_selected?
+      AchievementSubmission.locked_for_rows(row_ids, @selected_month).count
+    elsif @rows.present? && @all_months_selected
+      locked_submission_count_for(row_ids, ActionPlanRow::MONTH_COLUMNS)
     else
       0
     end
-    @selected_returned_submissions = if @rows.present? && @selected_month.present?
+    @active_submission_count = if @rows.present? && single_month_selected?
+      AchievementSubmission.active_for_rows(row_ids, @selected_month).count
+    elsif @rows.present? && @all_months_selected
+      active_submission_count_for(row_ids, ActionPlanRow::MONTH_COLUMNS)
+    else
+      0
+    end
+    @selected_returned_submissions = if @rows.present? && single_month_selected?
       unresolved_returned_submissions(
         AchievementSubmission
           .returned_for_rows(row_ids, @selected_month)
@@ -322,6 +371,18 @@ class AchievementEntriesController < ApplicationController
     return if value.blank?
 
     options.find { |option| option.to_s == value.to_s }
+  end
+
+  def all_months_selected?
+    current_user.admin? && @selected_month.to_s == ALL_MONTHS_PARAM
+  end
+
+  def single_month_selected?
+    ActionPlanRow::MONTH_COLUMNS.include?(@selected_month)
+  end
+
+  def descending_sort_selected?
+    @selected_sort_direction == "desc"
   end
 
   def clean_achievement_value(value)
@@ -379,6 +440,38 @@ class AchievementEntriesController < ApplicationController
       .sort_by { |row| achievement_row_sort_key(row) }
   end
 
+  def visible_all_month_achievement_rows_for(rows)
+    rows = Array(rows)
+    return rows if rows.size <= 1
+
+    row_ids = rows.map(&:id)
+    returned_ids = submission_row_ids_for(row_ids, ActionPlanRow::MONTH_COLUMNS, statuses: [ "returned" ])
+    active_ids = submission_row_ids_for(row_ids, ActionPlanRow::MONTH_COLUMNS, statuses: %w[pending approved])
+    detail_ids = AchievementEntryDetail.where(action_plan_row_id: row_ids, month: ActionPlanRow::MONTH_COLUMNS).pluck(:action_plan_row_id)
+
+    rows
+      .group_by { |row| achievement_activity_key(row) }
+      .values
+      .map do |group|
+        group.max_by do |row|
+          [
+            returned_ids.include?(row.id) ? 1 : 0,
+            active_ids.include?(row.id) ? 1 : 0,
+            detail_ids.include?(row.id) ? 1 : 0,
+            ActionPlanRow::TARGET_MONTH_COLUMNS.sum { |month| row.public_send(month).to_d },
+            row.monthly_total,
+            -row.id
+          ]
+        end
+      end
+      .sort_by { |row| achievement_row_sort_key(row) }
+  end
+
+  def sort_achievement_rows(rows)
+    sorted_rows = rows.sort_by { |row| achievement_row_sort_key(row) }
+    descending_sort_selected? ? sorted_rows.reverse : sorted_rows
+  end
+
   def achievement_activity_key(row)
     [
       identity_text(row.po_id),
@@ -424,6 +517,50 @@ class AchievementEntriesController < ApplicationController
       .pluck(:action_plan_row_id)
   end
 
+  def submission_row_ids_for(row_ids, months, statuses:)
+    ids = row_ids.map(&:to_i).uniq
+    month_values = Array(months).compact_blank
+    return [] if ids.blank? || month_values.blank?
+
+    AchievementSubmissionRow
+      .joins(:achievement_submission)
+      .where(action_plan_row_id: ids, month: month_values)
+      .where(achievement_submissions: { status: statuses })
+      .distinct
+      .pluck(:action_plan_row_id)
+  end
+
+  def active_submission_count_for(row_ids, months)
+    achievement_submission_count_for(row_ids, months, statuses: %w[pending approved])
+  end
+
+  def locked_submission_count_for(row_ids, months)
+    ids = row_ids.map(&:to_i).uniq
+    month_values = Array(months).compact_blank
+    return 0 if ids.blank? || month_values.blank?
+
+    AchievementSubmission
+      .joins(:achievement_submission_rows)
+      .where(status: %w[pending approved])
+      .where.not(vertical_reviewed_at: nil)
+      .where(achievement_submission_rows: { action_plan_row_id: ids, month: month_values })
+      .distinct
+      .count
+  end
+
+  def achievement_submission_count_for(row_ids, months, statuses:)
+    ids = row_ids.map(&:to_i).uniq
+    month_values = Array(months).compact_blank
+    return 0 if ids.blank? || month_values.blank?
+
+    AchievementSubmission
+      .joins(:achievement_submission_rows)
+      .where(status: statuses)
+      .where(achievement_submission_rows: { action_plan_row_id: ids, month: month_values })
+      .distinct
+      .count
+  end
+
   def selected_fco_display_mappings
     return [] if @selected_fco_id.blank?
 
@@ -442,6 +579,7 @@ class AchievementEntriesController < ApplicationController
       month: @selected_month
     }.compact_blank
     path_params[:fco_id] = @selected_fco_id if current_user.admin? && @selected_fco_id.present?
+    path_params[:sort_direction] = @selected_sort_direction if descending_sort_selected?
 
     achievement_entry_path(path_params)
   end
@@ -540,6 +678,232 @@ class AchievementEntriesController < ApplicationController
     end
   end
 
+  def update_all_month_achievements!(submit: false)
+    if @rows.blank?
+      redirect_to achievement_entry_path, alert: "No activities found for this FCO, TO and project."
+      return
+    end
+
+    changed_row_ids_by_month = changed_all_month_entry_row_ids_from_params
+    save_all_month_achievement_values!
+    reload_selected_rows!
+    refresh_all_month_unreviewed_pending_submission_rows!(changed_row_ids_by_month)
+    requeued_count = requeue_all_month_reviewed_achievements_for_mis_edit!(changed_row_ids_by_month)
+    load_selection
+
+    submit_requested = submit || params[:commit].to_s.start_with?("Submit")
+    if submit_requested
+      created_count = create_all_month_achievement_submissions!(raise_when_blank: requeued_count.zero?)
+      total_count = created_count + requeued_count
+      redirect_to selected_achievement_entry_path,
+        notice: "#{total_count} achievement approval request#{'s' unless total_count == 1} submitted across selected months."
+      return
+    end
+
+    notice = "Achievement rows saved for all months."
+    if requeued_count.positive?
+      notice = "#{notice} #{requeued_count} approval request#{'s' unless requeued_count == 1} sent again after MIS edit."
+    end
+    redirect_to selected_achievement_entry_path, notice: notice
+  end
+
+  def import_all_month_excel!
+    if @rows.blank?
+      redirect_to selected_achievement_entry_path, alert: "No activities found for this FCO, TO and project."
+      return
+    end
+
+    if params[:achievement_excel_file].blank?
+      redirect_to selected_achievement_entry_path, alert: "Please choose the edited achievement Excel file."
+      return
+    end
+
+    changes = achievement_all_month_excel_changes_from(achievement_excel_rows_from_upload(params[:achievement_excel_file]))
+
+    if changes.blank?
+      redirect_to selected_achievement_entry_path,
+        alert: "No valid Row ID changes found. Download the latest all-month Excel format from this page and upload it after editing."
+      return
+    end
+
+    changed_row_ids_by_month = apply_all_month_excel_achievement_changes!(changes)
+
+    if changed_row_ids_by_month.blank?
+      redirect_to selected_achievement_entry_path, alert: "Excel uploaded, but no achievement changes were found."
+      return
+    end
+
+    reload_selected_rows!
+    refresh_all_month_unreviewed_pending_submission_rows!(changed_row_ids_by_month)
+    requeued_count = requeue_all_month_reviewed_achievements_for_mis_edit!(changed_row_ids_by_month)
+    load_selection
+
+    changed_cell_count = changed_row_ids_by_month.sum { |_month, ids| ids.size }
+    notice = "#{changed_cell_count} achievement value#{'s' unless changed_cell_count == 1} updated from Excel across selected months."
+    if requeued_count.positive?
+      notice = "#{notice} #{requeued_count} approval request#{'s' unless requeued_count == 1} sent again after MIS edit."
+    end
+
+    redirect_to selected_achievement_entry_path, notice: notice
+  end
+
+  def all_month_achievement_params
+    return {} unless params[:achievements_all].respond_to?(:to_unsafe_h)
+
+    params[:achievements_all].to_unsafe_h
+  end
+
+  def changed_all_month_entry_row_ids_from_params
+    return {} if @rows.blank?
+
+    changed_ids_by_month = Hash.new { |hash, key| hash[key] = [] }
+    submitted_values = all_month_achievement_params
+    selected_row_ids = @rows.map(&:id)
+    editable_ids = editable_row_ids_for(submitted_values.keys) & selected_row_ids
+    current_rows = @scoped_rows.where(id: editable_ids).index_by(&:id)
+
+    editable_ids.each do |row_id|
+      row = current_rows[row_id]
+      month_values = submitted_values[row_id.to_s].is_a?(Hash) ? submitted_values[row_id.to_s] : {}
+      next if row.blank? || month_values.blank?
+
+      ActionPlanRow::MONTH_COLUMNS.each do |month|
+        next unless month_values.key?(month)
+
+        achievement_column = "#{month}_t"
+        next if row.public_send(achievement_column).to_d == clean_achievement_value(month_values[month])
+
+        changed_ids_by_month[month] << row_id
+      end
+    end
+
+    changed_ids_by_month.transform_values(&:uniq).reject { |_month, ids| ids.blank? }
+  end
+
+  def save_all_month_achievement_values!
+    submitted_values = all_month_achievement_params
+    editable_ids = editable_row_ids_for(submitted_values.keys)
+    accessible_rows = @scoped_rows.where(id: editable_ids)
+
+    ActionPlanRow.transaction do
+      accessible_rows.find_each do |row|
+        month_values = submitted_values[row.id.to_s].is_a?(Hash) ? submitted_values[row.id.to_s] : {}
+        attributes = ActionPlanRow::MONTH_COLUMNS.each_with_object({}) do |month, values|
+          next unless month_values.key?(month)
+
+          values["#{month}_t"] = clean_achievement_value(month_values[month])
+        end
+
+        row.update!(attributes) if attributes.present?
+      end
+    end
+  end
+
+  def achievement_all_month_excel_changes_from(spreadsheet_rows)
+    selected_rows_by_id = @rows.index_by(&:id)
+
+    spreadsheet_rows.each_with_object({}) do |spreadsheet_row, changes|
+      row_id = Integer(spreadsheet_value(spreadsheet_row, ACHIEVEMENT_ROW_ID_HEADER).to_s.strip, exception: false)
+      next unless row_id.present? && selected_rows_by_id.key?(row_id)
+
+      month_changes = ActionPlanRow::MONTH_COLUMNS.each_with_object({}) do |month, values|
+        achievement_value = spreadsheet_value(
+          spreadsheet_row,
+          month_achievement_header(month),
+          "#{month.capitalize}_Achievement",
+          "#{month.capitalize}_T"
+        )
+        next if achievement_value.to_s.strip.blank?
+
+        values[month] = clean_achievement_value(achievement_value)
+      end
+
+      changes[row_id] = month_changes if month_changes.present?
+    end
+  end
+
+  def apply_all_month_excel_achievement_changes!(changes)
+    row_ids = changes.keys
+    selected_rows_by_id = @rows.index_by(&:id)
+    changed_ids_by_month = Hash.new { |hash, key| hash[key] = [] }
+
+    ActiveRecord::Base.transaction do
+      row_ids.each do |row_id|
+        row = selected_rows_by_id[row_id]
+        month_changes = changes[row_id]
+        next if row.blank? || month_changes.blank?
+
+        attributes = {}
+        month_changes.each do |month, achievement_value|
+          next unless ActionPlanRow::MONTH_COLUMNS.include?(month)
+
+          achievement_column = "#{month}_t"
+          next if row.public_send(achievement_column).to_d == achievement_value.to_d
+
+          attributes[achievement_column] = achievement_value
+          changed_ids_by_month[month] << row.id
+        end
+
+        row.update!(attributes) if attributes.present?
+      end
+    end
+
+    changed_ids_by_month.transform_values(&:uniq).reject { |_month, ids| ids.blank? }
+  end
+
+  def refresh_all_month_unreviewed_pending_submission_rows!(changed_row_ids_by_month)
+    changed_row_ids_by_month.each do |month, row_ids|
+      with_selected_month(month) { refresh_unreviewed_pending_submission_rows!(row_ids) }
+    end
+  end
+
+  def requeue_all_month_reviewed_achievements_for_mis_edit!(changed_row_ids_by_month)
+    changed_row_ids_by_month.sum do |month, row_ids|
+      with_selected_month(month) { requeue_reviewed_achievements_for_mis_edit!(row_ids) }
+    end
+  end
+
+  def create_all_month_achievement_submissions!(raise_when_blank: true)
+    created_count = ActionPlanRow::MONTH_COLUMNS.sum do |month|
+      rows = rows_for_all_month_submission(month)
+      next 0 if rows.blank?
+
+      with_selected_month(month) do
+        create_achievement_submissions!(rows: rows, raise_when_blank: false)
+      end
+    end
+
+    return created_count if created_count.positive? || !raise_when_blank
+
+    raise ActiveRecord::RecordInvalid.new(AchievementSubmission.new.tap do |submission|
+      submission.errors.add(:base, "Approval request already exists for the selected months/project.")
+    end)
+  end
+
+  def rows_for_all_month_submission(month)
+    @rows.select do |row|
+      row.public_send(month).to_i.positive? || row.public_send("#{month}_t").to_d.positive?
+    end
+  end
+
+  def admin_all_month_submission_candidate_count(row_ids)
+    ids = row_ids.map(&:to_i).uniq
+    return 0 if ids.blank?
+
+    ActionPlanRow::MONTH_COLUMNS.sum do |month|
+      month_row_ids = rows_for_all_month_submission(month).map(&:id) & ids
+      admin_submission_candidate_row_count(month_row_ids, month)
+    end
+  end
+
+  def with_selected_month(month)
+    previous_month = @selected_month
+    @selected_month = month
+    yield
+  ensure
+    @selected_month = previous_month
+  end
+
   def achievement_excel_rows_from_upload(upload)
     extension = File.extname(upload.original_filename.to_s).presence || File.extname(upload.path.to_s)
     extension = extension.to_s.downcase
@@ -618,7 +982,11 @@ class AchievementEntriesController < ApplicationController
   end
 
   def achievement_excel_achievement_header
-    "#{@selected_month.to_s.capitalize} Achievement"
+    month_achievement_header(@selected_month)
+  end
+
+  def month_achievement_header(month)
+    "#{month.to_s.capitalize} Achievement"
   end
 
   def spreadsheet_value(row, *headers)
@@ -745,6 +1113,7 @@ class AchievementEntriesController < ApplicationController
           po_approver: ownership&.owner_employee,
           coo_approver: AchievementSubmission.coo_employee,
           director_approver: AchievementSubmission.director_employee,
+          mis_submitted: current_user.admin?,
           submitted_at: Time.current
         )
 
@@ -972,12 +1341,14 @@ class AchievementEntriesController < ApplicationController
 
   def returned_entry_context_for(submission)
     month = submission.month.to_s
-    rows = visible_achievement_rows_for(
-      @scoped_rows
-        .where(to_id: submission.to_id, project_name: submission.project_name)
-        .order(:asa_theme_id, :asa_activity_id, :activity_id, :id)
-        .to_a,
-      month
+    rows = sort_achievement_rows(
+      visible_achievement_rows_for(
+        @scoped_rows
+          .where(to_id: submission.to_id, project_name: submission.project_name)
+          .order(:asa_theme_id, :asa_activity_id, :activity_id, :id)
+          .to_a,
+        month
+      )
     )
     row_ids = rows.map(&:id)
     locked_row_ids = locked_submission_row_ids_for(row_ids, month)
@@ -1008,29 +1379,73 @@ class AchievementEntriesController < ApplicationController
 
   def achievement_entry_csv
     CSV.generate(headers: true) do |csv|
-      headers = [ "Project", "TO ID", "TO Name", "ASA Theme ID", "ASA Theme", "ASA Activity ID", "ASA Activity", "Project Activity", "Unit", "#{@selected_month.to_s.capitalize} Target", "#{@selected_month.to_s.capitalize} Achievement", "Remark" ]
+      headers = achievement_entry_csv_headers
       headers.unshift(ACHIEVEMENT_ROW_ID_HEADER) if current_user.admin?
       csv << headers
 
       @rows.each do |row|
         detail = @entry_details_by_row_id[row.id]
-        values = [
-          row.project_name,
-          row.to_id,
-          row.to_name,
-          ActionPlanRow.format_decimal_string(row.asa_theme_id),
-          row.asa_theme,
-          ActionPlanRow.format_decimal_string(row.asa_activity_id),
-          row.asa_activity_name,
-          row.activity.presence || row.activity_id,
-          row.unit_type,
-          @selected_month.present? ? row.public_send(@selected_month).to_i : nil,
-          @selected_month.present? ? row.public_send("#{@selected_month}_t").to_d : nil,
-          detail&.remark
-        ]
+        values = achievement_entry_csv_values(row, detail)
         values.unshift(row.id) if current_user.admin?
         csv << values
       end
+    end
+  end
+
+  def achievement_entry_csv_headers
+    base_headers = [
+      "Project",
+      "TO ID",
+      "TO Name",
+      "ASA Theme ID",
+      "ASA Theme",
+      "ASA Activity ID",
+      "ASA Activity",
+      "Project Theme ID",
+      "Project Theme Name",
+      "Project Activity ID",
+      "Project Activity",
+      "Unit"
+    ]
+
+    if all_months_selected?
+      base_headers + ActionPlanRow::MONTH_COLUMNS.flat_map do |month|
+        [ "#{month.capitalize} Target", month_achievement_header(month) ]
+      end
+    else
+      base_headers + [ "#{@selected_month.to_s.capitalize} Target", achievement_excel_achievement_header, ACHIEVEMENT_REMARK_HEADER ]
+    end
+  end
+
+  def achievement_entry_csv_values(row, detail)
+    base_values = [
+      row.project_name,
+      row.to_id,
+      row.to_name,
+      ActionPlanRow.format_decimal_string(row.asa_theme_id),
+      row.asa_theme,
+      ActionPlanRow.format_decimal_string(row.asa_activity_id),
+      row.asa_activity_name,
+      ActionPlanRow.format_decimal_string(row.theme_id),
+      row.theme,
+      ActionPlanRow.format_decimal_string(row.activity_id),
+      row.activity.presence || row.activity_id,
+      row.unit_type
+    ]
+
+    if all_months_selected?
+      base_values + ActionPlanRow::MONTH_COLUMNS.flat_map do |month|
+        [
+          row.public_send(month).to_i,
+          row.public_send("#{month}_t").to_d
+        ]
+      end
+    else
+      base_values + [
+        @selected_month.present? ? row.public_send(@selected_month).to_i : nil,
+        @selected_month.present? ? row.public_send("#{@selected_month}_t").to_d : nil,
+        detail&.remark
+      ]
     end
   end
 end

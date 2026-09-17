@@ -119,6 +119,7 @@
             active_submission_count: context[:active_submission_count],
             selected_returned_submissions: context[:selected_returned_submissions],
             selected_fco_id: @selected_fco_id,
+            selected_sort_direction: @selected_sort_direction,
             mode_label: current_user.admin? ? "MIS Excel Edit" : "Achievement Entry",
             save_label: current_user.admin? ? "Save Changes" : "Save Draft",
             submit_label: "Submit for Approval",
@@ -222,6 +223,7 @@
         autocomplete: "off",
         data: { filter: "month" } %>
     </label>
+
   <% end %>
   <% if @rows.present? %>
     <div class="toolbar-actions">
@@ -238,6 +240,7 @@
           <%= hidden_field_tag :to_id, @selected_to_id %>
           <%= hidden_field_tag :project, @selected_project %>
           <%= hidden_field_tag :month, @selected_month %>
+          <%= hidden_field_tag :sort_direction, @selected_sort_direction %>
           <label>
             <span class="filter-label">Upload Edited Excel</span>
             <%= file_field_tag :achievement_excel_file,
@@ -289,7 +292,23 @@
   })();
 </script>
 
-<% if @rows.present? %>
+<% if @rows.present? && @all_months_selected %>
+  <%= render "all_months_form",
+    rows: @rows,
+    selected_to_id: @selected_to_id,
+    selected_to_label: @to_options.assoc(@selected_to_id)&.first,
+    selected_project: @selected_project,
+    target_rows_count: @target_rows_count,
+    editable_row_count: @editable_row_count,
+    submission_candidate_row_count: @submission_candidate_row_count,
+    active_submission_count: @active_submission_count,
+    selected_fco_id: @selected_fco_id,
+    selected_sort_direction: @selected_sort_direction,
+    mode_label: "MIS All Month Edit",
+    save_label: "Save All Months",
+    submit_label: "Submit All Months",
+    form_class: "table-panel achievement-entry-panel achievement-excel-edit-panel" %>
+<% elsif @rows.present? %>
   <%= render "entry_form",
     rows: @rows,
     selected_to_id: @selected_to_id,
@@ -305,6 +324,7 @@
     active_submission_count: @active_submission_count,
     selected_returned_submissions: @selected_returned_submissions,
     selected_fco_id: @selected_fco_id,
+    selected_sort_direction: @selected_sort_direction,
     mode_label: current_user.admin? ? "MIS Excel Edit" : "Achievement Entry",
     save_label: current_user.admin? ? "Save Changes" : "Save Draft",
     submit_label: "Submit for Approval",

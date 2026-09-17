@@ -7,6 +7,7 @@
 <% show_search = local_assigns.fetch(:show_search, true) %>
 <% selected_to_label = local_assigns[:selected_to_label] %>
 <% selected_fco_id = local_assigns[:selected_fco_id] %>
+<% selected_sort_direction = local_assigns[:selected_sort_direction] %>
 <% mode_label = local_assigns.fetch(:mode_label, "Achievement Entry") %>
 <% save_label = local_assigns.fetch(:save_label, "Save Draft") %>
 <% submit_label = local_assigns.fetch(:submit_label, "Submit for Approval") %>
@@ -21,6 +22,7 @@
   <%= hidden_field_tag :project, selected_project %>
   <%= hidden_field_tag :month, selected_month %>
   <%= hidden_field_tag :fco_id, selected_fco_id if selected_fco_id.present? %>
+  <%= hidden_field_tag :sort_direction, selected_sort_direction if selected_sort_direction.present? %>
 
   <div class="table-heading">
     <div>
@@ -85,6 +87,8 @@
           <th>TO</th>
           <th>ASA Theme ID / ASA Theme</th>
           <th>ASA Activity ID / ASA Activity</th>
+          <th>Project Theme ID / Project Theme Name</th>
+          <th>Project Activity ID</th>
           <th>Project Activity</th>
           <th>Unit</th>
           <th><%= selected_month.capitalize %> Target</th>
@@ -114,6 +118,11 @@
               <span class="code-pill"><%= action_plan_cell(row.asa_activity_id, decimal: true) %></span>
               <div><%= row.asa_activity_name %></div>
             </td>
+            <td>
+              <span class="code-pill"><%= action_plan_cell(row.theme_id, decimal: true) %></span>
+              <div><%= row.theme.presence || "-" %></div>
+            </td>
+            <td><span class="code-pill"><%= action_plan_cell(row.activity_id, decimal: true) %></span></td>
             <td><%= row.activity.presence || row.activity_id.presence || "-" %></td>
             <td><%= row.unit_type.presence || "-" %></td>
             <td class="achievement-target-cell <%= "has-target" if has_target %>">

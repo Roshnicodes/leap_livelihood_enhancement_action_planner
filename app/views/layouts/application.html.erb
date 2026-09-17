@@ -492,6 +492,55 @@
           return filterTextFor(row.cells[columnIndex]);
         }
 
+        function sortTextFor(element) {
+          if (!element) return "";
+
+          const values = [element.textContent];
+          element.querySelectorAll("input, textarea, select").forEach((control) => {
+            if (control.tagName === "SELECT") {
+              values.push(control.selectedOptions[0]?.textContent || control.value);
+            } else if (control.type !== "checkbox" && control.type !== "radio") {
+              values.push(control.value);
+            }
+          });
+
+          return compactText(values.join(" "));
+        }
+
+        function sortValueFor(row, columnIndex) {
+          const text = sortTextFor(row.cells[columnIndex]);
+          const numberText = text.replace(/,/g, "");
+          if (/^-?\d+(\.\d+)?$/.test(numberText)) return { type: "number", value: Number(numberText) };
+
+          return { type: "text", value: text.toLowerCase() };
+        }
+
+        function compareSortValues(left, right) {
+          if (left.type === "number" && right.type === "number") return left.value - right.value;
+
+          return String(left.value).localeCompare(String(right.value), undefined, { numeric: true, sensitivity: "base" });
+        }
+
+        function sortTableByColumn(table, columnIndex, direction) {
+          const multiplier = direction === "desc" ? -1 : 1;
+          [...table.tBodies].forEach((body) => {
+            const rows = [...body.rows].map((row, index) => ({ row, index, value: sortValueFor(row, columnIndex) }));
+            rows
+              .sort((left, right) => {
+                const comparison = compareSortValues(left.value, right.value);
+                return comparison === 0 ? left.index - right.index : comparison * multiplier;
+              })
+              .forEach(({ row }) => body.appendChild(row));
+          });
+
+          table.querySelectorAll("[data-column-filter-popover]").forEach((popover) => {
+            popover.dataset.sortDirection = "";
+          });
+          const activePopover = table.querySelector(`[data-column-filter-popover][data-column-index="${columnIndex}"]`);
+          if (activePopover) activePopover.dataset.sortDirection = direction;
+          applyTableFilters(table);
+        }
+
         function columnFilterMatches(text, operator, term) {
           if (operator === "blank") return text.length === 0 || text === "-";
           if (operator === "not_blank") return text.length > 0 && text !== "-";
@@ -612,7 +661,24 @@
             const popover = document.createElement("div");
             popover.className = "column-filter-popover";
             popover.dataset.columnFilterPopover = "true";
+            popover.dataset.columnIndex = columnIndex;
             popover.hidden = true;
+
+            const sortActions = document.createElement("div");
+            sortActions.className = "column-filter-sort-actions";
+
+            const ascending = document.createElement("button");
+            ascending.type = "button";
+            ascending.className = "column-filter-sort";
+            ascending.dataset.sortDirection = "asc";
+            ascending.textContent = "Ascending";
+
+            const descending = document.createElement("button");
+            descending.type = "button";
+            descending.className = "column-filter-sort";
+            descending.dataset.sortDirection = "desc";
+            descending.textContent = "Descending";
+            sortActions.append(ascending, descending);
 
             const operator = document.createElement("select");
             operator.className = "column-filter-operator";
@@ -639,7 +705,7 @@
             clear.className = "column-filter-clear";
             clear.textContent = "Clear";
 
-            popover.append(operator, input, clear);
+            popover.append(sortActions, operator, input, clear);
             th.append(button, popover);
 
             function refreshColumnFilter() {
@@ -661,6 +727,12 @@
             popover.addEventListener("click", (event) => event.stopPropagation());
             operator.addEventListener("change", refreshColumnFilter);
             input.addEventListener("input", refreshColumnFilter);
+            sortActions.addEventListener("click", (event) => {
+              const sortButton = event.target.closest("[data-sort-direction]");
+              if (!sortButton) return;
+
+              sortTableByColumn(table, columnIndex, sortButton.dataset.sortDirection);
+            });
             clear.addEventListener("click", () => {
               operator.value = "contains";
               input.disabled = false;

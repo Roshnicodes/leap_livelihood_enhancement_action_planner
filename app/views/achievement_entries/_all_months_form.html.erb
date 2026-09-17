@@ -1,0 +1,118 @@
+<% form_class = local_assigns.fetch(:form_class, "table-panel achievement-entry-panel") %>
+<% selected_to_label = local_assigns[:selected_to_label] %>
+<% selected_fco_id = local_assigns[:selected_fco_id] %>
+<% selected_sort_direction = local_assigns[:selected_sort_direction] %>
+<% mode_label = local_assigns.fetch(:mode_label, "MIS All Month Edit") %>
+<% save_label = local_assigns.fetch(:save_label, "Save All Months") %>
+<% submit_label = local_assigns.fetch(:submit_label, "Submit All Months") %>
+
+<%= form_with url: achievement_entry_path,
+      method: :patch,
+      class: form_class,
+      data: { searchable_table: true },
+      html: { multipart: true } do %>
+  <%= hidden_field_tag :to_id, selected_to_id %>
+  <%= hidden_field_tag :project, selected_project %>
+  <%= hidden_field_tag :month, AchievementEntriesController::ALL_MONTHS_PARAM %>
+  <%= hidden_field_tag :fco_id, selected_fco_id if selected_fco_id.present? %>
+  <%= hidden_field_tag :sort_direction, selected_sort_direction if selected_sort_direction.present? %>
+
+  <div class="table-heading">
+    <div>
+      <p class="eyebrow"><%= mode_label %></p>
+      <h2><%= selected_project %> / All Months</h2>
+      <p class="muted">
+        <%= selected_to_label %>
+        / Activities with any target: <strong><%= target_rows_count %></strong>
+        <% if active_submission_count.to_i.positive? %>
+          / Some months are already submitted
+        <% end %>
+      </p>
+      <p class="achievement-legend">
+        <span class="achievement-legend-dot"></span>
+        Highlighted rows have a target greater than 0 in at least one month
+      </p>
+    </div>
+    <div class="table-actions">
+      <input type="search" class="table-search" placeholder="Search activities" data-table-search-input>
+      <span class="table-count" data-filtered-count data-count-label="activities"><%= rows.size %> activities</span>
+    </div>
+  </div>
+
+  <div class="responsive-table achievement-table-wrap">
+    <table class="action-plan-table achievement-entry-table achievement-all-months-table">
+      <thead>
+        <tr>
+          <th>S.No.</th>
+          <th>Project</th>
+          <th>TO</th>
+          <th>ASA Theme ID / ASA Theme</th>
+          <th>ASA Activity ID / ASA Activity</th>
+          <th>Project Theme ID / Project Theme Name</th>
+          <th>Project Activity ID</th>
+          <th>Project Activity</th>
+          <th>Unit</th>
+          <% ActionPlanRow::MONTH_COLUMNS.each do |month| %>
+            <th><%= month.capitalize %> Target</th>
+            <th><%= month.capitalize %> Achievement</th>
+          <% end %>
+        </tr>
+      </thead>
+      <tbody>
+        <% rows.each_with_index do |row, index| %>
+          <% has_target = ActionPlanRow::MONTH_COLUMNS.any? { |month| row.public_send(month).to_i.positive? } %>
+          <tr class="<%= "achievement-row-has-target" if has_target %>">
+            <td><span class="code-pill"><%= index + 1 %></span></td>
+            <td><strong><%= row.project_name %></strong></td>
+            <td>
+              <span class="code-pill"><%= row.to_id %></span>
+              <div><%= row.to_name %></div>
+            </td>
+            <td>
+              <span class="code-pill"><%= action_plan_cell(row.asa_theme_id, decimal: true) %></span>
+              <div><%= row.asa_theme %></div>
+            </td>
+            <td>
+              <span class="code-pill"><%= action_plan_cell(row.asa_activity_id, decimal: true) %></span>
+              <div><%= row.asa_activity_name %></div>
+            </td>
+            <td>
+              <span class="code-pill"><%= action_plan_cell(row.theme_id, decimal: true) %></span>
+              <div><%= row.theme.presence || "-" %></div>
+            </td>
+            <td><span class="code-pill"><%= action_plan_cell(row.activity_id, decimal: true) %></span></td>
+            <td><%= row.activity.presence || row.activity_id.presence || "-" %></td>
+            <td><%= row.unit_type.presence || "-" %></td>
+            <% ActionPlanRow::MONTH_COLUMNS.each do |month| %>
+              <% month_target = row.public_send(month).to_i %>
+              <% month_has_target = month_target.positive? %>
+              <td class="achievement-target-cell <%= "has-target" if month_has_target %>">
+                <span class="achievement-target-pill" <%= raw('style="color:#ffffff;-webkit-text-fill-color:#ffffff;"') if month_has_target %>><%= whole_number(month_target) %></span>
+              </td>
+              <td class="achievement-input-cell <%= "has-target" if month_has_target %>">
+                <%= number_field_tag "achievements_all[#{row.id}][#{month}]",
+                  row.public_send("#{month}_t"),
+                  id: "achievement_all_#{month}_#{row.id}",
+                  min: 0,
+                  step: "0.01",
+                  class: "achievement-input #{'is-priority' if month_has_target}",
+                  aria: { label: "#{month.capitalize} achievement for #{row.asa_activity_name.presence || row.activity}" } %>
+              </td>
+            <% end %>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="submit-panel achievement-submit-panel">
+    <p class="muted">All Months / <%= submission_candidate_row_count %> submission candidates</p>
+    <div class="achievement-submit-actions">
+      <%= text_field_tag :submission_remark, nil, class: "remark-input achievement-submit-remark", placeholder: "Remark for approvers (optional)", disabled: submission_candidate_row_count.to_i.zero? %>
+      <%= submit_tag save_label, class: "secondary-button", disabled: editable_row_count.to_i.zero? %>
+      <%= submit_tag submit_label,
+        class: "submit-plan-button",
+        disabled: submission_candidate_row_count.to_i.zero? %>
+    </div>
+  </div>
+<% end %>

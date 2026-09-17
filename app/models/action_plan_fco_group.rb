@@ -3,6 +3,8 @@ class ActionPlanFcoGroup
     "16" => { ids: %w[16 17], name: "Jobat - FCO" },
     "14" => { ids: %w[14 11], name: "Bhawanipatna - FCO" },
     "15" => { ids: %w[15 12], name: "Mandla - FCO" },
+    "18" => { ids: %w[18], name: "Jamtara - FCO" },
+    "19" => { ids: %w[19], name: "Jamtara - FCO" },
     "28" => { ids: %w[28], name: "Financial Inclusion" }
   }.freeze
 
