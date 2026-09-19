@@ -1,8 +1,10 @@
-<% display_columns = ActionPlanRow.display_columns(admin: show_admin_columns) %>
+<% hide_fco_columns = local_assigns.fetch(:hide_fco_columns, false) %>
+<% hide_to_columns = local_assigns.fetch(:hide_to_columns, false) %>
+<% display_columns = ActionPlanRow.display_columns(admin: show_admin_columns, without_fco: hide_fco_columns, without_to: hide_to_columns) %>
 <% project_ownership_lookup = local_assigns.fetch(:project_ownership_lookup, {}) || {} %>
 <% month_display_pairs = local_assigns.fetch(:month_display_pairs, ActionPlanRow::MONTH_DISPLAY_PAIRS) %>
 
-<table class="action-plan-table">
+<table class="action-plan-table <%= "is-compact-dimensions" if hide_fco_columns || hide_to_columns %>">
   <thead>
     <tr>
       <% display_columns.each do |column| %>

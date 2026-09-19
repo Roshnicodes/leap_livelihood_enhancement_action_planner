@@ -4,9 +4,10 @@ require "zip"
 class XlsxWorkbook
   CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet".freeze
 
-  def self.from_csv(csv_data, title:, sheet_name: "Report", include_title: true)
+  def self.from_csv(csv_data, title:, sheet_name: "Report", include_title: true, protected: false, unlocked_columns: [], unlocked_headers: [])
     rows = CSV.parse(csv_data.to_s)
     headers = rows.shift || []
+    unlocked_header_indexes = headers.each_index.select { |index| unlocked_headers.include?(headers[index].to_s) }
 
     new([
       {
@@ -15,7 +16,9 @@ class XlsxWorkbook
         include_title: include_title,
         headers: headers,
         rows: rows,
-        widths: inferred_widths(headers, rows)
+        widths: inferred_widths(headers, rows),
+        protected: protected,
+        unlocked_columns: (Array(unlocked_columns) + unlocked_header_indexes).uniq
       }
     ]).to_xlsx
   end
@@ -75,6 +78,7 @@ class XlsxWorkbook
     header_row_number = sheet.fetch(:include_title, true) ? 4 : 1
     first_data_cell = "A#{header_row_number + 1}"
     auto_filter_ref = "A#{header_row_number}:#{cell_reference(last_column - 1, all_rows.size)}"
+    unlocked_columns = Array(sheet[:unlocked_columns]).map(&:to_i)
 
     <<~XML
       <?xml version="1.0" encoding="UTF-8"?>
@@ -86,17 +90,19 @@ class XlsxWorkbook
         </sheetViews>
         #{columns_xml(sheet[:widths], last_column)}
         <sheetData>
-          #{all_rows.each_with_index.map { |row, index| worksheet_row_xml(row, index + 1) }.join}
+          #{all_rows.each_with_index.map { |row, index| worksheet_row_xml(row, index + 1, header_row_number: header_row_number, unlocked_columns: unlocked_columns) }.join}
         </sheetData>
+        #{sheet_protection_xml(sheet[:protected])}
         <autoFilter ref="#{auto_filter_ref}"/>
       </worksheet>
     XML
   end
 
-  def worksheet_row_xml(row, row_number)
+  def worksheet_row_xml(row, row_number, header_row_number:, unlocked_columns:)
     values = row.fetch(:values)
     cells = values.each_with_index.map do |value, index|
-      cell_xml(value, cell_reference(index, row_number), row[:style])
+      style = row_number > header_row_number && unlocked_columns.include?(index) ? 4 : row[:style]
+      cell_xml(value, cell_reference(index, row_number), style)
     end.join
     height = row[:style] == 1 ? %( ht="24" customHeight="1") : ""
     %(<row r="#{row_number}"#{height}>#{cells}</row>)
@@ -125,6 +131,12 @@ class XlsxWorkbook
     end.join
 
     "<cols>#{column_xml}</cols>"
+  end
+
+  def sheet_protection_xml(protected)
+    return "" unless protected
+
+    %(<sheetProtection sheet="1" objects="1" scenarios="1"/>)
   end
 
   def cell_reference(column_index, row_number)
@@ -215,11 +227,12 @@ class XlsxWorkbook
           <border><left style="thin"><color rgb="FFD7E2EA"/></left><right style="thin"><color rgb="FFD7E2EA"/></right><top style="thin"><color rgb="FFD7E2EA"/></top><bottom style="thin"><color rgb="FFD7E2EA"/></bottom><diagonal/></border>
         </borders>
         <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-        <cellXfs count="4">
+        <cellXfs count="5">
           <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"/>
           <xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>
           <xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/>
           <xf numFmtId="0" fontId="3" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>
+          <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyProtection="1"><protection locked="0"/></xf>
         </cellXfs>
         <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
       </styleSheet>

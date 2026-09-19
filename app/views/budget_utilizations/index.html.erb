@@ -1,4 +1,5 @@
 <% content_for :title, "Budget Utilization | LEAP" %>
+<% selected_project_label = @all_projects_selected ? "All Projects" : @selected_project %>
 
 <section class="page-header budget-utilization-header">
   <div>
@@ -6,7 +7,7 @@
     <h1>Budget Utilization</h1>
     <p class="muted">
       <% if @can_edit %>
-        Choose a project and month to update utilization for all BLI lines.
+        Choose a project and month to update utilization, or export all projects for a selected month.
       <% else %>
         View utilization for your assigned BLI lines only. Accounts fills values for all projects.
       <% end %>
@@ -26,7 +27,7 @@
     <label>
       <span class="filter-label">Choose Project</span>
       <%= form.select :project,
-        options_for_select(@project_options.map { |project| [project, project] }, @selected_project.to_s),
+        options_for_select([["All Projects", BudgetUtilizationsController::ALL_PROJECTS_VALUE]] + @project_options.map { |project| [project, project] }, @selected_project.to_s),
         { prompt: "Select Project" },
         class: "select",
         autocomplete: "off",
@@ -43,6 +44,29 @@
     </label>
   <% end %>
 </section>
+
+<% if @selected_project.present? && @selected_month.present? && @rows.any? %>
+  <section class="budget-excel-panel">
+    <div class="budget-excel-card">
+      <span class="filter-label">Excel Download</span>
+      <%= link_to "Download Excel Sheet",
+        budget_utilizations_path(project: @selected_project, month: @selected_month, format: :xlsx),
+        class: "secondary-button" %>
+    </div>
+    <% if @can_edit %>
+      <%= form_with url: import_budget_utilizations_path,
+        method: :post,
+        multipart: true,
+        class: "budget-excel-card budget-utilization-import-form" do |form| %>
+        <span class="filter-label">Excel Import</span>
+        <%= hidden_field_tag :project, @selected_project %>
+        <%= hidden_field_tag :month, @selected_month %>
+        <%= form.file_field :budget_file, accept: ".xlsx,.csv", class: "input", required: true %>
+        <%= form.submit "Import Excel", class: "submit-plan-button" %>
+      <% end %>
+    <% end %>
+  </section>
+<% end %>
 
 <% if @selected_project.present? && @selected_month.present? && @rows.any? %>
   <section class="metric-grid metric-grid-compact budget-utilization-metrics">
@@ -68,7 +92,7 @@
     </section>
   <% end %>
 
-  <% if @can_edit && !@submitted_locked %>
+  <% if @can_edit && !@all_projects_selected && !@submitted_locked %>
     <%= form_with url: budget_utilizations_path, method: :patch, class: "table-panel budget-utilization-panel", data: { searchable_table: true, budget_utilization_panel: true } do %>
       <%= hidden_field_tag :project, @selected_project %>
       <%= hidden_field_tag :month, @selected_month %>
@@ -92,7 +116,9 @@
       <%= render "budget_utilizations/records_table", editable: false %>
       <div class="submit-panel budget-utilization-submit">
         <p class="muted">
-          <% if @submitted_locked %>
+          <% if @all_projects_selected %>
+            All projects for <%= @selected_month.capitalize %> are shown in view mode. Download, update the editable month column, then import the same sheet.
+          <% elsif @submitted_locked %>
             Submitted final for <%= @selected_project %> / <%= @selected_month.capitalize %>. Changes are locked.
           <% else %>
             View only — your assigned BLI lines. Full project report is under Budget Utilization Report.
@@ -108,10 +134,10 @@
       <p class="muted">Choose a project first, then month to <%= @can_edit ? "enter" : "view" %> utilization.</p>
     <% elsif @selected_month.blank? %>
       <h2>Select Month</h2>
-      <p class="muted">Choose a month for <%= @selected_project %>.</p>
+      <p class="muted">Choose a month for <%= selected_project_label %>.</p>
     <% else %>
       <h2>No activities found</h2>
-      <p class="muted">No P&amp;B activities are available for this project.</p>
+      <p class="muted">No P&amp;B activities are available for <%= @all_projects_selected ? "all projects" : "this project" %>.</p>
     <% end %>
   </section>
 <% end %>

@@ -5550,6 +5550,10 @@ body.app-body {
   min-width: 1600px;
 }
 
+.action-plan-table.is-compact-dimensions {
+  min-width: 1380px;
+}
+
 .action-plan-table th.month-col,
 .action-plan-table td.month-col {
   min-width: 66px;
@@ -6970,6 +6974,46 @@ body.app-body {
   gap: 8px;
 }
 
+.budget-excel-panel {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(360px, 1fr);
+  gap: 12px;
+  margin: 12px 0;
+}
+
+.budget-excel-card {
+  display: grid;
+  align-content: end;
+  gap: 7px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #d8e6ed;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+}
+
+.budget-excel-card .secondary-button,
+.budget-excel-card .submit-plan-button,
+.budget-utilization-import-form .input {
+  min-height: 38px;
+  border-radius: 10px;
+}
+
+.budget-utilization-import-form {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+}
+
+.budget-utilization-import-form .filter-label {
+  grid-column: 1 / -1;
+}
+
+.budget-utilization-import-form .submit-plan-button {
+  padding: 9px 12px;
+  white-space: nowrap;
+}
+
 .budget-utilization-metrics {
   margin: 14px 0;
 }
@@ -7265,6 +7309,14 @@ body.app-body {
 
   .budget-utilization-submit-actions {
     justify-content: stretch;
+  }
+
+  .budget-excel-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .budget-utilization-import-form {
+    grid-template-columns: 1fr;
   }
 
   .budget-utilization-submit-actions .submit-plan-button,

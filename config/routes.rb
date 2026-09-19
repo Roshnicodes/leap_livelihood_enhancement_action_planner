@@ -20,6 +20,7 @@ Rails.application.routes.draw do
   resources :plan_submissions, only: %i[index create]
   get "budget_utilizations" => "budget_utilizations#index", as: :budget_utilizations
   patch "budget_utilizations" => "budget_utilizations#update"
+  post "budget_utilizations/import" => "budget_utilizations#import", as: :import_budget_utilizations
   get "budget_utilization_reports" => "budget_utilization_reports#index", as: :budget_utilization_reports
   get "report_masters" => "report_masters#index"
   get "report_information" => "report_information#index"

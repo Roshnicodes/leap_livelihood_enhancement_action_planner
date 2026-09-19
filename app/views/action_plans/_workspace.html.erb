@@ -14,6 +14,9 @@
 <% selected_state = local_assigns[:selected_state] %>
 <% vertical_options = local_assigns.fetch(:vertical_options, []) %>
 <% selected_vertical = local_assigns[:selected_vertical] %>
+<% enable_without_filters = local_assigns.fetch(:enable_without_filters, false) %>
+<% hide_fco_columns = local_assigns.fetch(:hide_fco_columns, false) %>
+<% hide_to_columns = local_assigns.fetch(:hide_to_columns, false) %>
 <% filter_selected_project = params[:project].to_s.presence_in([ "all", *project_options ]) %>
 <% filter_selected_period = params[:period].to_s.presence_in(period_options.map(&:last)) %>
 <% filter_selected_period_month = params[:period_month].to_s.presence_in(ActionPlanRow::MONTH_COLUMNS) %>
@@ -60,12 +63,18 @@
 
     <label>
       <span class="filter-label">FCO</span>
-      <%= form.select :fco_id, options_for_select([["All FCO", ""]] + fco_options, selected_fco_id.to_s), {}, class: "select", onchange: "this.form.requestSubmit()" %>
+      <% fco_select_options = [["All FCO", ""]] %>
+      <% fco_select_options << ["Without FCO", ActionPlanRow::WITHOUT_FCO_FILTER_VALUE] if enable_without_filters %>
+      <% fco_select_options += fco_options %>
+      <%= form.select :fco_id, options_for_select(fco_select_options, selected_fco_id.to_s), {}, class: "select", onchange: "this.form.requestSubmit()" %>
     </label>
 
     <label>
       <span class="filter-label">TO</span>
-      <%= form.select :to_id, options_for_select([["All TO", ""]] + to_options, selected_to_id.to_s), {}, class: "select", onchange: "this.form.requestSubmit()" %>
+      <% to_select_options = [["All TO", ""]] %>
+      <% to_select_options << ["Without TO", ActionPlanRow::WITHOUT_TO_FILTER_VALUE] if enable_without_filters %>
+      <% to_select_options += to_options %>
+      <%= form.select :to_id, options_for_select(to_select_options, selected_to_id.to_s), {}, class: "select", onchange: "this.form.requestSubmit()" %>
     </label>
   <% end %>
   <% if download_path.present? %>
@@ -82,7 +91,7 @@
 
   <section class="metric-grid metric-grid-compact">
     <% if selected_project == "all" %>
-      <article class="metric metric-teal"><span>Projects</span><strong><%= rows.distinct.count(:project_name) %></strong></article>
+      <article class="metric metric-teal"><span>Projects</span><strong><%= action_plan_distinct_count(rows, :project_name) %></strong></article>
     <% elsif show_admin_columns %>
       <article class="metric metric-teal"><span>PO ID</span><strong><%= rows.first&.po_id %></strong></article>
     <% else %>
@@ -155,7 +164,9 @@
             show_admin_columns: show_admin_columns,
             editable_targets: true,
             show_achievement: show_achievement,
-            month_display_pairs: month_display_pairs %>
+            month_display_pairs: month_display_pairs,
+            hide_fco_columns: hide_fco_columns,
+            hide_to_columns: hide_to_columns %>
         </div>
         <div class="submit-panel">
           <% if submit_with_targets && show_submission %>
@@ -185,7 +196,9 @@
           show_admin_columns: show_admin_columns,
           editable_targets: false,
           show_achievement: show_achievement,
-          month_display_pairs: month_display_pairs %>
+          month_display_pairs: month_display_pairs,
+          hide_fco_columns: hide_fco_columns,
+          hide_to_columns: hide_to_columns %>
       </div>
     <% end %>
   </section>

@@ -19,15 +19,20 @@ class ActionPlansController < ApplicationController
     @vertical_options = action_plan_filter_options(@selected_project, :asa_theme, :asa_theme, state_code: @selected_state)
     @selected_vertical = params[:vertical].to_s.presence_in(@vertical_options.map(&:last))
     @fco_options = action_plan_filter_options(@selected_project, :user_name, :user_id, state_code: @selected_state, vertical_name: @selected_vertical)
-    @selected_fco_id = params[:fco_id].to_s.presence_in(@fco_options.map(&:last))
-    @to_options = action_plan_filter_options(@selected_project, :to_name, :to_id, fco_id: @selected_fco_id, state_code: @selected_state, vertical_name: @selected_vertical)
-    @selected_to_id = params[:to_id].to_s.presence_in(@to_options.map(&:last))
+    @selected_fco_id = selected_action_plan_fco_id(@fco_options)
+    @hide_fco_columns = without_fco_selection?(@selected_fco_id)
+    selected_fco_filter_id = action_plan_real_fco_id(@selected_fco_id)
+    @to_options = action_plan_filter_options(@selected_project, :to_name, :to_id, fco_id: selected_fco_filter_id, state_code: @selected_state, vertical_name: @selected_vertical)
+    @selected_to_id = selected_action_plan_to_id(@to_options)
+    @hide_to_columns = without_to_selection?(@selected_to_id)
+    selected_to_filter_id = action_plan_real_to_id(@selected_to_id)
     @project_ownership = project_ownership_for(@selected_project) if @selected_project != "all"
-    @rows = action_plan_rows_for(@selected_project, fco_id: @selected_fco_id, to_id: @selected_to_id, state_code: @selected_state, vertical_name: @selected_vertical)
-    @project_ownership_lookup = project_ownership_lookup_for(@rows) if current_user.admin?
-    @theme_count = @rows.distinct.count(:theme) if @selected_project.present?
+    raw_rows = action_plan_rows_for(@selected_project, fco_id: selected_fco_filter_id, to_id: selected_to_filter_id, state_code: @selected_state, vertical_name: @selected_vertical)
+    @rows = action_plan_display_rows_for(raw_rows, without_fco: @hide_fco_columns, without_to: @hide_to_columns)
+    @project_ownership_lookup = project_ownership_lookup_for(raw_rows) if current_user.admin?
+    @theme_count = raw_rows.distinct.count(:theme) if @selected_project.present?
     @existing_submission = existing_submission_for(@selected_project) if @selected_project != "all"
-    @balance_warning = unbalanced_rows_message(@rows) if @selected_project.present?
+    @balance_warning = unbalanced_rows_message(raw_rows) if @selected_project.present?
     @show_achievement = current_user.admin?
     @show_submission = !current_user.admin? && @selected_project.present? && @selected_project != "all" && ProjectOwnership.owned?(current_user.employee, @selected_project)
     @editable_targets = false
@@ -42,13 +47,24 @@ class ActionPlansController < ApplicationController
     vertical_options = action_plan_filter_options(selected_project, :asa_theme, :asa_theme, state_code: selected_state)
     selected_vertical = params[:vertical].to_s.presence_in(vertical_options.map(&:last))
     fco_options = action_plan_filter_options(selected_project, :user_name, :user_id, state_code: selected_state, vertical_name: selected_vertical)
-    selected_fco_id = params[:fco_id].to_s.presence_in(fco_options.map(&:last))
-    to_options = action_plan_filter_options(selected_project, :to_name, :to_id, fco_id: selected_fco_id, state_code: selected_state, vertical_name: selected_vertical)
-    selected_to_id = params[:to_id].to_s.presence_in(to_options.map(&:last))
-    rows = action_plan_rows_for(selected_project, fco_id: selected_fco_id, to_id: selected_to_id, state_code: selected_state, vertical_name: selected_vertical)
+    selected_fco_id = selected_action_plan_fco_id(fco_options)
+    without_fco = without_fco_selection?(selected_fco_id)
+    selected_fco_filter_id = action_plan_real_fco_id(selected_fco_id)
+    to_options = action_plan_filter_options(selected_project, :to_name, :to_id, fco_id: selected_fco_filter_id, state_code: selected_state, vertical_name: selected_vertical)
+    selected_to_id = selected_action_plan_to_id(to_options)
+    without_to = without_to_selection?(selected_to_id)
+    selected_to_filter_id = action_plan_real_to_id(selected_to_id)
+    raw_rows = action_plan_rows_for(selected_project, fco_id: selected_fco_filter_id, to_id: selected_to_filter_id, state_code: selected_state, vertical_name: selected_vertical)
+    rows = action_plan_display_rows_for(raw_rows, without_fco: without_fco, without_to: without_to)
 
     month_pairs = action_plan_month_pairs_for(selected_period, selected_period_month)
-    csv = project_action_plan_csv(rows, month_pairs: month_pairs)
+    csv = project_action_plan_csv(
+      rows,
+      month_pairs: month_pairs,
+      without_fco: without_fco,
+      without_to: without_to,
+      ownership_rows: raw_rows
+    )
     send_data XlsxWorkbook.from_csv(csv, title: "Project Action Plan", sheet_name: "Action Plan"),
       filename: "project_action_plan_#{Time.current.strftime("%Y%m%d_%H%M%S")}.xlsx",
       type: XlsxWorkbook::CONTENT_TYPE
@@ -71,9 +87,52 @@ class ActionPlansController < ApplicationController
 
   private
 
-  def project_action_plan_csv(rows, month_pairs: ActionPlanRow::MONTH_DISPLAY_PAIRS)
-    columns = ActionPlanRow.display_columns(admin: current_user.admin?)
-    ownership_lookup = project_ownership_lookup_for(rows)
+  def selected_action_plan_fco_id(options)
+    selected_action_plan_dimension_id(
+      params[:fco_id],
+      options,
+      without_value: ActionPlanRow::WITHOUT_FCO_FILTER_VALUE
+    )
+  end
+
+  def selected_action_plan_to_id(options)
+    selected_action_plan_dimension_id(
+      params[:to_id],
+      options,
+      without_value: ActionPlanRow::WITHOUT_TO_FILTER_VALUE
+    )
+  end
+
+  def selected_action_plan_dimension_id(raw_value, options, without_value:)
+    value = raw_value.to_s
+    return without_value if value == without_value
+
+    value.presence_in(options.map(&:last))
+  end
+
+  def without_fco_selection?(selected_fco_id)
+    selected_fco_id == ActionPlanRow::WITHOUT_FCO_FILTER_VALUE
+  end
+
+  def without_to_selection?(selected_to_id)
+    selected_to_id == ActionPlanRow::WITHOUT_TO_FILTER_VALUE
+  end
+
+  def action_plan_real_fco_id(selected_fco_id)
+    without_fco_selection?(selected_fco_id) ? nil : selected_fco_id
+  end
+
+  def action_plan_real_to_id(selected_to_id)
+    without_to_selection?(selected_to_id) ? nil : selected_to_id
+  end
+
+  def action_plan_display_rows_for(rows, without_fco:, without_to:)
+    ActionPlanRow.grouped_for_display(rows, without_fco: without_fco, without_to: without_to)
+  end
+
+  def project_action_plan_csv(rows, month_pairs: ActionPlanRow::MONTH_DISPLAY_PAIRS, without_fco: false, without_to: false, ownership_rows: rows)
+    columns = ActionPlanRow.display_columns(admin: current_user.admin?, without_fco: without_fco, without_to: without_to)
+    ownership_lookup = project_ownership_lookup_for(ownership_rows)
 
     CSV.generate(headers: true) do |csv|
       csv << [

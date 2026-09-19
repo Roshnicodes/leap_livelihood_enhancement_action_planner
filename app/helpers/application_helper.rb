@@ -34,6 +34,14 @@ module ApplicationHelper
     text
   end
 
+  def action_plan_distinct_count(rows, attribute)
+    if rows.respond_to?(:distinct) && rows.respond_to?(:count)
+      rows.distinct.count(attribute)
+    else
+      rows.map { |row| row.public_send(attribute) }.compact_blank.uniq.size
+    end
+  end
+
   def month_column_header(name, metric)
     content_tag(:span, class: "month-head") do
       content_tag(:span, name) + content_tag(:span, metric)

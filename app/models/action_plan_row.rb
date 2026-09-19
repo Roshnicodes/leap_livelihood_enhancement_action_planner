@@ -1,6 +1,8 @@
 class ActionPlanRow < ApplicationRecord
   has_many :achievement_entry_details, dependent: :destroy
 
+  WITHOUT_FCO_FILTER_VALUE = "__without_fco__".freeze
+  WITHOUT_TO_FILTER_VALUE = "__without_to__".freeze
   MONTH_COLUMNS = %w[apr may jun jul aug sep oct nov dec jan feb mar].freeze
   ORIGINAL_MONTH_COLUMNS = MONTH_COLUMNS.map { |month| "original_#{month}" }.freeze
   TARGET_MONTH_COLUMNS = MONTH_COLUMNS.map { |month| "#{month}_t" }.freeze
@@ -44,6 +46,35 @@ class ActionPlanRow < ApplicationRecord
   ADMIN_DETAIL_COLUMNS = [
     { header: "A_remark", attribute: :a_remark }
   ].freeze
+  FCO_COLUMN_ATTRIBUTES = %i[user_id user_name].freeze
+  TO_COLUMN_ATTRIBUTES = %i[to_id to_name].freeze
+  DISPLAY_GROUP_ATTRIBUTES = [
+    :po_id,
+    :project_id,
+    :statte,
+    :project_owner,
+    :project_name,
+    :user_id,
+    :user_name,
+    :to_id,
+    :to_name,
+    :asa_theme_id,
+    :asa_theme,
+    :asa_activity_id,
+    :asa_activity_name,
+    :theme_id,
+    :theme,
+    :activity_id,
+    :activity,
+    :unit_type,
+    :a_remark
+  ].freeze
+  DISPLAY_SUM_ATTRIBUTES = [
+    *MONTH_COLUMNS.map(&:to_sym),
+    *ORIGINAL_MONTH_COLUMNS.map(&:to_sym),
+    *TARGET_MONTH_COLUMNS.map(&:to_sym),
+    :planned_total
+  ].freeze
   PILL_ATTRIBUTES = %i[id_new po_id project_id user_id to_id theme_id activity_id asa_theme_id asa_activity_id].freeze
   DECIMAL_ATTRIBUTES = %i[activity_id].freeze
   MONTH_TOTAL_COLUMNS = [
@@ -51,11 +82,16 @@ class ActionPlanRow < ApplicationRecord
     { header: "Total Achievement", total_method: :target_total }
   ].freeze
 
-  def self.display_columns(admin: false)
-    if admin
+  def self.display_columns(admin: false, without_fco: false, without_to: false)
+    columns = if admin
       [ PROJECT_ID_COLUMN, *ADMIN_ONLY_COLUMNS, *ADMIN_PROJECT_COLUMNS, *SHARED_DETAIL_COLUMNS, *ADMIN_DETAIL_COLUMNS ]
     else
       [ PROJECT_ID_COLUMN, *USER_PROJECT_COLUMNS, *SHARED_DETAIL_COLUMNS ]
+    end
+
+    columns.reject do |column|
+      (without_fco && FCO_COLUMN_ATTRIBUTES.include?(column[:attribute])) ||
+        (without_to && TO_COLUMN_ATTRIBUTES.include?(column[:attribute]))
     end
   end
 
@@ -98,6 +134,46 @@ class ActionPlanRow < ApplicationRecord
     BigDecimal(text).round(10).to_s("F").sub(/\.?0+\z/, "")
   rescue ArgumentError
     text
+  end
+
+  def self.grouped_for_display(rows, without_fco: false, without_to: false)
+    return rows unless without_fco || without_to
+
+    rows.to_a.group_by do |row|
+      display_group_attributes(without_fco: without_fco, without_to: without_to).map do |attribute|
+        display_group_value(row.public_send(attribute), attribute)
+      end
+    end.values.map do |group|
+      display_group_row(group, without_fco: without_fco, without_to: without_to)
+    end
+  end
+
+  def self.display_group_attributes(without_fco:, without_to:)
+    DISPLAY_GROUP_ATTRIBUTES.reject do |attribute|
+      (without_fco && FCO_COLUMN_ATTRIBUTES.include?(attribute)) ||
+        (without_to && TO_COLUMN_ATTRIBUTES.include?(attribute))
+    end
+  end
+
+  def self.display_group_value(value, attribute)
+    if DECIMAL_ATTRIBUTES.include?(attribute)
+      format_decimal_string(value)
+    else
+      ActionPlanText.group_key(value)
+    end
+  end
+
+  def self.display_group_row(group, without_fco:, without_to:)
+    row = group.first.dup
+
+    FCO_COLUMN_ATTRIBUTES.each { |attribute| row.public_send("#{attribute}=", nil) } if without_fco
+    TO_COLUMN_ATTRIBUTES.each { |attribute| row.public_send("#{attribute}=", nil) } if without_to
+
+    DISPLAY_SUM_ATTRIBUTES.each do |attribute|
+      row.public_send("#{attribute}=", group.sum { |item| item.public_send(attribute) || 0 })
+    end
+
+    row
   end
 
   before_save :normalize_formatted_codes
