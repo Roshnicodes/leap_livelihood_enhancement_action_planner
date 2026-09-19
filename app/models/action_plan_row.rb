@@ -3,6 +3,7 @@ class ActionPlanRow < ApplicationRecord
 
   WITHOUT_FCO_FILTER_VALUE = "__without_fco__".freeze
   WITHOUT_TO_FILTER_VALUE = "__without_to__".freeze
+  WITHOUT_STATE_FILTER_VALUE = "__without_state__".freeze
   MONTH_COLUMNS = %w[apr may jun jul aug sep oct nov dec jan feb mar].freeze
   ORIGINAL_MONTH_COLUMNS = MONTH_COLUMNS.map { |month| "original_#{month}" }.freeze
   TARGET_MONTH_COLUMNS = MONTH_COLUMNS.map { |month| "#{month}_t" }.freeze
@@ -48,6 +49,7 @@ class ActionPlanRow < ApplicationRecord
   ].freeze
   FCO_COLUMN_ATTRIBUTES = %i[user_id user_name].freeze
   TO_COLUMN_ATTRIBUTES = %i[to_id to_name].freeze
+  STATE_COLUMN_ATTRIBUTES = %i[statte].freeze
   DISPLAY_GROUP_ATTRIBUTES = [
     :po_id,
     :project_id,
@@ -82,7 +84,7 @@ class ActionPlanRow < ApplicationRecord
     { header: "Total Achievement", total_method: :target_total }
   ].freeze
 
-  def self.display_columns(admin: false, without_fco: false, without_to: false)
+  def self.display_columns(admin: false, without_fco: false, without_to: false, without_state: false)
     columns = if admin
       [ PROJECT_ID_COLUMN, *ADMIN_ONLY_COLUMNS, *ADMIN_PROJECT_COLUMNS, *SHARED_DETAIL_COLUMNS, *ADMIN_DETAIL_COLUMNS ]
     else
@@ -91,7 +93,8 @@ class ActionPlanRow < ApplicationRecord
 
     columns.reject do |column|
       (without_fco && FCO_COLUMN_ATTRIBUTES.include?(column[:attribute])) ||
-        (without_to && TO_COLUMN_ATTRIBUTES.include?(column[:attribute]))
+        (without_to && TO_COLUMN_ATTRIBUTES.include?(column[:attribute])) ||
+        (without_state && STATE_COLUMN_ATTRIBUTES.include?(column[:attribute]))
     end
   end
 
@@ -136,22 +139,23 @@ class ActionPlanRow < ApplicationRecord
     text
   end
 
-  def self.grouped_for_display(rows, without_fco: false, without_to: false)
-    return rows unless without_fco || without_to
+  def self.grouped_for_display(rows, without_fco: false, without_to: false, without_state: false)
+    return rows unless without_fco || without_to || without_state
 
     rows.to_a.group_by do |row|
-      display_group_attributes(without_fco: without_fco, without_to: without_to).map do |attribute|
+      display_group_attributes(without_fco: without_fco, without_to: without_to, without_state: without_state).map do |attribute|
         display_group_value(row.public_send(attribute), attribute)
       end
     end.values.map do |group|
-      display_group_row(group, without_fco: without_fco, without_to: without_to)
+      display_group_row(group, without_fco: without_fco, without_to: without_to, without_state: without_state)
     end
   end
 
-  def self.display_group_attributes(without_fco:, without_to:)
+  def self.display_group_attributes(without_fco:, without_to:, without_state:)
     DISPLAY_GROUP_ATTRIBUTES.reject do |attribute|
       (without_fco && FCO_COLUMN_ATTRIBUTES.include?(attribute)) ||
-        (without_to && TO_COLUMN_ATTRIBUTES.include?(attribute))
+        (without_to && TO_COLUMN_ATTRIBUTES.include?(attribute)) ||
+        (without_state && STATE_COLUMN_ATTRIBUTES.include?(attribute))
     end
   end
 
@@ -163,11 +167,12 @@ class ActionPlanRow < ApplicationRecord
     end
   end
 
-  def self.display_group_row(group, without_fco:, without_to:)
+  def self.display_group_row(group, without_fco:, without_to:, without_state:)
     row = group.first.dup
 
     FCO_COLUMN_ATTRIBUTES.each { |attribute| row.public_send("#{attribute}=", nil) } if without_fco
     TO_COLUMN_ATTRIBUTES.each { |attribute| row.public_send("#{attribute}=", nil) } if without_to
+    STATE_COLUMN_ATTRIBUTES.each { |attribute| row.public_send("#{attribute}=", nil) } if without_state
 
     DISPLAY_SUM_ATTRIBUTES.each do |attribute|
       row.public_send("#{attribute}=", group.sum { |item| item.public_send(attribute) || 0 })

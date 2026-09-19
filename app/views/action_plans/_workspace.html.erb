@@ -15,6 +15,7 @@
 <% vertical_options = local_assigns.fetch(:vertical_options, []) %>
 <% selected_vertical = local_assigns[:selected_vertical] %>
 <% enable_without_filters = local_assigns.fetch(:enable_without_filters, false) %>
+<% hide_state_columns = local_assigns.fetch(:hide_state_columns, false) %>
 <% hide_fco_columns = local_assigns.fetch(:hide_fco_columns, false) %>
 <% hide_to_columns = local_assigns.fetch(:hide_to_columns, false) %>
 <% filter_selected_project = params[:project].to_s.presence_in([ "all", *project_options ]) %>
@@ -53,7 +54,10 @@
 
     <label>
       <span class="filter-label">State</span>
-      <%= form.select :state, options_for_select([["All State", ""]] + state_options, selected_state.to_s), {}, class: "select", onchange: "this.form.requestSubmit()" %>
+      <% state_select_options = [["All State", ""]] %>
+      <% state_select_options << ["Without State", ActionPlanRow::WITHOUT_STATE_FILTER_VALUE] if enable_without_filters %>
+      <% state_select_options += state_options %>
+      <%= form.select :state, options_for_select(state_select_options, selected_state.to_s), {}, class: "select", onchange: "this.form.requestSubmit()" %>
     </label>
 
     <label>
@@ -165,6 +169,7 @@
             editable_targets: true,
             show_achievement: show_achievement,
             month_display_pairs: month_display_pairs,
+            hide_state_columns: hide_state_columns,
             hide_fco_columns: hide_fco_columns,
             hide_to_columns: hide_to_columns %>
         </div>
@@ -197,6 +202,7 @@
           editable_targets: false,
           show_achievement: show_achievement,
           month_display_pairs: month_display_pairs,
+          hide_state_columns: hide_state_columns,
           hide_fco_columns: hide_fco_columns,
           hide_to_columns: hide_to_columns %>
       </div>

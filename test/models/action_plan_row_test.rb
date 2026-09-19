@@ -1,9 +1,10 @@
 require "test_helper"
 
 class ActionPlanRowTest < ActiveSupport::TestCase
-  test "display columns can hide fco and to dimensions" do
-    attributes = ActionPlanRow.display_columns(admin: true, without_fco: true, without_to: true).map { |column| column[:attribute] }
+  test "display columns can hide state fco and to dimensions" do
+    attributes = ActionPlanRow.display_columns(admin: true, without_state: true, without_fco: true, without_to: true).map { |column| column[:attribute] }
 
+    assert_not_includes attributes, :statte
     assert_not_includes attributes, :user_id
     assert_not_includes attributes, :user_name
     assert_not_includes attributes, :to_id
@@ -49,6 +50,36 @@ class ActionPlanRowTest < ActiveSupport::TestCase
     assert_equal 5, row.original_apr
     assert_equal 5, row.planned_total
     assert_equal BigDecimal("3.75"), row.apr_t
+  end
+
+  test "grouped display rows sum totals while hiding state dimension" do
+    first = create_action_plan_row(
+      statte: "CG",
+      apr: 4,
+      apr_t: 1,
+      original_apr: 4,
+      planned_total: 4
+    )
+    second = create_action_plan_row(
+      statte: "MP",
+      apr: 6,
+      apr_t: 2,
+      original_apr: 6,
+      planned_total: 6
+    )
+
+    grouped = ActionPlanRow.grouped_for_display(
+      ActionPlanRow.where(id: [ first.id, second.id ]).order(:id),
+      without_state: true
+    )
+
+    assert_equal 1, grouped.size
+    row = grouped.first
+    assert_nil row.statte
+    assert_equal 10, row.apr
+    assert_equal 10, row.original_apr
+    assert_equal 10, row.planned_total
+    assert_equal BigDecimal("3"), row.apr_t
   end
 
   private
