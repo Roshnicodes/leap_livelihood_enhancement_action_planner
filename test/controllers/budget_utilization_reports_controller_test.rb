@@ -7,6 +7,8 @@ class BudgetUtilizationReportsControllerTest < ActionDispatch::IntegrationTest
 
     create_activity(project_name: "Project A", bli_code: "1.1", activity_name: "Seeds", allocated_fund: 1_000)
     create_activity(project_name: "Project A", bli_code: "1.1", activity_name: "Seed support", allocated_fund: 500)
+    create_activity(project_name: "Project A", bli_code: "", activity_name: "Blank code support", allocated_fund: 125)
+    create_activity(project_name: "Project A", bli_code: "1.1, 1.2", activity_name: "Combined code support", allocated_fund: 75)
 
     BudgetUtilization.create!(
       project_name: "Project A",
@@ -25,7 +27,7 @@ class BudgetUtilizationReportsControllerTest < ActionDispatch::IntegrationTest
     post login_path, params: { login: @admin.login, password: "secret" }
   end
 
-  test "xlsx report sums allocated fund for duplicate bli rows" do
+  test "xlsx report sums allocated fund for duplicate and non single bli rows" do
     get budget_utilization_reports_path(format: :xlsx)
 
     assert_response :success
@@ -33,7 +35,7 @@ class BudgetUtilizationReportsControllerTest < ActionDispatch::IntegrationTest
     project_row = rows.find { |row| row["Project"] == "Project A" }
 
     assert project_row
-    assert_equal BigDecimal("1500"), BigDecimal(project_row.fetch("Total Allocated Budget"))
+    assert_equal BigDecimal("1700"), BigDecimal(project_row.fetch("Total Allocated Budget"))
   end
 
   private

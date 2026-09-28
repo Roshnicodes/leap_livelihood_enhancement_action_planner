@@ -101,6 +101,31 @@ class BudgetUtilizationsControllerTest < ActionDispatch::IntegrationTest
     assert_match(/<c r="M5"[^>]*s="4"/, sheet_xml)
   end
 
+  test "all projects xlsx download includes non single bli allocated rows" do
+    create_activity(project_name: "Project A", bli_code: "", activity_name: "Blank code support", allocated_fund: 125)
+    create_activity(project_name: "Project B", bli_code: "2.1, 2.2", activity_name: "Combined code support", allocated_fund: 75)
+
+    get budget_utilizations_path(project: "all", month: "may", format: :xlsx)
+
+    assert_response :success
+    rows = xlsx_rows(response.body)
+    project_a_total = rows.select { |row| row["Project"] == "Project A" }.sum { |row| BigDecimal(row.fetch("Total Allocated Budget")) }
+    project_b_total = rows.select { |row| row["Project"] == "Project B" }.sum { |row| BigDecimal(row.fetch("Total Allocated Budget")) }
+
+    assert_equal BigDecimal("1125"), project_a_total
+    assert_equal BigDecimal("1075"), project_b_total
+  end
+
+  test "non single bli rows stay view only in project edit mode" do
+    create_activity(project_name: "Project A", bli_code: "", activity_name: "Blank code support", allocated_fund: 125)
+
+    get budget_utilizations_path(project: "Project A", month: "may")
+
+    assert_response :success
+    assert_includes response.body, "Blank code support"
+    assert_select "input[data-budget-utilization-input]", 1
+  end
+
   test "all projects xlsx download sums allocated fund for duplicate bli rows" do
     create_activity(project_name: "Project A", bli_code: "1.1", activity_name: "Seed support", allocated_fund: 500)
 

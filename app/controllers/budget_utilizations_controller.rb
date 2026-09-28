@@ -111,7 +111,10 @@ class BudgetUtilizationsController < ApplicationController
   def load_budget_workspace
     @can_edit = BudgetUtilization.finance_user?(current_user)
     @month_options = MONTH_OPTIONS
-    @project_options = activity_scope.where.not(project_name: [ nil, "" ]).distinct.order(:project_name).pluck(:project_name)
+    @project_options = (
+      activity_scope.where.not(project_name: [ nil, "" ]).pluck(:project_name) +
+      non_single_bli_activity_scope.where.not(project_name: [ nil, "" ]).pluck(:project_name)
+    ).uniq.sort
     @selected_project = selected_project_param
     @all_projects_selected = @selected_project == ALL_PROJECTS_VALUE
     @selected_month = params[:month].presence_in(MONTH_KEYS)
@@ -154,6 +157,14 @@ class BudgetUtilizationsController < ApplicationController
     scope.where(employee_id: current_user.employee.id)
   end
 
+  def non_single_bli_activity_scope
+    scope = BliActivity.active.where("bli_code IS NULL OR bli_code = ? OR bli_code LIKE ?", "", "%,%")
+    return scope if @can_edit || current_user.admin?
+    return scope.none if current_user.employee.blank?
+
+    scope.where(employee_id: current_user.employee.id)
+  end
+
   def visible_months_for(selected_month)
     return [] if selected_month.blank?
 
@@ -181,7 +192,7 @@ class BudgetUtilizationsController < ApplicationController
     existing = existing_scope
       .group_by { |utilization| [ utilization.project_name, utilization.bli_code.to_s ] }
 
-    activities
+    rows = activities
       .group_by { |activity| [ activity.project_name, activity.bli_code.to_s ] }
       .map do |(project, bli_code), grouped_activities|
         sample = grouped_activities.first
@@ -220,10 +231,58 @@ class BudgetUtilizationsController < ApplicationController
           month_amount: month_amount,
           utilized_amount: current_utilized,
           month_audit: month_audit,
-          audit_line: budget_audit_line(current)
+          audit_line: budget_audit_line(current),
+          editable: true
         }
       end
+
+    (rows + non_single_bli_budget_rows_for(project_names, month, months))
       .sort_by { |row| [ row[:project_name].to_s, bli_code_sort_key(row[:bli_code]), row[:activity_name].to_s ] }
+  end
+
+  def non_single_bli_budget_rows_for(project_names, month, months)
+    non_single_bli_activity_scope
+      .where(project_name: project_names)
+      .order(:project_name, :vertical_name, :bli_code, :name, :activity_name)
+      .group_by do |activity|
+        [
+          activity.project_name,
+          activity.bli_code.to_s,
+          activity.vertical_name,
+          activity.name.presence || activity.activity_name
+        ]
+      end
+      .map do |(project, bli_code, vertical_name, _label), grouped_activities|
+        total_allocated = grouped_activities.sum { |activity| activity.allocated_fund.to_d }
+        project_bli_name = grouped_activities.map { |activity| activity.name.presence || activity.activity_name }.compact_blank.first
+        displayed_bli_code = bli_code.presence || "Unmapped"
+        month_amount = month_amount_for(total_allocated, vertical_name, month)
+        month_utilized = months.index_with { 0.to_d }
+        month_audit = months.index_with { nil }
+
+        {
+          project_name: project,
+          project_id: project_id_for(
+            project,
+            fallback_texts: grouped_activities.map { |activity| activity.name.presence || activity.activity_name }
+          ),
+          activity_name: project_bli_name,
+          vertical_name: vertical_name,
+          bli_code: displayed_bli_code,
+          project_bli_label: [ displayed_bli_code, project_bli_name ].compact_blank.join(" "),
+          total_allocated: total_allocated,
+          month_utilized: month_utilized,
+          prior_expenditure: 0.to_d,
+          total_expenditure: 0.to_d,
+          total_remaining: total_allocated,
+          month_amount: month_amount,
+          utilized_amount: 0.to_d,
+          month_audit: month_audit,
+          audit_line: nil,
+          editable: false,
+          synthetic_budget_row: true
+        }
+      end
   end
 
   def selected_budget_audit
@@ -308,7 +367,7 @@ class BudgetUtilizationsController < ApplicationController
     rows = SpreadsheetRows.read(file_path(file), sheet: :first, header_match: [ "Project", "Project BLI Code", month_header ])
     raise ArgumentError, "No utilization rows found in the uploaded sheet." if rows.blank?
 
-    allowed_rows = budget_rows_for(@selected_project, @selected_month).index_by do |row|
+    allowed_rows = budget_rows_for(@selected_project, @selected_month).reject { |row| row[:synthetic_budget_row] }.index_by do |row|
       budget_import_key(row[:project_name], row[:bli_code])
     end
     result = { imported: 0, skipped: 0 }

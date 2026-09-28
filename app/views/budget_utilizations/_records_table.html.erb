@@ -48,39 +48,40 @@
     </thead>
     <tbody>
       <% @rows.each_with_index do |row, index| %>
-        <tr<% if editable %> data-budget-row
+        <% row_editable = editable && row[:editable] != false %>
+        <tr<% if row_editable %> data-budget-row
           data-total-allocated="<%= currency_input_value(row[:total_allocated]) %>"
           data-prior-expenditure="<%= currency_input_value(row[:prior_expenditure]) %>"<% end %>>
           <td><span class="code-pill"><%= index + 1 %></span></td>
           <td><span class="code-pill"><%= row[:project_id].presence || "-" %></span></td>
           <td>
             <%= row[:project_name] %>
-            <% if editable %>
+            <% if row_editable %>
               <%= hidden_field_tag "utilizations[#{index}][project_name]", row[:project_name] %>
             <% end %>
           </td>
           <td>
             <%= row[:vertical_name] %>
-            <% if editable %>
+            <% if row_editable %>
               <%= hidden_field_tag "utilizations[#{index}][vertical_name]", row[:vertical_name] %>
             <% end %>
           </td>
           <td>
             <span class="code-pill"><%= row[:bli_code].presence || "-" %></span>
-            <% if editable %>
+            <% if row_editable %>
               <%= hidden_field_tag "utilizations[#{index}][bli_code]", row[:bli_code] %>
             <% end %>
           </td>
           <td>
             <%= row[:activity_name] %>
-            <% if editable %>
+            <% if row_editable %>
               <%= hidden_field_tag "utilizations[#{index}][activity_name]", row[:activity_name] %>
             <% end %>
           </td>
           <td><%= row[:project_bli_label].presence || "-" %></td>
           <td class="money-cell"><strong><%= currency(row[:total_allocated]) %></strong></td>
-          <td class="money-cell" <%= "data-budget-row-expenditure" if editable %>><strong><%= currency(row[:total_expenditure]) %></strong></td>
-          <td class="money-cell" <%= "data-budget-row-remaining" if editable %>><strong><%= currency(row[:total_remaining]) %></strong></td>
+          <td class="money-cell" <%= "data-budget-row-expenditure" if row_editable %>><strong><%= currency(row[:total_expenditure]) %></strong></td>
+          <td class="money-cell" <%= "data-budget-row-remaining" if row_editable %>><strong><%= currency(row[:total_remaining]) %></strong></td>
           <% @prior_months.each do |month| %>
             <td class="money-cell budget-prior-month-cell">
               <strong><%= currency(row[:month_utilized][month]) %></strong>
@@ -89,8 +90,8 @@
               <% end %>
             </td>
           <% end %>
-          <td class="money-cell<%= " budget-prior-month-cell" unless editable %>">
-            <% if editable %>
+          <td class="money-cell<%= " budget-prior-month-cell" unless row_editable %>">
+            <% if row_editable %>
               <%= hidden_field_tag "utilizations[#{index}][planned_amount]", currency_input_value(row[:month_amount]) %>
               <%= number_field_tag "utilizations[#{index}][utilized_amount]",
                 currency_input_value(row[:utilized_amount]),

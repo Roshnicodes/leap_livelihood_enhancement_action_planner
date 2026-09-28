@@ -50,12 +50,10 @@ class BudgetUtilizationReportsController < ApplicationController
   end
 
   def project_row(project_name, months, project_utilizations)
-    activities = BliActivity.active.with_single_bli_code.where(project_name: project_name)
+    activities = BliActivity.active.where(project_name: project_name)
     return if activities.none?
 
-    total_allocated = activities
-      .group_by(&:bli_code)
-      .sum { |_code, grouped| grouped.sum { |activity| activity.allocated_fund.to_d } }
+    total_allocated = activities.sum { |activity| activity.allocated_fund.to_d }
 
     by_month = project_utilizations.group_by(&:month)
     month_utilized = months.index_with do |month|
