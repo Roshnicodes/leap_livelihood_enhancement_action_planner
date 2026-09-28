@@ -55,7 +55,7 @@ class BudgetUtilizationReportsController < ApplicationController
 
     total_allocated = activities
       .group_by(&:bli_code)
-      .sum { |_code, grouped| grouped.map { |activity| activity.allocated_fund.to_d }.max }
+      .sum { |_code, grouped| grouped.sum { |activity| activity.allocated_fund.to_d } }
 
     by_month = project_utilizations.group_by(&:month)
     month_utilized = months.index_with do |month|

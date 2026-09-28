@@ -185,7 +185,7 @@ class BudgetUtilizationsController < ApplicationController
       .group_by { |activity| [ activity.project_name, activity.bli_code.to_s ] }
       .map do |(project, bli_code), grouped_activities|
         sample = grouped_activities.first
-        total_allocated = grouped_activities.map { |activity| activity.allocated_fund.to_d }.max || 0
+        total_allocated = grouped_activities.sum { |activity| activity.allocated_fund.to_d }
         project_bli_name = grouped_activities.map { |activity| activity.name.presence || activity.activity_name }.compact_blank.first
         vertical_name = sample.vertical_name
         month_amount = month_amount_for(total_allocated, vertical_name, month)

@@ -101,6 +101,20 @@ class BudgetUtilizationsControllerTest < ActionDispatch::IntegrationTest
     assert_match(/<c r="M5"[^>]*s="4"/, sheet_xml)
   end
 
+  test "all projects xlsx download sums allocated fund for duplicate bli rows" do
+    create_activity(project_name: "Project A", bli_code: "1.1", activity_name: "Seed support", allocated_fund: 500)
+
+    get budget_utilizations_path(project: "all", month: "may", format: :xlsx)
+
+    assert_response :success
+    rows = xlsx_rows(response.body)
+    matching_rows = rows.select { |row| row["Project"] == "Project A" && row["Project BLI Code"] == "1.1" }
+
+    assert_equal 1, matching_rows.size
+    assert_equal BigDecimal("1500"), BigDecimal(matching_rows.first.fetch("Total Allocated Budget"))
+    assert_equal BigDecimal("150"), BigDecimal(matching_rows.first.fetch("May Planned Budget"))
+  end
+
   test "imports updated excel values only for selected month" do
     upload = budget_upload_file(month: "May", rows: [
       [ 1, "PID-A", "Project A", "Agriculture", "1.1", "Seeds", "1.1 Seeds", 1_000, 999, 1, 999, 100, 123, nil ],
@@ -140,6 +154,17 @@ class BudgetUtilizationsControllerTest < ActionDispatch::IntegrationTest
         allocated_fund: 1_000
       }.merge(attributes)
     )
+  end
+
+  def xlsx_rows(body)
+    tempfile = Tempfile.new([ "budget-utilization", ".xlsx" ])
+    tempfile.binmode
+    tempfile.write(body)
+    tempfile.close
+
+    SpreadsheetRows.read(tempfile.path, sheet: :first, header_match: [ "Project", "Total Allocated Budget" ])
+  ensure
+    tempfile&.unlink
   end
 
   def xlsx_sheet_xml(body)
