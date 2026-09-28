@@ -148,7 +148,7 @@ class BudgetUtilizationsController < ApplicationController
 
   def activity_scope
     scope = BliActivity.active.with_single_bli_code
-    return scope if @can_edit
+    return scope if @can_edit || current_user.admin?
     return scope.none if current_user.employee.blank?
 
     scope.where(employee_id: current_user.employee.id)

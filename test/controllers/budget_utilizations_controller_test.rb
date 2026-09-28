@@ -46,6 +46,22 @@ class BudgetUtilizationsControllerTest < ActionDispatch::IntegrationTest
     assert_select "input[type='file'][name='budget_file']"
   end
 
+  test "mis can view budget utilization for all projects without edit controls" do
+    admin = User.create!(login: "mis-budget-utilization", role: "admin", password: "secret")
+    post login_path, params: { login: admin.login, password: "secret" }
+
+    get budget_utilizations_path(project: "all", month: "apr")
+
+    assert_response :success
+    assert_select "option[value='all']", text: "All Projects"
+    assert_select "h2", "All Projects"
+    assert_includes response.body, "Project A"
+    assert_includes response.body, "Project B"
+    assert_select "input[data-budget-utilization-input]", 0
+    assert_select "form[action='#{import_budget_utilizations_path}'][method='post']", 0
+    assert_select "a[href='#{budget_utilizations_path(project: "all", month: "apr", format: :xlsx)}']", text: "Download Excel Sheet"
+  end
+
   test "project ids fall back to close project aliases and project titles" do
     ActionPlanRow.create!(po_id: "PO-AR", project_id: "52", project_name: "Aranya-PGPL")
     ProjectInformationSheet.create!(project_id: "13", project_title: "Construction of Dugwells.")
