@@ -1,4 +1,10 @@
 <% content_for :title, "MIS Budget Utilization Report | LEAP" %>
+<% filter_selected_project = params[:project].to_s.presence_in([ "all", *@project_options ]) %>
+<% filter_selected_period = params[:period].to_s.presence_in(@period_options.map(&:last)) %>
+<% filter_selected_period_month = params[:period_month].to_s.presence_in(BudgetUtilization::MONTH_KEYS) %>
+<% filter_selected_vertical = params[:vertical].to_s.presence_in(@vertical_options) %>
+<% filter_selected_office = params[:office].to_s.presence_in(@office_options) %>
+<% filter_selected_user = params[:user].to_s.presence_in(@user_options) %>
 
 <section class="page-header budget-utilization-header mis-budget-header">
   <div>
@@ -17,6 +23,45 @@
   </div>
 </section>
 
+<section class="toolbar records-filter-toolbar mis-budget-filter-toolbar">
+  <%= form_with url: mis_budget_utilization_reports_path, method: :get, class: "filter-form action-plan-filter-form" do |form| %>
+    <label>
+      <span class="filter-label">Choose Project</span>
+      <% project_select_options = @project_options.map { |project| [ project, project ] } %>
+      <% project_select_options.unshift([ "All Projects", "all" ]) %>
+      <%= form.select :project, options_for_select(project_select_options, filter_selected_project), { prompt: "Select Project" }, class: "select", onchange: "this.form.requestSubmit()" %>
+    </label>
+
+    <label>
+      <span class="filter-label">Period</span>
+      <%= form.select :period, options_for_select(@period_options, filter_selected_period), { prompt: "Select Period" }, class: "select", onchange: "this.form.requestSubmit()" %>
+    </label>
+
+    <label>
+      <span class="filter-label">Month</span>
+      <%= form.select :period_month, options_for_select(BudgetUtilization::MONTH_KEYS.map { |month| [ month.capitalize, month ] }, filter_selected_period_month), { prompt: "Select Month" }, class: "select", onchange: "this.form.requestSubmit()" %>
+    </label>
+
+    <label>
+      <span class="filter-label">Vertical</span>
+      <%= form.select :vertical, options_for_select([[ "All Vertical", "" ]] + @vertical_options.map { |vertical| [ vertical, vertical ] }, filter_selected_vertical.to_s), {}, class: "select", onchange: "this.form.requestSubmit()" %>
+    </label>
+
+    <label>
+      <span class="filter-label">Office</span>
+      <%= form.select :office, options_for_select([[ "All Office", "" ]] + @office_options.map { |office| [ office, office ] }, filter_selected_office.to_s), {}, class: "select", onchange: "this.form.requestSubmit()" %>
+    </label>
+
+    <label>
+      <span class="filter-label">User</span>
+      <%= form.select :user, options_for_select([[ "All User", "" ]] + @user_options.map { |user| [ user, user ] }, filter_selected_user.to_s), {}, class: "select", onchange: "this.form.requestSubmit()" %>
+    </label>
+  <% end %>
+  <div class="toolbar-actions">
+    <%= link_to "Download Excel Sheet", mis_budget_utilization_reports_path(request.query_parameters.merge(format: :xlsx)), class: "secondary-button" %>
+  </div>
+</section>
+
 <% if @rows.any? %>
   <section class="metric-grid metric-grid-compact budget-utilization-metrics mis-budget-metrics">
     <article class="metric metric-teal"><span>No of BLI Rows</span><strong><%= @rows.size %></strong></article>
@@ -31,15 +76,9 @@
       <div>
         <p class="eyebrow">MIS Utilization Report</p>
         <h2>BLI-wise utilization</h2>
-        <p class="muted">
-          Months: <%= @months.map(&:capitalize).join(", ") %>
-          <% if @quarter_columns.any? %>
-            • Quarters: <%= @quarter_columns.map { |column| column[:label] }.join(", ") %>
-          <% end %>
-        </p>
+        <p class="muted">Months: <%= @months.map(&:capitalize).join(", ") %></p>
       </div>
       <div class="table-actions">
-        <%= link_to "Download Excel Sheet", mis_budget_utilization_reports_path(format: :xlsx), class: "secondary-button" %>
         <input type="search" class="table-search" placeholder="Search BLI rows" data-table-search-input>
         <span class="table-count" data-filtered-count data-count-label="rows"><%= @rows.size %> rows</span>
       </div>
@@ -63,10 +102,7 @@
             <th>Total Remaining Budget</th>
             <% @months.each do |month| %>
               <th class="month-allocation-heading"><%= month.capitalize %> Month Allocated Budget</th>
-              <th class="month-utilized-heading"><%= month.capitalize %></th>
-            <% end %>
-            <% @quarter_columns.each do |column| %>
-              <th class="budget-quarter-heading"><%= column[:label] %></th>
+              <th class="month-utilized-heading"><%= month.capitalize %> Expenses</th>
             <% end %>
           </tr>
         </thead>
@@ -87,16 +123,7 @@
               <td class="money-cell"><%= currency(row[:total_remaining]) %></td>
               <% @months.each do |month| %>
                 <td class="money-cell month-allocation-cell"><%= currency(row[:month_allocated][month]) %></td>
-                <td class="money-cell month-utilized-cell">
-                  <%= currency(row[:month_utilized][month]) %>
-                  <% if row[:month_audit][month].present? %>
-                    <small class="budget-audit-line"><%= row[:month_audit][month] %></small>
-                  <% end %>
-                </td>
-              <% end %>
-              <% @quarter_columns.each do |column| %>
-                <% value = column[:months].sum { |month| row[:month_utilized][month].to_d } %>
-                <td class="money-cell budget-quarter-cell"><%= currency(value) %></td>
+                <td class="money-cell month-utilized-cell"><%= currency(row[:month_utilized][month]) %></td>
               <% end %>
             </tr>
           <% end %>

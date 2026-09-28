@@ -5,12 +5,12 @@ class MisBudgetUtilizationReportsController < ApplicationController
   before_action :require_admin
 
   MONTH_KEYS = BudgetUtilization::MONTH_KEYS
+  PERIOD_FILTER_OPTIONS = ActionPlanPresenter::PERIOD_FILTER_OPTIONS
+  QUARTER_MONTHS = ActionPlanPresenter::QUARTER_MONTHS
   PROTECTION_PASSWORD = ENV.fetch("MIS_BUDGET_REPORT_PASSWORD", "mis@123").freeze
 
   def index
-    @latest_month = BudgetUtilization.latest_saved_month
-    @months = @latest_month.present? ? MONTH_KEYS[0..MONTH_KEYS.index(@latest_month)] : []
-    @quarter_columns = @latest_month.present? ? BudgetUtilization.report_columns_through(@latest_month).select { |column| column[:type] == :quarter } : []
+    prepare_filters
     @rows = @latest_month.present? ? report_rows : []
     @project_total = @rows.sum { |row| row[:allocated_fund].to_d }
     @expenditure_total = @rows.sum { |row| row[:total_expenditure].to_d }
@@ -40,11 +40,39 @@ class MisBudgetUtilizationReportsController < ApplicationController
 
   private
 
+  def prepare_filters
+    @project_options = filter_values(BliActivity.active, :project_name)
+    @selected_project = params[:project].to_s.presence_in([ "all", *@project_options ]) || "all"
+    @period_options = PERIOD_FILTER_OPTIONS
+    @latest_month = BudgetUtilization.latest_saved_month(project_name: selected_project_filter)
+    @latest_month ||= BudgetUtilization.latest_saved_month
+    @selected_period = params[:period].to_s.presence_in(PERIOD_FILTER_OPTIONS.map(&:last)) || "till_month"
+    @selected_period_month = params[:period_month].to_s.presence_in(MONTH_KEYS) || @latest_month || current_budget_month
+    @months = @latest_month.present? ? report_months_for(@selected_period, @selected_period_month) : []
+
+    project_scope = filtered_activity_scope(project: true)
+    @vertical_options = filter_values(project_scope, :vertical_name)
+    @selected_vertical = params[:vertical].to_s.presence_in(@vertical_options)
+
+    vertical_scope = filtered_activity_scope(project: true, vertical: true)
+    @office_options = office_filter_values(vertical_scope)
+    @selected_office = params[:office].to_s.presence_in(@office_options)
+
+    office_scope = filtered_activity_scope(project: true, vertical: true)
+    office_activities = apply_office_filter(office_scope.includes(:employee).to_a)
+    @user_options = office_activities.map(&:responsible_user_name).compact_blank.uniq.sort
+    @selected_user = params[:user].to_s.presence_in(@user_options)
+  end
+
   def report_rows
-    activities = BliActivity.active.includes(:employee).order(:project_name, :bli_code, :name, :activity_name, :vertical_name, :id).to_a
-    utilizations = BudgetUtilization.submitted.with_single_bli_code.includes(:submitted_by).where(month: @months)
+    activities = filtered_activity_scope(project: true, vertical: true, user: true)
+      .includes(:employee)
+      .order(:project_name, :bli_code, :name, :activity_name, :vertical_name, :id)
+      .to_a
+    activities = apply_office_filter(activities)
+    utilizations = filtered_utilization_scope.where(month: @months)
       .group_by { |record| [ record.project_name, record.bli_code.to_s, record.month ] }
-    allocation_totals_by_key = activities.group_by { |activity| activity_key(activity) }
+    allocation_totals_by_key = BliActivity.active.group_by { |activity| activity_key(activity) }
       .transform_values { |grouped| grouped.sum { |activity| activity.allocated_fund.to_d } }
 
     activities.map do |activity|
@@ -56,9 +84,6 @@ class MisBudgetUtilizationReportsController < ApplicationController
     month_allocated = @months.index_with { |month| month_amount_for(activity.allocated_fund.to_d, activity.vertical_name, month) }
     month_utilized = @months.index_with do |month|
       utilization_share_for(activity, utilizations[[ activity.project_name, activity.bli_code.to_s, month ]] || [], allocation_totals_by_key)
-    end
-    month_audit = @months.index_with do |month|
-      month_audit_line(utilizations[[ activity.project_name, activity.bli_code.to_s, month ]] || [])
     end
     total_expenditure = month_utilized.values.sum
 
@@ -74,7 +99,6 @@ class MisBudgetUtilizationReportsController < ApplicationController
       responsible_user_name: activity.responsible_user_name,
       month_allocated: month_allocated,
       month_utilized: month_utilized,
-      month_audit: month_audit,
       total_expenditure: total_expenditure,
       total_remaining: activity.allocated_fund.to_d - total_expenditure
     }
@@ -84,6 +108,19 @@ class MisBudgetUtilizationReportsController < ApplicationController
     activity.office_name.presence ||
       activity.employee&.office_name.presence ||
       [ activity.employee&.branch, activity.employee&.sub_branch ].compact_blank.join(" / ").presence
+  end
+
+  def office_filter_name_for(activity)
+    office_filter_label(office_name_for(activity))
+  end
+
+  def office_filter_label(value)
+    parts = value.to_s.split("/").map { |part| normalize_office_filter_part(part) }.compact_blank.uniq
+    parts.join(" / ").presence
+  end
+
+  def normalize_office_filter_part(value)
+    value.to_s.squish.gsub(/\s*-\s*/, "-")
   end
 
   def utilization_share_for(activity, records, allocation_totals_by_key)
@@ -140,8 +177,7 @@ class MisBudgetUtilizationReportsController < ApplicationController
       "Responsible Users",
       "Total Expenditure",
       "Total Remaining Budget",
-      *@months.flat_map { |month| [ "#{month.capitalize} Month Allocated Budget", month.capitalize, "#{month.capitalize} Submitted Details" ] },
-      *@quarter_columns.map { |column| column[:label] }
+      *@months.flat_map { |month| [ "#{month.capitalize} Month Allocated Budget", "#{month.capitalize} Expenses" ] }
     ]
   end
 
@@ -159,38 +195,72 @@ class MisBudgetUtilizationReportsController < ApplicationController
       row[:responsible_user_name],
       row[:total_expenditure],
       row[:total_remaining],
-      *@months.flat_map { |month| [ row[:month_allocated][month].to_d, row[:month_utilized][month].to_d, row[:month_audit][month] ] },
-      *@quarter_columns.map { |column| column[:months].sum { |month| row[:month_utilized][month].to_d } }
+      *@months.flat_map { |month| [ row[:month_allocated][month].to_d, row[:month_utilized][month].to_d ] }
     ]
   end
 
-  def month_audit_line(records)
-    records = records.compact
-    return if records.blank?
-
-    submitted_times = records.filter_map(&:submitted_at)
-    submitters = records.map { |record| user_label(record.submitted_by) }.reject { |label| label == "-" }.uniq
-    return "Submitted by #{submitters.to_sentence}" if submitted_times.blank?
-
-    first_time = submitted_times.min
-    last_time = submitted_times.max
-    first_label = format_datetime(first_time)
-    last_label = format_datetime(last_time)
-    time_label = first_label == last_label ? first_label : "#{first_label} - #{last_label}"
-
-    submitters.present? ? "Submitted #{time_label} by #{submitters.to_sentence}" : "Submitted #{time_label}"
+  def filter_values(scope, column)
+    scope
+      .where.not(column => [ nil, "" ])
+      .distinct
+      .order(column)
+      .pluck(column)
   end
 
-  def user_label(user)
-    return "-" if user.blank?
-
-    employee = user.employee
-    return [ employee.employee_code, employee.name ].compact_blank.join(" - ") if employee.present?
-
-    user.login.presence || "User ##{user.id}"
+  def filtered_activity_scope(project: false, vertical: false, user: false)
+    scope = BliActivity.active
+    scope = scope.where(project_name: @selected_project) if project && selected_project_filter.present?
+    scope = scope.where(vertical_name: @selected_vertical) if vertical && @selected_vertical.present?
+    scope = scope.where(responsible_user_name: @selected_user) if user && @selected_user.present?
+    scope
   end
 
-  def format_datetime(timestamp)
-    timestamp&.in_time_zone("Asia/Kolkata")&.strftime("%d %b %Y, %I:%M %p")
+  def filtered_utilization_scope
+    scope = BudgetUtilization.submitted.with_single_bli_code
+    scope = scope.where(project_name: @selected_project) if selected_project_filter.present?
+    scope = scope.where(vertical_name: @selected_vertical) if @selected_vertical.present?
+    scope
+  end
+
+  def selected_project_filter
+    @selected_project if @selected_project.present? && @selected_project != "all"
+  end
+
+  def office_filter_values(scope)
+    scope
+      .includes(:employee)
+      .to_a
+      .map { |activity| office_filter_name_for(activity) }
+      .compact_blank
+      .uniq
+      .sort
+  end
+
+  def apply_office_filter(activities)
+    return activities if @selected_office.blank?
+
+    activities.select { |activity| office_filter_name_for(activity) == @selected_office }
+  end
+
+  def report_months_for(period, month)
+    month = month.presence_in(MONTH_KEYS) || current_budget_month
+    index = MONTH_KEYS.index(month) || 0
+
+    case period
+    when "monthly"
+      [ month ]
+    when *QUARTER_MONTHS.keys
+      QUARTER_MONTHS.fetch(period)
+    when "half_yearly"
+      index < 6 ? MONTH_KEYS.first(6) : MONTH_KEYS.last(6)
+    when "yearly"
+      MONTH_KEYS
+    else
+      MONTH_KEYS[0..index]
+    end
+  end
+
+  def current_budget_month
+    Date.current.strftime("%b").downcase.presence_in(MONTH_KEYS) || MONTH_KEYS.first
   end
 end
