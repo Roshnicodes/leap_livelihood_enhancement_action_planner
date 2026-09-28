@@ -35,7 +35,7 @@
           <nav class="sidebar-nav" data-sidebar-nav>
             <% if current_user.admin? %>
               <% admin_open = controller_path.in?(%w[admin/employees admin/action_plan_fco_mappings]) %>
-              <% pb_controllers = %w[plan_submissions budget_utilizations budget_utilization_reports project_summary_records project_summary_approvals] %>
+              <% pb_controllers = %w[plan_submissions budget_utilizations budget_utilization_reports mis_budget_utilization_reports project_summary_records project_summary_approvals] %>
               <% ap_controllers = %w[action_plans vertical_action_plans action_plan_records action_plan_reports achievement_entries achievement_entry_records achievement_approvals project_summary_approval_records] %>
               <% report_controllers = %w[pis_report_uploads donor_report_uploads fund_report_uploads report_masters report_information project_information_sheets] %>
               <% pb_open = pb_controllers.include?(controller_name) || controller_path == "admin/pb_imports" %>
@@ -81,6 +81,10 @@
                   <%= link_to budget_utilization_reports_path, class: controller_name == "budget_utilization_reports" ? "side-link active" : "side-link" do %>
                     <span class="side-icon">B</span>
                     <span>Budget Utilization Report</span>
+                  <% end %>
+                  <%= link_to mis_budget_utilization_reports_path, class: controller_name == "mis_budget_utilization_reports" ? "side-link active" : "side-link" do %>
+                    <span class="side-icon">M</span>
+                    <span>MIS Budget Utilization</span>
                   <% end %>
                   <%= link_to project_summary_records_path, class: controller_name == "project_summary_records" ? "side-link active" : "side-link" do %>
                     <span class="side-icon">R</span>

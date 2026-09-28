@@ -4,7 +4,7 @@ require "zip"
 class XlsxWorkbook
   CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet".freeze
 
-  def self.from_csv(csv_data, title:, sheet_name: "Report", include_title: true, protected: false, unlocked_columns: [], unlocked_headers: [])
+  def self.from_csv(csv_data, title:, sheet_name: "Report", include_title: true, protected: false, protection_password: nil, unlocked_columns: [], unlocked_headers: [])
     rows = CSV.parse(csv_data.to_s)
     headers = rows.shift || []
     unlocked_header_indexes = headers.each_index.select { |index| unlocked_headers.include?(headers[index].to_s) }
@@ -18,6 +18,7 @@ class XlsxWorkbook
         rows: rows,
         widths: inferred_widths(headers, rows),
         protected: protected,
+        protection_password: protection_password,
         unlocked_columns: (Array(unlocked_columns) + unlocked_header_indexes).uniq
       }
     ]).to_xlsx
@@ -92,7 +93,7 @@ class XlsxWorkbook
         <sheetData>
           #{all_rows.each_with_index.map { |row, index| worksheet_row_xml(row, index + 1, header_row_number: header_row_number, unlocked_columns: unlocked_columns) }.join}
         </sheetData>
-        #{sheet_protection_xml(sheet[:protected])}
+        #{sheet_protection_xml(sheet[:protected], sheet[:protection_password])}
         <autoFilter ref="#{auto_filter_ref}"/>
       </worksheet>
     XML
@@ -133,10 +134,24 @@ class XlsxWorkbook
     "<cols>#{column_xml}</cols>"
   end
 
-  def sheet_protection_xml(protected)
+  def sheet_protection_xml(protected, password = nil)
     return "" unless protected
 
-    %(<sheetProtection sheet="1" objects="1" scenarios="1"/>)
+    password_attribute = password.present? ? %( password="#{excel_password_hash(password)}") : ""
+    %(<sheetProtection sheet="1" objects="1" scenarios="1"#{password_attribute}/>)
+  end
+
+  def excel_password_hash(password)
+    hash = 0
+
+    password.to_s.bytes.each_with_index do |byte, index|
+      value = byte << (index + 1)
+      hash ^= ((value & 0x7fff) | (value >> 15))
+    end
+
+    hash ^= password.to_s.length
+    hash ^= 0xCE4B
+    "%04X" % hash
   end
 
   def cell_reference(column_index, row_number)

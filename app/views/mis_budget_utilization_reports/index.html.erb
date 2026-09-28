@@ -1,0 +1,112 @@
+<% content_for :title, "MIS Budget Utilization Report | LEAP" %>
+
+<section class="page-header budget-utilization-header mis-budget-header">
+  <div>
+    <p class="eyebrow">MIS Workspace</p>
+    <h1>MIS Budget Utilization Report</h1>
+    <p class="muted">
+      BLI-wise allocated budget, monthly allocated budget, and utilization.
+      <% if @latest_month.present? %>
+        Through <%= @latest_month.capitalize %>.
+      <% end %>
+    </p>
+  </div>
+  <div class="header-card">
+    <span>Projects</span>
+    <strong><%= @project_count %></strong>
+  </div>
+</section>
+
+<% if @rows.any? %>
+  <section class="metric-grid metric-grid-compact budget-utilization-metrics mis-budget-metrics">
+    <article class="metric metric-teal"><span>No of BLI Rows</span><strong><%= @rows.size %></strong></article>
+    <article class="metric metric-ink"><span>No of Project</span><strong><%= @project_count %></strong></article>
+    <article class="metric"><span>Total Allocated Budget</span><strong><%= currency(@project_total) %></strong></article>
+    <article class="metric metric-blue"><span>Total Expenditure</span><strong><%= currency(@expenditure_total) %></strong></article>
+    <article class="metric metric-rose"><span>Total Remaining Budget</span><strong><%= currency(@remaining_total) %></strong></article>
+  </section>
+
+  <div class="table-panel budget-utilization-panel mis-budget-panel" data-searchable-table="true">
+    <div class="table-heading">
+      <div>
+        <p class="eyebrow">MIS Utilization Report</p>
+        <h2>BLI-wise utilization</h2>
+        <p class="muted">
+          Months: <%= @months.map(&:capitalize).join(", ") %>
+          <% if @quarter_columns.any? %>
+            • Quarters: <%= @quarter_columns.map { |column| column[:label] }.join(", ") %>
+          <% end %>
+        </p>
+      </div>
+      <div class="table-actions">
+        <%= link_to "Download Excel Sheet", mis_budget_utilization_reports_path(format: :xlsx), class: "secondary-button" %>
+        <input type="search" class="table-search" placeholder="Search BLI rows" data-table-search-input>
+        <span class="table-count" data-filtered-count data-count-label="rows"><%= @rows.size %> rows</span>
+      </div>
+    </div>
+
+    <div class="responsive-table budget-utilization-table-wrap mis-budget-table-wrap">
+      <table class="budget-utilization-table budget-report-table mis-budget-table">
+        <thead>
+          <tr>
+            <th>S.No.</th>
+            <th>Project Name</th>
+            <th>Project BLI Name</th>
+            <th>BLI Code</th>
+            <th>BLI Allocated Fund</th>
+            <th>Financial Year</th>
+            <th>Office Name</th>
+            <th>Vertical</th>
+            <th>Activity</th>
+            <th>Responsible Users</th>
+            <th>Total Expenditure</th>
+            <th>Total Remaining Budget</th>
+            <% @months.each do |month| %>
+              <th class="month-allocation-heading"><%= month.capitalize %> Month Allocated Budget</th>
+              <th class="month-utilized-heading"><%= month.capitalize %></th>
+            <% end %>
+            <% @quarter_columns.each do |column| %>
+              <th class="budget-quarter-heading"><%= column[:label] %></th>
+            <% end %>
+          </tr>
+        </thead>
+        <tbody>
+          <% @rows.each_with_index do |row, index| %>
+            <tr>
+              <td><span class="code-pill"><%= index + 1 %></span></td>
+              <td><strong><%= row[:project_name].presence || "-" %></strong></td>
+              <td><%= row[:project_bli_name].presence || "-" %></td>
+              <td><span class="code-pill"><%= row[:bli_code].presence || "-" %></span></td>
+              <td class="money-cell"><%= currency(row[:allocated_fund]) %></td>
+              <td><%= row[:financial_year].presence || "-" %></td>
+              <td><%= row[:office_name].presence || "-" %></td>
+              <td><%= row[:vertical_name].presence || "-" %></td>
+              <td><%= row[:activity_name].presence || "-" %></td>
+              <td><%= row[:responsible_user_name].presence || "-" %></td>
+              <td class="money-cell"><%= currency(row[:total_expenditure]) %></td>
+              <td class="money-cell"><%= currency(row[:total_remaining]) %></td>
+              <% @months.each do |month| %>
+                <td class="money-cell month-allocation-cell"><%= currency(row[:month_allocated][month]) %></td>
+                <td class="money-cell month-utilized-cell">
+                  <%= currency(row[:month_utilized][month]) %>
+                  <% if row[:month_audit][month].present? %>
+                    <small class="budget-audit-line"><%= row[:month_audit][month] %></small>
+                  <% end %>
+                </td>
+              <% end %>
+              <% @quarter_columns.each do |column| %>
+                <% value = column[:months].sum { |month| row[:month_utilized][month].to_d } %>
+                <td class="money-cell budget-quarter-cell"><%= currency(value) %></td>
+              <% end %>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% else %>
+  <section class="empty-state">
+    <h2>No utilization saved</h2>
+    <p class="muted">Accounts has not saved utilization yet. MIS report will appear after entries are saved.</p>
+  </section>
+<% end %>

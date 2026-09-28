@@ -7117,6 +7117,185 @@ body.app-body {
   color: #1d4f91;
 }
 
+.mis-budget-header {
+  border-color: #cfe5df;
+  background: #f8fcfb;
+}
+
+.mis-budget-panel {
+  border-color: #cfe0e8;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+}
+
+.mis-budget-panel .table-heading {
+  gap: 16px;
+  border-bottom: 1px solid #dbe8ee;
+  background: #ffffff;
+}
+
+.mis-budget-panel .table-actions {
+  flex-wrap: wrap;
+}
+
+.mis-budget-table-wrap {
+  max-height: calc(100vh - 350px);
+  min-height: 360px;
+  background: #ffffff;
+  scrollbar-gutter: stable;
+}
+
+.mis-budget-table {
+  min-width: 2240px;
+  table-layout: fixed;
+}
+
+.mis-budget-table th,
+.mis-budget-table td {
+  padding: 12px 14px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.mis-budget-table th {
+  color: #243247;
+  font-size: 0.72rem;
+  line-height: 1.25;
+  white-space: normal;
+}
+
+.mis-budget-table tbody tr:nth-child(odd) td {
+  background: #f7fcfa;
+}
+
+.mis-budget-table tbody tr:hover td {
+  background: #eef8f4;
+}
+
+.mis-budget-table th:nth-child(1),
+.mis-budget-table td:nth-child(1) {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  width: 84px;
+  min-width: 84px;
+  max-width: 84px;
+  text-align: center;
+}
+
+.mis-budget-table th:nth-child(2),
+.mis-budget-table td:nth-child(2) {
+  position: sticky;
+  left: 84px;
+  z-index: 3;
+  width: 170px;
+  min-width: 170px;
+  box-shadow: 10px 0 18px rgba(15, 23, 42, 0.08);
+}
+
+.mis-budget-table th:nth-child(1),
+.mis-budget-table th:nth-child(2) {
+  z-index: 5;
+}
+
+.mis-budget-table td:nth-child(2) strong {
+  display: block;
+  color: #102035;
+  font-weight: 900;
+}
+
+.mis-budget-table th:nth-child(3),
+.mis-budget-table td:nth-child(3) {
+  width: 250px;
+  min-width: 250px;
+}
+
+.mis-budget-table th:nth-child(4),
+.mis-budget-table td:nth-child(4) {
+  width: 110px;
+  min-width: 110px;
+  text-align: center;
+}
+
+.mis-budget-table th:nth-child(5),
+.mis-budget-table td:nth-child(5),
+.mis-budget-table th:nth-child(11),
+.mis-budget-table td:nth-child(11),
+.mis-budget-table th:nth-child(12),
+.mis-budget-table td:nth-child(12) {
+  width: 160px;
+  min-width: 160px;
+}
+
+.mis-budget-table th:nth-child(6),
+.mis-budget-table td:nth-child(6) {
+  width: 130px;
+  min-width: 130px;
+}
+
+.mis-budget-table th:nth-child(7),
+.mis-budget-table td:nth-child(7),
+.mis-budget-table th:nth-child(8),
+.mis-budget-table td:nth-child(8),
+.mis-budget-table th:nth-child(10),
+.mis-budget-table td:nth-child(10) {
+  width: 165px;
+  min-width: 165px;
+}
+
+.mis-budget-table th:nth-child(9),
+.mis-budget-table td:nth-child(9) {
+  width: 150px;
+  min-width: 150px;
+}
+
+.mis-budget-table .month-allocation-heading,
+.mis-budget-table .month-allocation-cell {
+  width: 180px;
+  min-width: 180px;
+}
+
+.mis-budget-table .month-utilized-heading,
+.mis-budget-table .month-utilized-cell {
+  width: 190px;
+  min-width: 190px;
+}
+
+.mis-budget-table .budget-quarter-heading,
+.mis-budget-table .budget-quarter-cell {
+  width: 150px;
+  min-width: 150px;
+}
+
+@media (max-width: 900px) {
+  .mis-budget-table-wrap {
+    max-height: calc(100vh - 300px);
+    min-height: 380px;
+  }
+
+  .mis-budget-table {
+    min-width: 1960px;
+  }
+
+  .mis-budget-table th,
+  .mis-budget-table td {
+    padding: 10px 12px;
+  }
+
+  .mis-budget-table th:nth-child(1),
+  .mis-budget-table td:nth-child(1) {
+    width: 72px;
+    min-width: 72px;
+    max-width: 72px;
+  }
+
+  .mis-budget-table th:nth-child(2),
+  .mis-budget-table td:nth-child(2) {
+    left: 72px;
+    width: 150px;
+    min-width: 150px;
+  }
+}
+
 .budget-utilization-input {
   width: 130px;
   border-radius: 10px;

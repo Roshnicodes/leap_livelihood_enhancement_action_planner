@@ -97,6 +97,7 @@ class BudgetUtilizationsControllerTest < ActionDispatch::IntegrationTest
     assert_includes sheet_xml, "May Planned Budget"
     assert_includes sheet_xml, "May Utilized"
     assert_includes sheet_xml, "<sheetProtection"
+    assert_no_match(/<sheetProtection[^>]*password=/, sheet_xml)
     assert_no_match(/<c r="K5"[^>]*s="4"/, sheet_xml)
     assert_match(/<c r="M5"[^>]*s="4"/, sheet_xml)
   end
