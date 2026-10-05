@@ -157,4 +157,112 @@ class ActionPlanStatusReportTest < ActiveSupport::TestCase
     assert_equal "JH, MP", financial_inclusion_rows.first[:state]
     assert_equal "Financial Inclusion", financial_inclusion_rows.first[:fco_name]
   end
+
+  test "uses an FCO's complete assigned project list for every monthly denominator" do
+    employee = Employee.create!(employee_code: "FCO-KOTMA", name: "Kotma FCO", active: true)
+    fco_id = "KOTMA-REPORT"
+
+    [ "Kotma Project 1", "Kotma Project 2", "Kotma Project 3", "Kotma Project 4" ].each_with_index do |project_name, index|
+      ActionPlanRow.create!(
+        po_id: "PO-KOTMA-#{index}",
+        project_name: project_name,
+        statte: "MP",
+        user_id: fco_id,
+        user_name: "Kotma-FCO",
+        apr: index < 3 ? 1 : 0,
+        jun: index == 3 ? 1 : 0,
+        planned_total: 1
+      )
+    end
+
+    [ "Kotma Project 1", "Kotma Project 2", "Kotma Project 3" ].each_with_index do |project_name, index|
+      AchievementSubmission.create!(
+        employee: employee,
+        fco_id: fco_id,
+        fco_name: "Kotma-FCO",
+        to_id: "TO-KOTMA",
+        to_name: "Kotma TO",
+        project_name: project_name,
+        po_id: "PO-KOTMA-#{index}",
+        state_code: "MP",
+        asa_theme_id: "1",
+        month: "apr",
+        status: "approved",
+        current_stage: "complete",
+        submitted_at: Time.current,
+        mis_submitted: false
+      )
+    end
+
+    report = ActionPlanStatusReport.new
+    row = report.fco_submission_rows.find { |item| item[:fco_ids] == [ fco_id ] }
+    april = row[:month_details]["apr"]
+    june = row[:month_details]["jun"]
+
+    assert_equal 4, row[:project_count]
+    assert_equal 4, april[:expected_count]
+    assert_equal 3, april[:submitted_count]
+    assert_equal "Partial", april[:status]
+    assert_equal [ "Kotma Project 4" ], april[:not_submitted_projects]
+    assert_equal 4, june[:expected_count]
+    assert_equal "Not Submitted", june[:status]
+    assert_equal 3, report.summary_totals[:submitted]
+  end
+
+  test "approval grid aggregates every project for the FCO month" do
+    employee = Employee.create!(employee_code: "FCO-APPROVAL", name: "Approval FCO", active: true)
+    fco_id = "APPROVAL-REPORT"
+
+    [ "Approved Project", "Pending Project", "Returned Project", "Unsubmitted Project" ].each_with_index do |project_name, index|
+      ActionPlanRow.create!(
+        po_id: "PO-APPROVAL-#{index}",
+        project_name: project_name,
+        statte: "MP",
+        user_id: fco_id,
+        user_name: "Approval-FCO",
+        apr: 1,
+        planned_total: 1
+      )
+    end
+
+    approved_submission = AchievementSubmission.create!(
+      employee: employee,
+      fco_id: fco_id,
+      fco_name: "Approval-FCO",
+      to_id: "TO-APPROVAL",
+      to_name: "Approval TO",
+      project_name: "Approved Project",
+      po_id: "PO-APPROVAL-0",
+      state_code: "MP",
+      asa_theme_id: "1",
+      month: "apr",
+      status: "approved",
+      current_stage: "complete",
+      submitted_at: Time.current,
+      mis_submitted: false
+    )
+    pending_submission = approved_submission.dup
+    pending_submission.assign_attributes(project_name: "Pending Project", po_id: "PO-APPROVAL-1", submitted_at: Time.current)
+    pending_submission.save!
+    pending_submission.update_columns(status: "pending", current_stage: "vertical")
+
+    returned_submission = approved_submission.dup
+    returned_submission.assign_attributes(project_name: "Returned Project", po_id: "PO-APPROVAL-2", submitted_at: Time.current)
+    returned_submission.update!(status: "returned", current_stage: "vertical")
+
+    approval_detail = ActionPlanStatusReport.new
+      .fco_approval_rows
+      .find { |item| item[:fco_ids] == [ fco_id ] }
+      .fetch(:month_details)
+      .fetch("apr")
+
+    assert_equal "Pending 1/4 · 1 Returned", approval_detail[:status]
+    assert_equal "pending", approval_detail[:status_kind]
+    assert_equal 4, approval_detail[:expected_count]
+    assert_equal 2, approval_detail[:submitted_count]
+    assert_equal 1, approval_detail[:approved_count]
+    assert_equal 1, approval_detail[:pending_count]
+    assert_equal 1, approval_detail[:returned_count]
+    assert_equal 2, approval_detail[:not_submitted_count]
+  end
 end

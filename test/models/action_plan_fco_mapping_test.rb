@@ -2,6 +2,12 @@ require "test_helper"
 require "tempfile"
 
 class ActionPlanFcoMappingTest < ActiveSupport::TestCase
+  test "Sidhi is not grouped under Mandla" do
+    assert_equal "12", ActionPlanFcoGroup.canonical_id("12")
+    assert_equal [ "15" ], ActionPlanFcoGroup.ids_for("15")
+    assert_equal [ "12" ], ActionPlanFcoGroup.ids_for("12")
+  end
+
   test "action plan fco options are grouped by canonical fco id" do
     ActionPlanRow.create!(
       po_id: "PO-1",

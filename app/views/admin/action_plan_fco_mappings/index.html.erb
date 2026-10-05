@@ -21,6 +21,98 @@
   <article class="metric metric-rose"><span>Disabled</span><strong><%= @disabled_mapping_rows.size %></strong></article>
 </section>
 
+<% transfer_options = @fco_transfer_options.map do |fco|
+  [ "#{fco[:fco_name]} (ID: #{fco[:fco_id]} • #{fco[:project_count]} projects • #{fco[:row_count]} rows)", fco[:fco_id] ]
+end %>
+<section class="table-panel fco-transfer-panel">
+  <div class="table-heading">
+    <div>
+      <p class="eyebrow">Safe data management</p>
+      <h2>Merge FCO data</h2>
+      <p class="muted">Moves only current Action Plan rows and active month changes to the target FCO. Historical achievement submissions remain unchanged and are retained in the target FCO reports. Every transfer has an undo option.</p>
+    </div>
+  </div>
+
+  <%= form_with url: admin_transfer_action_plan_fco_mapping_path, method: :post, class: "admin-master-form fco-transfer-form" do |form| %>
+    <div class="admin-form-grid fco-transfer-grid">
+      <label>
+        <span>Source FCO</span>
+        <%= form.select :source_fco_id, options_for_select(transfer_options), { include_blank: "Select FCO to merge" }, class: "select", required: true %>
+      </label>
+      <label>
+        <span>Target FCO</span>
+        <%= form.select :target_fco_id, options_for_select(transfer_options), { include_blank: "Select receiving FCO" }, class: "select", required: true %>
+      </label>
+      <label>
+        <span>Reason / note</span>
+        <%= form.text_field :transfer_note, class: "input", placeholder: "e.g. Kukshi merged into Jobat" %>
+      </label>
+      <label>
+        <span>Type MERGE to confirm</span>
+        <%= form.text_field :transfer_confirmation, class: "input", autocomplete: "off", required: true %>
+      </label>
+    </div>
+    <div class="admin-form-footer">
+      <%= form.submit "Merge into Target FCO", class: "return-button", data: { turbo_confirm: "This will reassign the selected FCO's current action-plan data. Historical achievement submissions will be kept. Continue?" } %>
+    </div>
+  <% end %>
+</section>
+
+<section class="table-panel admin-data-panel fco-transfer-history" data-searchable-table>
+  <div class="table-heading">
+    <div>
+      <h2>Transfer history</h2>
+    </div>
+    <div class="table-actions">
+      <input type="search" class="table-search" placeholder="Search FCO transfers" data-table-search-input>
+      <span class="table-count" data-filtered-count data-count-label="transfers"><%= @fco_transfers.size %> transfers</span>
+    </div>
+  </div>
+  <div class="responsive-table">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Status</th>
+          <th>Source</th>
+          <th>Target</th>
+          <th>Moved Data</th>
+          <th>Done By</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @fco_transfers.each do |transfer| %>
+          <tr class="<%= "is-disabled-row" unless transfer.active? %>">
+            <td><span class="status-badge status-<%= transfer.active? ? "pending" : "not_submitted" %>"><%= transfer.active? ? "Active" : "Reverted" %></span></td>
+            <td><strong><%= transfer.source_fco_name %></strong><div class="muted">ID: <%= transfer.source_fco_id %></div></td>
+            <td><strong><%= transfer.target_fco_name %></strong><div class="muted">ID: <%= transfer.target_fco_id %></div></td>
+            <td>
+              <strong><%= pluralize(transfer.action_plan_row_count, "action-plan row") %></strong>
+              <div class="muted"><%= pluralize(transfer.project_count, "project") %> · <%= pluralize(transfer.month_change_count, "active month change") %></div>
+              <% if transfer.note.present? %><div class="muted"><%= transfer.note %></div><% end %>
+            </td>
+            <td><%= transfer.transferred_by&.login || "-" %><div class="muted"><%= transfer.created_at.in_time_zone("Asia/Kolkata").strftime("%d %b %Y, %I:%M %p") %></div></td>
+            <td>
+              <% if transfer.active? %>
+                <%= button_to "Undo Transfer",
+                  admin_revert_action_plan_fco_transfer_path(transfer),
+                  method: :patch,
+                  class: "secondary-button admin-row-button",
+                  form: { data: { turbo_confirm: "Undo this FCO transfer? Only the rows recorded in this transfer will be restored to #{transfer.source_fco_name}." } } %>
+              <% else %>
+                <span class="muted">Reverted by <%= transfer.reverted_by&.login || "-" %></span>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+        <% if @fco_transfers.empty? %>
+          <tr><td colspan="6" class="muted">No FCO data transfers have been made.</td></tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
 <section class="table-panel admin-editor-panel">
   <div class="table-heading">
     <div>

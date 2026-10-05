@@ -2,6 +2,9 @@ require "test_helper"
 require "csv"
 
 class ActionPlanImporterTest < ActiveSupport::TestCase
+  setup { ActionPlanFcoTransfer.reset_resolution_cache! }
+  teardown { ActionPlanFcoTransfer.reset_resolution_cache! }
+
   test "imports downloaded action plan file that has project id instead of po id" do
     file = Tempfile.new([ "downloaded_action_plan", ".csv" ])
     file.write(CSV.generate do |csv|
@@ -18,6 +21,31 @@ class ActionPlanImporterTest < ActiveSupport::TestCase
     assert_equal "PO-2", row.project_id
     assert_equal 12, row.apr
     assert_equal 5, row.apr_t
+  ensure
+    file&.unlink
+  end
+
+  test "keeps an active FCO transfer in effect when a new action plan file is imported" do
+    admin = User.create!(login: "transfer-import-admin", role: "admin", password: "secret")
+    ActionPlanFcoTransfer.create!(
+      source_fco_id: "FCO-SOURCE",
+      source_fco_name: "Source FCO",
+      target_fco_id: "FCO-TARGET",
+      target_fco_name: "Target FCO",
+      transferred_by: admin
+    )
+    file = Tempfile.new([ "transferred_fco_action_plan", ".csv" ])
+    file.write(CSV.generate do |csv|
+      csv << [ "PO_ID", "State", "Project", "FCO ID", "FCO Name", "TO_ID", "ASA_Theme_ID", "ASA_Activity_ID", "Apr Target" ]
+      csv << [ "PO-TRANSFER", "MP", "Transferred Import Project", "FCO-SOURCE", "Source FCO", "TO-1", "4", "4.1", "12" ]
+    end)
+    file.close
+
+    ActionPlanImporter.new(action_plan_file: file.path).import!
+
+    row = ActionPlanRow.active_import.find_by!(project_name: "Transferred Import Project")
+    assert_equal "FCO-TARGET", row.user_id
+    assert_equal "Target FCO", row.user_name
   ensure
     file&.unlink
   end

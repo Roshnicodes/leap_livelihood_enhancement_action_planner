@@ -125,4 +125,15 @@ namespace :leap do
 
     puts "Synced #{count} BLI activities for #{financial_year}."
   end
+
+  desc "Repair action plan rows whose text was split at \"&amp;\" (shifted Theme/Activity/Unit columns). Dry run by default; APPLY=true writes. Usage: APPLY=true bundle exec rails leap:repair_split_action_plan_text"
+  task repair_split_action_plan_text: :environment do
+    apply = ENV.fetch("APPLY", "false") == "true"
+    changes = ActionPlanSplitEntityRepair.call(apply: apply)
+
+    changes.each do |row, attributes|
+      puts "##{row.id} #{row.project_name} | #{row.user_name} | #{attributes.values.map(&:inspect).join(" | ")}"
+    end
+    puts "#{apply ? "Repaired" : "Would repair"} #{changes.size} action plan rows.#{" Run with APPLY=true to save." unless apply}"
+  end
 end

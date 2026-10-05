@@ -7,7 +7,7 @@
     <p class="muted">Track who submitted, who approved, and what is pending across action plan and achievement flows.</p>
   </div>
   <div class="header-card">
-    <span>Not Submitted</span>
+    <span>Not Submitted Project-Months</span>
     <strong><%= @summary_totals[:not_submitted] %></strong>
   </div>
 </section>
@@ -26,9 +26,9 @@
 
 <section class="metric-grid metric-grid-compact status-report-summary">
   <article class="metric metric-teal"><span>FCO</span><strong><%= @fco_submission_rows.size %></strong></article>
-  <article class="metric metric-blue"><span>Total Submitted</span><strong><%= @summary_totals[:submitted] %></strong></article>
-  <article class="metric"><span>Total Approved</span><strong><%= @summary_totals[:approved] %></strong></article>
-  <article class="metric metric-gold"><span>Total Pending</span><strong><%= @summary_totals[:pending] %></strong></article>
+  <article class="metric metric-blue"><span>Submitted Project-Months</span><strong><%= @summary_totals[:submitted] %></strong></article>
+  <article class="metric"><span>Approved Project-Months</span><strong><%= @summary_totals[:approved] %></strong></article>
+  <article class="metric metric-gold"><span>Pending Project-Months</span><strong><%= @summary_totals[:pending] %></strong></article>
 </section>
 
 <section class="table-panel status-report-panel" data-searchable-table>
@@ -36,6 +36,7 @@
     <div>
       <p class="eyebrow">FCO Wise Summary</p>
       <h2>Achievement Submitted Status</h2>
+      <p class="report-table-note">Each month uses the same active assigned-project count for an FCO.</p>
     </div>
     <div class="table-actions">
       <input type="search" class="table-search" placeholder="Search FCO" data-table-search-input>
@@ -52,10 +53,10 @@
           <% ActionPlanStatusReport::MONTHS.each do |month| %>
             <th><%= month.capitalize %></th>
           <% end %>
-          <th>Total Submitted</th>
-          <th>Total Not Submitted</th>
-          <th>Total Pending Approval</th>
-          <th>Total Approved</th>
+          <th>Submitted Project-Months</th>
+          <th>Not Submitted Project-Months</th>
+          <th>Pending Project-Months</th>
+          <th>Approved Project-Months</th>
         </tr>
       </thead>
       <tbody>
@@ -67,7 +68,7 @@
                 <span class="fco-report-avatar"><%= row[:fco_name].to_s.first.presence || "F" %></span>
                 <div>
                   <strong><%= row[:fco_name].presence || "FCO" %></strong>
-                  <small>ID: <%= row[:fco_ids].join(", ") %></small>
+                  <small>ID: <%= row[:fco_ids].join(", ") %> · <%= pluralize(row[:project_count], "project") %></small>
                 </div>
               </div>
             </td>
@@ -78,7 +79,7 @@
                 <span class="status-badge status-<%= status_class %>">
                   <%= detail[:status] %>
                   <% if detail[:expected_count].positive? %>
-                    <small><%= detail[:submitted_count] %>/<%= detail[:expected_count] %></small>
+                    <small><%= detail[:submitted_count] %>/<%= detail[:expected_count] %> projects</small>
                   <% end %>
                 </span>
                 <% if detail[:audit_lines].present? %>
@@ -89,10 +90,14 @@
                   </div>
                 <% end %>
                 <% if detail[:not_submitted_projects].present? %>
-                  <div class="missing-projects">
-                    <span><%= detail[:not_submitted_count] %> not submitted</span>
-                    <%= detail[:not_submitted_projects].join(", ") %>
-                  </div>
+                  <details class="missing-projects">
+                    <summary><%= pluralize(detail[:not_submitted_count], "project") %> not submitted</summary>
+                    <ul>
+                      <% detail[:not_submitted_projects].each do |project| %>
+                        <li><%= project %></li>
+                      <% end %>
+                    </ul>
+                  </details>
                 <% end %>
               </td>
             <% end %>
@@ -112,6 +117,7 @@
     <div>
       <p class="eyebrow">FCO Wise Summary</p>
       <h2>Achievement Approval Status</h2>
+      <p class="report-table-note">Approval totals are project counts, so they match the submitted-status grid.</p>
     </div>
     <div class="table-actions">
       <input type="search" class="table-search" placeholder="Search status" data-table-search-input>
@@ -128,9 +134,9 @@
           <% ActionPlanStatusReport::MONTHS.each do |month| %>
             <th><%= month.capitalize %></th>
           <% end %>
-          <th>Total Pending</th>
-          <th>Total Approved</th>
-          <th>Total Returned</th>
+          <th>Pending Project-Months</th>
+          <th>Approved Project-Months</th>
+          <th>Returned Project-Months</th>
         </tr>
       </thead>
       <tbody>
@@ -142,7 +148,7 @@
                 <span class="fco-report-avatar"><%= row[:fco_name].to_s.first.presence || "F" %></span>
                 <div>
                   <strong><%= row[:fco_name].presence || "FCO" %></strong>
-                  <small>ID: <%= row[:fco_ids].join(", ") %></small>
+                  <small>ID: <%= row[:fco_ids].join(", ") %> · <%= pluralize(row[:project_count], "project") %></small>
                 </div>
               </div>
             </td>
@@ -150,7 +156,7 @@
               <% detail = row[:month_details][month] %>
               <% status = detail[:status] %>
               <td class="approval-month-cell">
-                <span class="status-badge status-<%= status == "Approved" ? "approved" : status == "Returned" ? "returned" : status.start_with?("Pending") ? "pending" : "not_submitted" %>"><%= status %></span>
+                <span class="status-badge status-<%= detail[:status_kind] %>"><%= status %></span>
                 <% if detail[:audit_lines].present? %>
                   <div class="submission-audit-lines">
                     <% detail[:audit_lines].each do |line| %>

@@ -13,6 +13,7 @@ class ActionPlanStatusReport
         fco_id: fco_id,
         fco_name: fco_name,
         fco_ids: fco_ids,
+        project_count: expected_projects_for(fco_id).size,
         statuses: statuses,
         month_details: month_details,
         total_expected: month_details.values.sum { |detail| detail[:expected_count] },
@@ -26,12 +27,14 @@ class ActionPlanStatusReport
   end
 
   def summary_totals
-    submitted_count = achievement_submissions.count { |submission| submission.pending? || submission.approved? }
-
     {
-      submitted: submitted_count,
-      approved: achievement_submissions.count(&:approved?),
-      pending: achievement_submissions.count(&:pending?),
+      # Keep every headline metric on the same unit as the FCO grid: one
+      # assigned project for one reporting month. Counting database submissions
+      # here was misleading because one project can create more than one review
+      # package (for example, for separate vertical approvers).
+      submitted: fco_submission_rows.sum { |row| row[:total_submitted] },
+      approved: fco_submission_rows.sum { |row| row[:total_approved] },
+      pending: fco_submission_rows.sum { |row| row[:total_pending] },
       not_submitted: fco_submission_rows.sum { |row| row[:total_not_submitted] }
     }
   end
@@ -39,21 +42,19 @@ class ActionPlanStatusReport
   def fco_approval_rows
     @fco_approval_rows ||= fco_options.map do |state, fco_id, fco_name, fco_ids|
       month_details = MONTHS.index_with do |month|
-        submission = achievement_submission_for(fco_id, month)
-        submission ? approval_month_detail(submission) : { status: "Not Submitted", audit_lines: [] }
+        fco_month_approval_detail(fco_id, month)
       end
-      statuses = month_details.transform_values { |detail| detail[:status] }
 
       {
         state: state,
         fco_id: fco_id,
         fco_name: fco_name,
         fco_ids: fco_ids,
-        statuses: statuses,
+        project_count: expected_projects_for(fco_id).size,
         month_details: month_details,
-        total_pending: statuses.values.count { |status| status.start_with?("Pending") },
-        total_approved: statuses.values.count("Approved"),
-        total_returned: statuses.values.count("Returned")
+        total_pending: month_details.values.sum { |detail| detail[:pending_count] },
+        total_approved: month_details.values.sum { |detail| detail[:approved_count] },
+        total_returned: month_details.values.sum { |detail| detail[:returned_count] }
       }
     end
   end
@@ -75,9 +76,9 @@ class ActionPlanStatusReport
         asa_theme_id: mapping.asa_theme_id,
         approver: mapping.employee&.name.presence || mapping.employee_code,
         total_fco: total_fco,
-        pending_fco: submissions.select(&:pending?).map(&:fco_id).uniq.size,
-        approved_fco: submissions.select(&:approved?).map(&:fco_id).uniq.size,
-        returned_fco: submissions.select(&:returned?).map(&:fco_id).uniq.size
+        pending_fco: submissions.select(&:pending?).map { |submission| ActionPlanFcoGroup.canonical_id(submission.fco_id) }.uniq.size,
+        approved_fco: submissions.select(&:approved?).map { |submission| ActionPlanFcoGroup.canonical_id(submission.fco_id) }.uniq.size,
+        returned_fco: submissions.select(&:returned?).map { |submission| ActionPlanFcoGroup.canonical_id(submission.fco_id) }.uniq.size
       }
     end
   end
@@ -159,7 +160,7 @@ class ActionPlanStatusReport
       {
         name: "Submitted",
         title: "Achievement Submitted Status",
-        headers: [ "State", "FCO ID", "FCO", *month_headers, "Total Submitted", "Total Not Submitted", "Total Pending Approval", "Total Approved", "Not Submitted Projects" ],
+        headers: [ "State", "FCO ID", "FCO", *month_headers, "Submitted Project-Months", "Not Submitted Project-Months", "Pending Project-Months", "Approved Project-Months", "Not Submitted Projects" ],
         rows: fco_submission_rows.map do |row|
           [
             row[:state],
@@ -178,7 +179,7 @@ class ActionPlanStatusReport
       {
         name: "Approval",
         title: "Achievement Approval Status",
-        headers: [ "State", "FCO ID", "FCO", *month_headers, "Total Pending", "Total Approved", "Total Returned" ],
+        headers: [ "State", "FCO ID", "FCO", *month_headers, "Pending Project-Months", "Approved Project-Months", "Returned Project-Months" ],
         rows: fco_approval_rows.map do |row|
           [ row[:state], row[:fco_ids].join(", "), row[:fco_name], *MONTHS.map { |month| approval_export_value(row[:month_details][month]) }, row[:total_pending], row[:total_approved], row[:total_returned] ]
         end,
@@ -246,14 +247,6 @@ class ActionPlanStatusReport
       .to_a
   end
 
-  def achievement_submission_lookup
-    @achievement_submission_lookup ||= achievement_submissions.each_with_object({}) do |submission, lookup|
-      canonical_id = ActionPlanFcoGroup.canonical_id(submission.fco_id)
-      key = [ canonical_id, submission.month.to_s ]
-      lookup[key] = preferred_submission(lookup[key], submission)
-    end
-  end
-
   def achievement_submissions_by_fco_month
     @achievement_submissions_by_fco_month ||= achievement_submissions.group_by do |submission|
       [ ActionPlanFcoGroup.canonical_id(submission.fco_id), submission.month.to_s ]
@@ -261,68 +254,133 @@ class ActionPlanStatusReport
   end
 
   def fco_month_submission_detail(fco_id, month)
-    expected_projects = expected_projects_for(fco_id, month)
+    expected_projects = expected_projects_for(fco_id)
     submissions = achievement_submissions_by_fco_month[[ ActionPlanFcoGroup.canonical_id(fco_id), month.to_s ]] || []
-    project_submissions = preferred_project_submissions(submissions)
-    submitted_projects = project_submissions.keys
-    counted_submitted_projects = expected_projects.present? ? (expected_projects & submitted_projects) : submitted_projects
-    approved_projects = counted_submitted_projects.select { |project| project_submissions[project]&.approved? }
-    pending_projects = counted_submitted_projects.select { |project| project_submissions[project]&.pending? }
-    not_submitted_projects = expected_projects - submitted_projects
+    project_states = project_submission_states(submissions)
+    detail = project_month_counts(expected_projects, project_states)
 
     {
-      status: submission_status(expected_projects, counted_submitted_projects),
+      status: submission_status(expected_projects, detail[:submitted_projects]),
       expected_count: expected_projects.size,
-      submitted_count: counted_submitted_projects.size,
-      approved_count: approved_projects.size,
-      pending_count: pending_projects.size,
-      not_submitted_count: not_submitted_projects.size,
-      not_submitted_projects: not_submitted_projects,
-      pending_projects: pending_projects,
-      audit_lines: submission_audit_lines(project_submissions.values)
+      submitted_count: detail[:submitted_projects].size,
+      approved_count: detail[:approved_projects].size,
+      pending_count: detail[:pending_projects].size,
+      returned_count: detail[:returned_projects].size,
+      not_submitted_count: detail[:not_submitted_projects].size,
+      not_submitted_projects: detail[:not_submitted_projects],
+      pending_projects: detail[:pending_projects],
+      returned_projects: detail[:returned_projects],
+      audit_lines: submission_audit_lines(detail[:audit_submissions])
     }
   end
 
-  def expected_projects_for(fco_id, month)
-    key = [ ActionPlanFcoGroup.canonical_id(fco_id), month.to_s ]
-    expected_projects_by_fco_month.fetch(key, [])
+  def fco_month_approval_detail(fco_id, month)
+    expected_projects = expected_projects_for(fco_id)
+    submissions = achievement_submissions_by_fco_month[[ ActionPlanFcoGroup.canonical_id(fco_id), month.to_s ]] || []
+    detail = project_month_counts(expected_projects, project_submission_states(submissions))
+
+    {
+      status: approval_status(expected_projects, detail),
+      status_kind: approval_status_kind(expected_projects, detail),
+      expected_count: expected_projects.size,
+      submitted_count: detail[:submitted_projects].size,
+      approved_count: detail[:approved_projects].size,
+      pending_count: detail[:pending_projects].size,
+      returned_count: detail[:returned_projects].size,
+      not_submitted_count: detail[:not_submitted_projects].size,
+      audit_lines: submission_audit_lines(detail[:audit_submissions])
+    }
   end
 
-  def expected_projects_by_fco_month
-    @expected_projects_by_fco_month ||= begin
+  # An FCO's assigned project list is a master-data relationship, not a target
+  # calendar. A project with a zero target in a particular month is still an
+  # assigned project and must remain in the report denominator for every month.
+  def expected_projects_for(fco_id)
+    expected_projects_by_fco.fetch(ActionPlanFcoGroup.canonical_id(fco_id), [])
+  end
+
+  def expected_projects_by_fco
+    @expected_projects_by_fco ||= begin
       lookup = Hash.new { |hash, key| hash[key] = [] }
 
       active_rows
         .where.not(user_id: [ nil, "" ], project_name: [ nil, "" ])
         .find_each do |row|
           canonical_id = ActionPlanFcoGroup.canonical_id(row.user_id)
-
-          MONTHS.each do |month|
-            next unless row.public_send(month).to_i.positive?
-
-            lookup[[ canonical_id, month ]] << row.project_name.to_s.squish
-          end
+          lookup[canonical_id] << row.project_name.to_s.squish
         end
 
       lookup.transform_values { |projects| projects.uniq.sort }
     end
   end
 
-  def preferred_project_submissions(submissions)
-    submissions.reject(&:returned?).each_with_object({}) do |submission, lookup|
+  def project_submission_states(submissions)
+    submissions.each_with_object(Hash.new { |hash, key| hash[key] = [] }) do |submission, grouped|
       project_name = submission.project_name.to_s.squish
       next if project_name.blank?
 
-      lookup[project_name] = preferred_submission(lookup[project_name], submission)
+      grouped[project_name] << submission
+    end.transform_values do |project_submissions|
+      active_submissions = project_submissions.select { |submission| submission.pending? || submission.approved? }
+      latest_inactive = project_submissions
+        .reject { |submission| submission.pending? || submission.approved? }
+        .max_by { |submission| [ submission.submitted_at.to_i, submission.id.to_i ] }
+
+      {
+        active: active_submissions.present?,
+        approved: active_submissions.present? && active_submissions.all?(&:approved?),
+        pending: active_submissions.any?(&:pending?),
+        returned: active_submissions.blank? && project_submissions.any?(&:returned?),
+        audit_submissions: active_submissions.presence || Array(latest_inactive)
+      }
     end
   end
 
+  def project_month_counts(expected_projects, project_states)
+    expected_states = expected_projects.index_with { |project| project_states[project] || {} }
+    submitted_projects = expected_states.filter_map { |project, state| project if state[:active] }
+    approved_projects = expected_states.filter_map { |project, state| project if state[:approved] }
+    pending_projects = expected_states.filter_map { |project, state| project if state[:pending] }
+    returned_projects = expected_states.filter_map { |project, state| project if state[:returned] }
+    not_submitted_projects = expected_projects - submitted_projects
+
+    {
+      submitted_projects: submitted_projects,
+      approved_projects: approved_projects,
+      pending_projects: pending_projects,
+      returned_projects: returned_projects,
+      not_submitted_projects: not_submitted_projects,
+      audit_submissions: expected_states.values.flat_map { |state| state[:audit_submissions] }.compact
+    }
+  end
+
   def submission_status(expected_projects, submitted_projects)
-    return "No Target" if expected_projects.empty?
+    return "No Projects" if expected_projects.empty?
     return "Not Submitted" if submitted_projects.empty?
     return "Partial" if submitted_projects.size < expected_projects.size
 
     "Submitted"
+  end
+
+  def approval_status(expected_projects, detail)
+    return "No Projects" if expected_projects.empty?
+    return "Approved #{detail[:approved_projects].size}/#{expected_projects.size}" if detail[:approved_projects].size == expected_projects.size
+    if detail[:pending_projects].present?
+      label = "Pending #{detail[:pending_projects].size}/#{expected_projects.size}"
+      return detail[:returned_projects].present? ? "#{label} · #{detail[:returned_projects].size} Returned" : label
+    end
+    return "Returned #{detail[:returned_projects].size}/#{expected_projects.size}" if detail[:returned_projects].present?
+
+    "Not Submitted 0/#{expected_projects.size}"
+  end
+
+  def approval_status_kind(expected_projects, detail)
+    return "not_submitted" if expected_projects.empty?
+    return "approved" if detail[:approved_projects].size == expected_projects.size
+    return "pending" if detail[:pending_projects].present?
+    return "returned" if detail[:returned_projects].present?
+
+    "not_submitted"
   end
 
   def submitted_export_value(detail)
@@ -337,19 +395,6 @@ class ActionPlanStatusReport
 
   def approval_export_value(detail)
     [ detail[:status], *detail[:audit_lines] ].compact_blank.join("; ")
-  end
-
-  def achievement_submission_for(fco_id, month)
-    achievement_submission_lookup[[ ActionPlanFcoGroup.canonical_id(fco_id), month.to_s ]]
-  end
-
-  def preferred_submission(existing, candidate)
-    return candidate if existing.blank?
-    return candidate if candidate.approved? && !existing.approved?
-    return candidate if candidate.pending? && existing.returned?
-    return candidate if candidate.submitted_at.to_i > existing.submitted_at.to_i
-
-    existing
   end
 
   def vertical_mappings
@@ -372,13 +417,6 @@ class ActionPlanStatusReport
     return "View only" if stage == "director"
 
     "Awaiting"
-  end
-
-  def approval_month_detail(submission)
-    {
-      status: status_label(submission),
-      audit_lines: submission_audit_lines([ submission ])
-    }
   end
 
   def submission_audit_lines(submissions)
@@ -434,7 +472,7 @@ class ActionPlanStatusReport
 
   def append_fco_submission_csv(csv)
     csv << [ "Achievement Submitted Status" ]
-    csv << [ "State", "FCO ID", "FCO", *month_headers, "Total Submitted", "Total Not Submitted", "Total Pending Approval", "Total Approved", "Not Submitted Projects" ]
+    csv << [ "State", "FCO ID", "FCO", *month_headers, "Submitted Project-Months", "Not Submitted Project-Months", "Pending Project-Months", "Approved Project-Months", "Not Submitted Projects" ]
     fco_submission_rows.each do |row|
       csv << [
         row[:state],
@@ -452,7 +490,7 @@ class ActionPlanStatusReport
 
   def append_fco_approval_csv(csv)
     csv << [ "Achievement Approval Status" ]
-    csv << [ "State", "FCO ID", "FCO", *month_headers, "Total Pending", "Total Approved", "Total Returned" ]
+    csv << [ "State", "FCO ID", "FCO", *month_headers, "Pending Project-Months", "Approved Project-Months", "Returned Project-Months" ]
     fco_approval_rows.each do |row|
       csv << [ row[:state], row[:fco_ids].join(", "), row[:fco_name], *MONTHS.map { |month| approval_export_value(row[:month_details][month]) }, row[:total_pending], row[:total_approved], row[:total_returned] ]
     end

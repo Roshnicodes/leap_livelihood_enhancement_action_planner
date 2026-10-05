@@ -3,9 +3,12 @@ require "tempfile"
 
 class AdminManagementTest < ActionDispatch::IntegrationTest
   setup do
+    ActionPlanFcoTransfer.reset_resolution_cache!
     @admin = User.create!(login: "mis-test", role: "admin", password: "secret")
     post login_path, params: { login: @admin.login, password: "secret" }
   end
+
+  teardown { ActionPlanFcoTransfer.reset_resolution_cache! }
 
   test "employee admin page renders and toggles employee access" do
     employee = Employee.create!(employee_code: "1001", name: "Test Employee", active: true)
@@ -122,6 +125,7 @@ class AdminManagementTest < ActionDispatch::IntegrationTest
     get admin_action_plan_fco_mapping_path(employee_id: employee.id)
     assert_response :success
     assert_select "h1", "FCO Access"
+    assert_select "h2", "Merge FCO data"
     assert_includes response.body, "Demo FCO"
 
     patch admin_toggle_action_plan_fco_mapping_path(mapping)
@@ -144,6 +148,45 @@ class AdminManagementTest < ActionDispatch::IntegrationTest
     assert_select "input[type=checkbox][value='28']", 1
     assert_select ".fco-check-card strong", text: "Financial Inclusion", count: 1
     assert_select ".fco-check-card strong", text: "Betul-FCO", count: 1
+  end
+
+  test "fco transfer requires confirmation and moves current source rows after confirmation" do
+    target_employee = Employee.create!(employee_code: "1002T", name: "Target FCO Employee")
+    source_row = ActionPlanRow.create!(
+      po_id: "PO-FCO-SOURCE",
+      project_name: "Source FCO Project",
+      user_id: "FCO-SOURCE",
+      user_name: "Source FCO",
+      to_id: "TO-1",
+      asa_theme_id: "1",
+      asa_activity_id: "1.1"
+    )
+    ActionPlanRow.create!(
+      po_id: "PO-FCO-TARGET",
+      project_name: "Target FCO Project",
+      user_id: "FCO-TARGET",
+      user_name: "Target FCO"
+    )
+    ActionPlanFcoMapping.create!(
+      employee: target_employee,
+      employee_code: target_employee.employee_code,
+      fco_id: "FCO-TARGET",
+      fco_name: "Target FCO"
+    )
+
+    post admin_transfer_action_plan_fco_mapping_path,
+      params: { source_fco_id: "FCO-SOURCE", target_fco_id: "FCO-TARGET", transfer_confirmation: "no" }
+
+    assert_redirected_to admin_action_plan_fco_mapping_path
+    assert_equal "FCO-SOURCE", source_row.reload.user_id
+    assert_equal 0, ActionPlanFcoTransfer.count
+
+    post admin_transfer_action_plan_fco_mapping_path,
+      params: { source_fco_id: "FCO-SOURCE", target_fco_id: "FCO-TARGET", transfer_confirmation: "MERGE" }
+
+    assert_redirected_to admin_action_plan_fco_mapping_path
+    assert_equal "FCO-TARGET", source_row.reload.user_id
+    assert_equal 1, ActionPlanFcoTransfer.count
   end
 
   test "action plan import page exposes separate editable Excel downloads" do

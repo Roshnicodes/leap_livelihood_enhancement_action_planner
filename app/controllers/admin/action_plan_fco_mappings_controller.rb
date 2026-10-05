@@ -70,6 +70,38 @@ module Admin
       redirect_to admin_action_plan_fco_mapping_path, alert: "FCO mapping import failed: #{error.message}"
     end
 
+    def transfer
+      unless params[:transfer_confirmation].to_s.squish.upcase == "MERGE"
+        redirect_to admin_action_plan_fco_mapping_path,
+          alert: "Type MERGE in the confirmation field before transferring FCO data."
+        return
+      end
+
+      transfer = ActionPlanFcoTransferService.new(
+        source_fco_id: params[:source_fco_id],
+        target_fco_id: params[:target_fco_id],
+        transferred_by: current_user,
+        note: params[:transfer_note]
+      ).call
+
+      redirect_to admin_action_plan_fco_mapping_path,
+        notice: "#{transfer.source_fco_name} merged into #{transfer.target_fco_name}: #{transfer.action_plan_row_count} action-plan rows and #{transfer.month_change_count} active month changes transferred. Historical achievement submissions were preserved."
+    rescue ActionPlanFcoTransferService::TransferError, ActiveRecord::RecordInvalid => error
+      redirect_to admin_action_plan_fco_mapping_path, alert: "FCO transfer could not be completed: #{error.message}"
+    end
+
+    def revert_transfer
+      transfer = ActionPlanFcoTransfer.find(params[:id])
+      ActionPlanFcoTransferService.revert!(transfer: transfer, reverted_by: current_user)
+
+      redirect_to admin_action_plan_fco_mapping_path,
+        notice: "FCO transfer from #{transfer.source_fco_name} to #{transfer.target_fco_name} was reverted."
+    rescue ActiveRecord::RecordNotFound
+      redirect_to admin_action_plan_fco_mapping_path, alert: "FCO transfer record was not found."
+    rescue ActionPlanFcoTransferService::TransferError, ActiveRecord::RecordInvalid => error
+      redirect_to admin_action_plan_fco_mapping_path, alert: "FCO transfer could not be reverted: #{error.message}"
+    end
+
     def create
       mapping = save_mapping!(ActionPlanFcoMapping.new)
 
@@ -114,6 +146,8 @@ module Admin
       @employees = Employee.order(:name)
       @selected_employee = selected_employee
       @fco_options = ActionPlanFcoMapping.action_plan_fcos
+      @fco_transfer_options = ActionPlanFcoTransfer.available_fcos
+      @fco_transfers = ActionPlanFcoTransfer.includes(:transferred_by, :reverted_by).recent_first.limit(30)
       @selected_fco_ids = selected_fco_ids_for(@selected_employee)
       @mapping_rows = ActionPlanFcoMapping
         .joins(:employee)

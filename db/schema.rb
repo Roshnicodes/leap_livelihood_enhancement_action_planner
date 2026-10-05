@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_17_110000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_05_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -98,6 +98,30 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_17_110000) do
     t.index ["employee_id", "fco_name", "fco_id"], name: "idx_action_plan_fco_mappings_employee_name"
     t.index ["employee_id"], name: "index_action_plan_fco_mappings_on_employee_id"
     t.index ["fco_id"], name: "index_action_plan_fco_mappings_on_fco_id"
+  end
+
+  create_table "action_plan_fco_transfers", force: :cascade do |t|
+    t.integer "action_plan_row_count", default: 0, null: false
+    t.jsonb "action_plan_row_ids", default: [], null: false
+    t.datetime "created_at", null: false
+    t.integer "historical_submission_count", default: 0, null: false
+    t.integer "month_change_count", default: 0, null: false
+    t.jsonb "month_change_ids", default: [], null: false
+    t.text "note"
+    t.integer "project_count", default: 0, null: false
+    t.datetime "reverted_at"
+    t.bigint "reverted_by_id"
+    t.string "source_fco_id", null: false
+    t.string "source_fco_name", null: false
+    t.string "target_fco_id", null: false
+    t.string "target_fco_name", null: false
+    t.bigint "transferred_by_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["reverted_at"], name: "index_action_plan_fco_transfers_on_reverted_at"
+    t.index ["reverted_by_id"], name: "index_action_plan_fco_transfers_on_reverted_by_id"
+    t.index ["source_fco_id"], name: "idx_active_fco_transfer_source", unique: true, where: "(reverted_at IS NULL)"
+    t.index ["target_fco_id"], name: "index_action_plan_fco_transfers_on_target_fco_id"
+    t.index ["transferred_by_id"], name: "index_action_plan_fco_transfers_on_transferred_by_id"
   end
 
   create_table "action_plan_import_files", force: :cascade do |t|
@@ -733,6 +757,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_17_110000) do
   add_foreign_key "achievement_submissions", "employees", column: "po_approver_id"
   add_foreign_key "achievement_submissions", "employees", column: "vertical_approver_id"
   add_foreign_key "action_plan_fco_mappings", "employees"
+  add_foreign_key "action_plan_fco_transfers", "users", column: "reverted_by_id"
+  add_foreign_key "action_plan_fco_transfers", "users", column: "transferred_by_id"
   add_foreign_key "action_plan_import_files", "users", column: "uploaded_by_id"
   add_foreign_key "action_plan_month_changes", "action_plan_submissions"
   add_foreign_key "action_plan_month_changes", "users", column: "changed_by_id"

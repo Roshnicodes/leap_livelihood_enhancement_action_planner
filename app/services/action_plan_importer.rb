@@ -183,6 +183,10 @@ class ActionPlanImporter
         label = month.delete_suffix("_t").capitalize
         decimal_value(row, "#{label}_T", "#{label} Achievement", "#{label}_Achievement")
       end
+      user_id, user_name = ActionPlanFcoTransfer.destination_for(
+        value(row, "FCO ID", "FCO_ID", "FCOID", "User_Id", "User ID"),
+        value(row, "FCO Name", "FCO_Name", "FCOName", "User_Name", "User Name")
+      )
 
       {
         id_new: value(row, "ID_New", "ID_NEW", "Id_New"),
@@ -191,8 +195,8 @@ class ActionPlanImporter
         project_name: project_name,
         project_id: value(row, "Project_ID", "Project ID").presence || po_id,
         project_owner: value(row, "Project_Owner"),
-        user_id: value(row, "FCO ID", "FCO_ID", "FCOID", "User_Id", "User ID"),
-        user_name: value(row, "FCO Name", "FCO_Name", "FCOName", "User_Name", "User Name"),
+        user_id: user_id,
+        user_name: user_name,
         to_id: value(row, "TO_ID"),
         to_name: value(row, "TO_NAME"),
         theme_id: value(row, "Project Theme ID", "Project_Theme_ID", "Theme_ID", "Theme ID"),

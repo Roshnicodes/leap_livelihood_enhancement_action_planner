@@ -91,6 +91,8 @@ Rails.application.routes.draw do
     get "action_plan_fco_mapping" => "action_plan_fco_mappings#index", as: :action_plan_fco_mapping
     post "action_plan_fco_mapping" => "action_plan_fco_mappings#create"
     patch "action_plan_fco_mapping" => "action_plan_fco_mappings#update"
+    post "action_plan_fco_mapping/transfer" => "action_plan_fco_mappings#transfer", as: :transfer_action_plan_fco_mapping
+    patch "action_plan_fco_mapping/transfers/:id/revert" => "action_plan_fco_mappings#revert_transfer", as: :revert_action_plan_fco_transfer
     patch "action_plan_fco_mapping/:id" => "action_plan_fco_mappings#update_mapping", as: :update_action_plan_fco_mapping
     patch "action_plan_fco_mapping/:id/toggle_active" => "action_plan_fco_mappings#toggle_active", as: :toggle_action_plan_fco_mapping
     post "action_plan_fco_mapping/import" => "action_plan_fco_mappings#import", as: :import_action_plan_fco_mapping
