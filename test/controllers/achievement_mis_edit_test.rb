@@ -54,7 +54,7 @@ class AchievementMisEditTest < ActionDispatch::IntegrationTest
     )
   end
 
-  test "mis can open achievement entry and edit an approved achievement for reapproval" do
+  test "mis can save an approved achievement, then submit it for fresh vertical approval" do
     approved_submission = create_submission!(
       status: "approved",
       current_stage: "complete",
@@ -89,14 +89,25 @@ class AchievementMisEditTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "Project Theme Alpha"
     assert_includes response.body, "7.1"
 
-    assert_difference -> { AchievementSubmission.count }, 1 do
+    assert_no_difference -> { AchievementSubmission.count } do
       patch achievement_entry_path,
-        params: edit_params(achievement: 4, remark: "Corrected by MIS", commit: "Save Draft")
+        params: edit_params(achievement: 4, remark: "Corrected by MIS", commit: "Save Changes")
     end
 
     assert_redirected_to achievement_entry_path(fco_id: "9", to_id: @row.to_id, project: @row.project_name, month: "apr")
     assert_equal 4, @row.reload.apr_t
     assert approved_submission.reload.approved?
+
+    get achievement_entry_path(fco_id: "9", to_id: @row.to_id, project: @row.project_name, month: "apr")
+
+    assert_response :success
+    assert_includes response.body, "Save the corrections first, then use Submit for Approval"
+    assert_select "input[type='submit'][value='Submit for Approval'][disabled]", 0
+
+    assert_difference -> { AchievementSubmission.count }, 1 do
+      patch achievement_entry_path,
+        params: edit_params(achievement: 4, remark: "Corrected by MIS", commit: "Submit for Approval")
+    end
 
     reapproval = AchievementSubmission.order(:submitted_at, :id).last
     assert_equal "pending", reapproval.status
@@ -244,7 +255,7 @@ class AchievementMisEditTest < ActionDispatch::IntegrationTest
     assert_select "input[name=?]", "achievements[#{other_row.id}]", count: 0
   end
 
-  test "mis edit after vertical approval replaces old pending queue item with a fresh vertical approval" do
+  test "mis submit after an edit replaces the old post-vertical queue item with a fresh vertical approval" do
     pending_po_submission = create_submission!(
       status: "pending",
       current_stage: "po",
@@ -260,13 +271,22 @@ class AchievementMisEditTest < ActionDispatch::IntegrationTest
 
     login_as_admin
 
-    assert_difference -> { AchievementSubmission.count }, 1 do
+    assert_no_difference -> { AchievementSubmission.count } do
       patch achievement_entry_path,
-        params: edit_params(achievement: 6, remark: "PO queue correction", commit: "Save Draft")
+        params: edit_params(achievement: 6, remark: "PO queue correction", commit: "Save Changes")
     end
 
     assert_redirected_to achievement_entry_path(fco_id: "9", to_id: @row.to_id, project: @row.project_name, month: "apr")
     assert_equal 6, @row.reload.apr_t
+
+    assert pending_po_submission.reload.pending?
+    assert_equal 1, AchievementSubmission.pending_for_stage("po").count
+
+    assert_difference -> { AchievementSubmission.count }, 1 do
+      patch achievement_entry_path,
+        params: edit_params(achievement: 6, remark: "PO queue correction", commit: "Submit for Approval")
+    end
+
     assert pending_po_submission.reload.superseded?
     assert_equal 0, AchievementSubmission.pending_for_stage("po").count
 
@@ -298,10 +318,16 @@ class AchievementMisEditTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "MIS can edit and save these achievements any number of times"
     assert_select "input[name=?]:not([disabled])", "achievements[#{@row.id}]"
 
-    assert_difference -> { AchievementSubmission.count }, 1 do
+    assert_no_difference -> { AchievementSubmission.count } do
       patch achievement_entry_path,
         params: edit_params(achievement: 4, remark: "First MIS correction", commit: "Save Changes")
     end
+
+    assert_difference -> { AchievementSubmission.count }, 1 do
+      patch achievement_entry_path,
+        params: edit_params(achievement: 4, remark: "First MIS correction", commit: "Submit for Approval")
+    end
+
     first_reapproval = AchievementSubmission.order(:submitted_at, :id).last
     assert_equal "vertical", first_reapproval.current_stage
     assert_equal [ 4 ], first_reapproval.achievement_submission_rows.pluck(:achievement_value)
@@ -315,9 +341,16 @@ class AchievementMisEditTest < ActionDispatch::IntegrationTest
 
     first_reapproval.update!(current_stage: "po", vertical_reviewed_at: Time.current)
 
-    assert_difference -> { AchievementSubmission.count }, 1 do
+    assert_no_difference -> { AchievementSubmission.count } do
       patch achievement_entry_path,
         params: edit_params(achievement: 6, remark: "Third MIS correction", commit: "Save Changes")
+    end
+
+    assert first_reapproval.reload.pending?
+
+    assert_difference -> { AchievementSubmission.count }, 1 do
+      patch achievement_entry_path,
+        params: edit_params(achievement: 6, remark: "Third MIS correction", commit: "Submit for Approval")
     end
 
     assert first_reapproval.reload.superseded?
@@ -362,7 +395,7 @@ class AchievementMisEditTest < ActionDispatch::IntegrationTest
     assert_match(/locked/, flash[:alert])
   end
 
-  test "mis can upload edited achievement excel without clearing untouched old data" do
+  test "mis can save edited achievement Excel without clearing data, then submit it for approval" do
     untouched_row = ActionPlanRow.create!(
       po_id: "PO-MIS-ID",
       project_name: @row.project_name,
@@ -403,7 +436,7 @@ class AchievementMisEditTest < ActionDispatch::IntegrationTest
     ])
 
     assert_no_difference -> { ActionPlanRow.count } do
-      assert_difference -> { AchievementSubmission.count }, 1 do
+      assert_no_difference -> { AchievementSubmission.count } do
         post import_excel_achievement_entry_path,
           params: selection_params.merge(achievement_excel_file: upload)
       end
@@ -416,7 +449,21 @@ class AchievementMisEditTest < ActionDispatch::IntegrationTest
     assert_equal "Keep existing remark", AchievementEntryDetail.find_by!(action_plan_row: untouched_row, month: "apr").remark
     assert approved_submission.reload.approved?
 
-    reapproval = AchievementSubmission.where(status: "pending", current_stage: "vertical").order(:submitted_at, :id).last
+    get achievement_entry_path(fco_id: "9", to_id: @row.to_id, project: @row.project_name, month: "apr")
+
+    assert_response :success
+    assert_select "input[type='submit'][value='Submit for Approval'][disabled]", 0
+
+    assert_difference -> { AchievementSubmission.count }, 2 do
+      patch achievement_entry_path,
+        params: edit_params(achievement: 8, remark: "Excel correction", commit: "Submit for Approval")
+    end
+
+    reapproval = AchievementSubmission
+      .joins(:achievement_submission_rows)
+      .where(status: "pending", current_stage: "vertical", achievement_submission_rows: { action_plan_row_id: @row.id })
+      .order(submitted_at: :desc, id: :desc)
+      .first
     assert_equal [ @row.id ], reapproval.achievement_submission_rows.pluck(:action_plan_row_id)
     assert_equal [ 8 ], reapproval.achievement_submission_rows.pluck(:achievement_value)
   ensure

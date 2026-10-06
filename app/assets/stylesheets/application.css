@@ -6679,19 +6679,35 @@ body.app-body {
 }
 
 .achievement-submit-panel {
-  grid-template-columns: 1fr auto;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.achievement-submit-panel > .muted {
+  flex: 1 1 460px;
+  min-width: 0;
+  margin: 0;
 }
 
 .achievement-submit-actions {
-  display: grid;
-  grid-template-columns: minmax(220px, 1fr) auto auto;
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
   gap: 10px;
-  min-width: 0;
+  max-width: 100%;
 }
 
 .achievement-submit-remark {
+  width: 240px;
   min-height: 42px;
+}
+
+.achievement-submit-actions .secondary-button,
+.achievement-submit-actions .submit-plan-button {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .secondary-button {
@@ -7558,7 +7574,22 @@ body.app-body {
     grid-template-columns: 1fr;
   }
 
-  .achievement-submit-actions,
+  .achievement-submit-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .achievement-submit-remark {
+    flex-basis: 100%;
+    width: 100%;
+  }
+
+  .achievement-submit-actions .secondary-button,
+  .achievement-submit-actions .submit-plan-button {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
   .approval-tabs {
     grid-template-columns: 1fr;
   }

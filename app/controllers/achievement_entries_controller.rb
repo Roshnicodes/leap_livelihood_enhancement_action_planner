@@ -77,10 +77,15 @@ class AchievementEntriesController < ApplicationController
     save_entry_details!
     reload_selected_rows!
     refresh_unreviewed_pending_submission_rows!(changed_row_ids)
-    requeued_count = current_user.admin? ? requeue_reviewed_achievements_for_mis_edit!(changed_row_ids) : 0
     load_selection
 
     if params[:commit].to_s == "Submit for Approval"
+      # MIS saves are drafts. A corrected achievement is sent back to the
+      # vertical only when MIS explicitly submits it, not when it is saved.
+      # Use every row in the selected entry here so a Save followed by a later
+      # Submit can re-open the reviewed rows even though that second request
+      # does not itself contain a changed field value.
+      requeued_count = current_user.admin? ? requeue_reviewed_achievements_for_mis_edit!(@rows.map(&:id)) : 0
       created_count = create_achievement_submissions!(raise_when_blank: requeued_count.zero?)
       total_count = created_count + requeued_count
       redirect_to selected_achievement_entry_path,
@@ -88,11 +93,7 @@ class AchievementEntriesController < ApplicationController
       return
     end
 
-    notice = if requeued_count.positive?
-      "#{requeued_count} achievement approval request#{'s' unless requeued_count == 1} sent again after MIS edit."
-    else
-      "Achievement rows, remarks and files saved for #{@selected_month.capitalize}."
-    end
+    notice = "Achievement rows, remarks and files saved for #{@selected_month.capitalize}. Submit for Approval when the corrections are ready for vertical review."
     redirect_to selected_achievement_entry_path, notice: notice
   rescue ActiveRecord::RecordInvalid => error
     action = params[:commit].to_s == "Submit for Approval" ? "Submit" : "Save"
@@ -154,13 +155,10 @@ class AchievementEntriesController < ApplicationController
 
     reload_selected_rows!
     refresh_unreviewed_pending_submission_rows!(changed_row_ids)
-    requeued_count = requeue_reviewed_achievements_for_mis_edit!(changed_row_ids)
     load_selection
 
     notice = "#{changed_row_ids.size} achievement row#{'s' unless changed_row_ids.size == 1} updated from Excel."
-    if requeued_count.positive?
-      notice = "#{notice} #{requeued_count} approval request#{'s' unless requeued_count == 1} sent again after MIS edit."
-    end
+    notice = "#{notice} Submit for Approval when the corrections are ready for vertical review."
 
     redirect_to selected_achievement_entry_path, notice: notice
   rescue ActiveRecord::RecordInvalid => error
@@ -198,8 +196,8 @@ class AchievementEntriesController < ApplicationController
     save_entry_details!
     reload_selected_rows!
     refresh_unreviewed_pending_submission_rows!(changed_row_ids)
-    requeued_count = current_user.admin? ? requeue_reviewed_achievements_for_mis_edit!(changed_row_ids) : 0
     load_selection
+    requeued_count = current_user.admin? ? requeue_reviewed_achievements_for_mis_edit!(@rows.map(&:id)) : 0
     created_count = create_achievement_submissions!(raise_when_blank: requeued_count.zero?)
     total_count = created_count + requeued_count
 
@@ -688,11 +686,11 @@ class AchievementEntriesController < ApplicationController
     save_all_month_achievement_values!
     reload_selected_rows!
     refresh_all_month_unreviewed_pending_submission_rows!(changed_row_ids_by_month)
-    requeued_count = requeue_all_month_reviewed_achievements_for_mis_edit!(changed_row_ids_by_month)
     load_selection
 
     submit_requested = submit || params[:commit].to_s.start_with?("Submit")
     if submit_requested
+      requeued_count = current_user.admin? ? requeue_all_month_reviewed_achievements_for_mis_edit!(all_month_submission_row_ids_by_month) : 0
       created_count = create_all_month_achievement_submissions!(raise_when_blank: requeued_count.zero?)
       total_count = created_count + requeued_count
       redirect_to selected_achievement_entry_path,
@@ -700,11 +698,8 @@ class AchievementEntriesController < ApplicationController
       return
     end
 
-    notice = "Achievement rows saved for all months."
-    if requeued_count.positive?
-      notice = "#{notice} #{requeued_count} approval request#{'s' unless requeued_count == 1} sent again after MIS edit."
-    end
-    redirect_to selected_achievement_entry_path, notice: notice
+    redirect_to selected_achievement_entry_path,
+      notice: "Achievement rows saved for all months. Submit All Months when the corrections are ready for vertical review."
   end
 
   def import_all_month_excel!
@@ -735,14 +730,11 @@ class AchievementEntriesController < ApplicationController
 
     reload_selected_rows!
     refresh_all_month_unreviewed_pending_submission_rows!(changed_row_ids_by_month)
-    requeued_count = requeue_all_month_reviewed_achievements_for_mis_edit!(changed_row_ids_by_month)
     load_selection
 
     changed_cell_count = changed_row_ids_by_month.sum { |_month, ids| ids.size }
     notice = "#{changed_cell_count} achievement value#{'s' unless changed_cell_count == 1} updated from Excel across selected months."
-    if requeued_count.positive?
-      notice = "#{notice} #{requeued_count} approval request#{'s' unless requeued_count == 1} sent again after MIS edit."
-    end
+    notice = "#{notice} Submit All Months when the corrections are ready for vertical review."
 
     redirect_to selected_achievement_entry_path, notice: notice
   end
@@ -883,6 +875,12 @@ class AchievementEntriesController < ApplicationController
   def rows_for_all_month_submission(month)
     @rows.select do |row|
       row.public_send(month).to_i.positive? || row.public_send("#{month}_t").to_d.positive?
+    end
+  end
+
+  def all_month_submission_row_ids_by_month
+    ActionPlanRow::MONTH_COLUMNS.to_h do |month|
+      [ month, rows_for_all_month_submission(month).map(&:id) ]
     end
   end
 

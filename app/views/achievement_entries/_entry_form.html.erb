@@ -34,7 +34,7 @@
         • Total Activity Target: <strong><%= target_rows_count %></strong>
         <% if returned_submissions.present? %>
           • Returned for correction
-        <% elsif locked_submission_count.to_i.positive? && submission_candidate_row_count.to_i.zero? %>
+        <% elsif !mis_editor && locked_submission_count.to_i.positive? && submission_candidate_row_count.to_i.zero? %>
           • Locked after vertical approval
         <% elsif active_submission_count.to_i.positive? %>
           • <%= mis_editor ? "MIS editing enabled" : "Submitted for approval" %>
@@ -176,7 +176,7 @@
   <div class="submit-panel achievement-submit-panel">
     <p class="muted">
       <% if mis_editor %>
-        MIS can edit and save these achievements any number of times, even after approval. If a review has already moved beyond the vertical stage, the changed rows are sent again for fresh vertical approval.
+        MIS can edit and save these achievements any number of times, even after approval. Save the corrections first, then use Submit for Approval to send them for fresh vertical approval.
       <% elsif returned_submissions.present? && submission_candidate_row_count.to_i.positive? %>
         This request was returned. Update values, remarks or files, then submit again.
       <% elsif locked_submission_count.to_i.positive? && editable_row_count.to_i.zero? %>
