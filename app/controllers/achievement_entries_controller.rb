@@ -86,10 +86,10 @@ class AchievementEntriesController < ApplicationController
       # Submit can re-open the reviewed rows even though that second request
       # does not itself contain a changed field value.
       requeued_count = current_user.admin? ? requeue_reviewed_achievements_for_mis_edit!(@rows.map(&:id)) : 0
-      created_count = create_achievement_submissions!(raise_when_blank: requeued_count.zero?)
+      created_count = create_achievement_submissions!(raise_when_blank: !current_user.admin? && requeued_count.zero?)
       total_count = created_count + requeued_count
       redirect_to selected_achievement_entry_path,
-        notice: "#{total_count} achievement approval request#{'s' unless total_count == 1} submitted."
+        notice: submission_notice(total_count)
       return
     end
 
@@ -198,11 +198,11 @@ class AchievementEntriesController < ApplicationController
     refresh_unreviewed_pending_submission_rows!(changed_row_ids)
     load_selection
     requeued_count = current_user.admin? ? requeue_reviewed_achievements_for_mis_edit!(@rows.map(&:id)) : 0
-    created_count = create_achievement_submissions!(raise_when_blank: requeued_count.zero?)
+    created_count = create_achievement_submissions!(raise_when_blank: !current_user.admin? && requeued_count.zero?)
     total_count = created_count + requeued_count
 
     redirect_to selected_achievement_entry_path,
-      notice: "#{total_count} achievement approval request#{'s' unless total_count == 1} submitted."
+      notice: submission_notice(total_count)
   rescue ActiveRecord::RecordInvalid => error
     redirect_to selected_achievement_entry_path, alert: "Submit failed: #{error.record.errors.full_messages.to_sentence}"
   end
@@ -691,10 +691,10 @@ class AchievementEntriesController < ApplicationController
     submit_requested = submit || params[:commit].to_s.start_with?("Submit")
     if submit_requested
       requeued_count = current_user.admin? ? requeue_all_month_reviewed_achievements_for_mis_edit!(all_month_submission_row_ids_by_month) : 0
-      created_count = create_all_month_achievement_submissions!(raise_when_blank: requeued_count.zero?)
+      created_count = create_all_month_achievement_submissions!(raise_when_blank: !current_user.admin? && requeued_count.zero?)
       total_count = created_count + requeued_count
       redirect_to selected_achievement_entry_path,
-        notice: "#{total_count} achievement approval request#{'s' unless total_count == 1} submitted across selected months."
+        notice: all_month_submission_notice(total_count)
       return
     end
 
@@ -882,6 +882,18 @@ class AchievementEntriesController < ApplicationController
     ActionPlanRow::MONTH_COLUMNS.to_h do |month|
       [ month, rows_for_all_month_submission(month).map(&:id) ]
     end
+  end
+
+  def submission_notice(total_count)
+    return "Latest MIS changes are already pending with Vertical approval." if total_count.zero? && current_user.admin?
+
+    "#{total_count} achievement approval request#{'s' unless total_count == 1} submitted."
+  end
+
+  def all_month_submission_notice(total_count)
+    return "Latest MIS changes are already pending with Vertical approval for the selected months." if total_count.zero? && current_user.admin?
+
+    "#{total_count} achievement approval request#{'s' unless total_count == 1} submitted across selected months."
   end
 
   def admin_all_month_submission_candidate_count(row_ids)

@@ -296,6 +296,36 @@ class AchievementMisEditTest < ActionDispatch::IntegrationTest
     assert_equal [ 6 ], reapproval.achievement_submission_rows.pluck(:achievement_value)
   end
 
+  test "mis can submit a correction while the request is already pending with vertical" do
+    pending_vertical_submission = create_submission!(status: "pending", current_stage: "vertical")
+    pending_vertical_submission.achievement_submission_rows.create!(
+      action_plan_row: @row,
+      month: "apr",
+      target_value: 5,
+      achievement_value: 3
+    )
+
+    login_as_admin
+
+    get achievement_entry_path(fco_id: "9", to_id: @row.to_id, project: @row.project_name, month: "apr")
+
+    assert_response :success
+    assert_select "input[type='submit'][value='Submit for Approval'][disabled]", 0
+    assert_select "input[name='submission_remark'][disabled]", 0
+
+    assert_no_difference -> { AchievementSubmission.count } do
+      patch achievement_entry_path,
+        params: edit_params(achievement: 4, remark: "Vertical queue correction", commit: "Submit for Approval")
+    end
+
+    assert_redirected_to achievement_entry_path(fco_id: "9", to_id: @row.to_id, project: @row.project_name, month: "apr")
+    assert_equal 4, @row.reload.apr_t
+    assert pending_vertical_submission.reload.pending?
+    assert_equal "vertical", pending_vertical_submission.current_stage
+    assert_equal [ 4 ], pending_vertical_submission.achievement_submission_rows.pluck(:achievement_value)
+    assert_match(/already pending with Vertical approval/, flash[:notice])
+  end
+
   test "mis can keep editing the same achievement before and after each approval stage" do
     approved_submission = create_submission!(
       status: "approved",
