@@ -11,6 +11,7 @@
 <% mode_label = local_assigns.fetch(:mode_label, "Achievement Entry") %>
 <% save_label = local_assigns.fetch(:save_label, "Save Draft") %>
 <% submit_label = local_assigns.fetch(:submit_label, "Submit for Approval") %>
+<% mis_editor = current_user.admin? %>
 
 <%= form_with url: achievement_entry_path,
       method: :patch,
@@ -36,7 +37,7 @@
         <% elsif locked_submission_count.to_i.positive? && submission_candidate_row_count.to_i.zero? %>
           • Locked after vertical approval
         <% elsif active_submission_count.to_i.positive? %>
-          • Submitted for approval
+          • <%= mis_editor ? "MIS editing enabled" : "Submitted for approval" %>
         <% end %>
       </p>
       <p class="achievement-legend">
@@ -174,7 +175,9 @@
 
   <div class="submit-panel achievement-submit-panel">
     <p class="muted">
-      <% if returned_submissions.present? && submission_candidate_row_count.to_i.positive? %>
+      <% if mis_editor %>
+        MIS can edit and save these achievements any number of times, even after approval. If a review has already moved beyond the vertical stage, the changed rows are sent again for fresh vertical approval.
+      <% elsif returned_submissions.present? && submission_candidate_row_count.to_i.positive? %>
         This request was returned. Update values, remarks or files, then submit again.
       <% elsif locked_submission_count.to_i.positive? && editable_row_count.to_i.zero? %>
         Vertical approval is done. Achievements are locked for this month.

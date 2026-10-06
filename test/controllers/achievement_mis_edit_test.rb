@@ -276,6 +276,92 @@ class AchievementMisEditTest < ActionDispatch::IntegrationTest
     assert_equal [ 6 ], reapproval.achievement_submission_rows.pluck(:achievement_value)
   end
 
+  test "mis can keep editing the same achievement before and after each approval stage" do
+    approved_submission = create_submission!(
+      status: "approved",
+      current_stage: "complete",
+      vertical_reviewed_at: 3.days.ago,
+      po_reviewed_at: 2.days.ago,
+      coo_reviewed_at: 1.day.ago
+    )
+    approved_submission.achievement_submission_rows.create!(
+      action_plan_row: @row,
+      month: "apr",
+      target_value: 5,
+      achievement_value: 3
+    )
+
+    login_as_admin
+
+    get achievement_entry_path(fco_id: "9", to_id: @row.to_id, project: @row.project_name, month: "apr")
+    assert_response :success
+    assert_includes response.body, "MIS can edit and save these achievements any number of times"
+    assert_select "input[name=?]:not([disabled])", "achievements[#{@row.id}]"
+
+    assert_difference -> { AchievementSubmission.count }, 1 do
+      patch achievement_entry_path,
+        params: edit_params(achievement: 4, remark: "First MIS correction", commit: "Save Changes")
+    end
+    first_reapproval = AchievementSubmission.order(:submitted_at, :id).last
+    assert_equal "vertical", first_reapproval.current_stage
+    assert_equal [ 4 ], first_reapproval.achievement_submission_rows.pluck(:achievement_value)
+
+    assert_no_difference -> { AchievementSubmission.count } do
+      patch achievement_entry_path,
+        params: edit_params(achievement: 5, remark: "Second MIS correction", commit: "Save Changes")
+    end
+    assert_equal 5, @row.reload.apr_t
+    assert_equal [ 5 ], first_reapproval.reload.achievement_submission_rows.pluck(:achievement_value)
+
+    first_reapproval.update!(current_stage: "po", vertical_reviewed_at: Time.current)
+
+    assert_difference -> { AchievementSubmission.count }, 1 do
+      patch achievement_entry_path,
+        params: edit_params(achievement: 6, remark: "Third MIS correction", commit: "Save Changes")
+    end
+
+    assert first_reapproval.reload.superseded?
+    assert_equal 6, @row.reload.apr_t
+    latest_reapproval = AchievementSubmission.order(:submitted_at, :id).last
+    assert_equal "pending", latest_reapproval.status
+    assert_equal "vertical", latest_reapproval.current_stage
+    assert_equal [ 6 ], latest_reapproval.achievement_submission_rows.pluck(:achievement_value)
+  end
+
+  test "non MIS users remain locked after vertical approval" do
+    approved_submission = create_submission!(
+      status: "approved",
+      current_stage: "complete",
+      vertical_reviewed_at: 3.days.ago,
+      po_reviewed_at: 2.days.ago,
+      coo_reviewed_at: 1.day.ago
+    )
+    approved_submission.achievement_submission_rows.create!(
+      action_plan_row: @row,
+      month: "apr",
+      target_value: 5,
+      achievement_value: 3
+    )
+
+    post login_path, params: { login: @fco.employee_code, password: "secret" }
+
+    get achievement_entry_path(to_id: @row.to_id, project: @row.project_name, month: "apr")
+    assert_response :success
+    assert_select "input[name=?][disabled]", "achievements[#{@row.id}]"
+
+    patch achievement_entry_path,
+      params: {
+        to_id: @row.to_id,
+        project: @row.project_name,
+        month: "apr",
+        achievements: { @row.id.to_s => "9" },
+        commit: "Save Draft"
+      }
+
+    assert_equal 3, @row.reload.apr_t
+    assert_match(/locked/, flash[:alert])
+  end
+
   test "mis can upload edited achievement excel without clearing untouched old data" do
     untouched_row = ActionPlanRow.create!(
       po_id: "PO-MIS-ID",

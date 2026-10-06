@@ -106,7 +106,7 @@
   </div>
 
   <div class="submit-panel achievement-submit-panel">
-    <p class="muted">All Months / <%= submission_candidate_row_count %> submission candidates</p>
+    <p class="muted">MIS can edit and save any month any number of times. All Months / <%= submission_candidate_row_count %> submission candidates</p>
     <div class="achievement-submit-actions">
       <%= text_field_tag :submission_remark, nil, class: "remark-input achievement-submit-remark", placeholder: "Remark for approvers (optional)", disabled: submission_candidate_row_count.to_i.zero? %>
       <%= submit_tag save_label, class: "secondary-button", disabled: editable_row_count.to_i.zero? %>

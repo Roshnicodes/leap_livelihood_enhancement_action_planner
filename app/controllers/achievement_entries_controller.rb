@@ -1351,7 +1351,9 @@ class AchievementEntriesController < ApplicationController
       )
     )
     row_ids = rows.map(&:id)
-    locked_row_ids = locked_submission_row_ids_for(row_ids, month)
+    # MIS can correct an entry at every approval stage. FCO users retain the
+    # existing lock once vertical review has happened.
+    locked_row_ids = current_user.admin? ? [] : locked_submission_row_ids_for(row_ids, month)
     active_row_ids = active_submission_row_ids_for(row_ids, month)
     returned_submissions = unresolved_returned_submissions(
       AchievementSubmission
