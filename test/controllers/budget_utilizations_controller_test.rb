@@ -97,7 +97,11 @@ class BudgetUtilizationsControllerTest < ActionDispatch::IntegrationTest
     assert_includes sheet_xml, "May Planned Budget"
     assert_includes sheet_xml, "May Utilized"
     assert_includes sheet_xml, "<sheetProtection"
-    assert_no_match(/<sheetProtection[^>]*password=/, sheet_xml)
+    expected_password_hash = XlsxWorkbook.new([]).send(
+      :excel_password_hash,
+      BudgetUtilizationsController::EXPORT_PROTECTION_PASSWORD
+    )
+    assert_match(/<sheetProtection[^>]*password="#{expected_password_hash}"/, sheet_xml)
     assert_no_match(/<c r="K5"[^>]*s="4"/, sheet_xml)
     assert_match(/<c r="M5"[^>]*s="4"/, sheet_xml)
   end

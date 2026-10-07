@@ -219,7 +219,7 @@ class MisBudgetUtilizationReportsControllerTest < ActionDispatch::IntegrationTes
     assert_select "tbody td:nth-child(2) strong", text: "Project C", count: 0
   end
 
-  test "MIS xlsx export is password protected and includes requested columns" do
+  test "MIS xlsx export opens without sheet protection and includes requested columns" do
     post login_path, params: { login: @admin.login, password: "secret" }
 
     get mis_budget_utilization_reports_path(format: :xlsx)
@@ -228,7 +228,7 @@ class MisBudgetUtilizationReportsControllerTest < ActionDispatch::IntegrationTes
     assert_equal XlsxWorkbook::CONTENT_TYPE, response.media_type
 
     sheet_xml = xlsx_sheet_xml(response.body)
-    assert_match(/<sheetProtection[^>]*password="[0-9A-F]+"/, sheet_xml)
+    refute_match(/<sheetProtection\b/, sheet_xml)
 
     rows = xlsx_rows(response.body)
     row = rows.find { |candidate| candidate["Project Name"] == "Project A" }

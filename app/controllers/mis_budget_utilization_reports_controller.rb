@@ -7,8 +7,6 @@ class MisBudgetUtilizationReportsController < ApplicationController
   MONTH_KEYS = BudgetUtilization::MONTH_KEYS
   PERIOD_FILTER_OPTIONS = ActionPlanPresenter::PERIOD_FILTER_OPTIONS
   QUARTER_MONTHS = ActionPlanPresenter::QUARTER_MONTHS
-  PROTECTION_PASSWORD = ENV.fetch("MIS_BUDGET_REPORT_PASSWORD", "mis@123").freeze
-
   def index
     prepare_filters
     @rows = @latest_month.present? ? report_rows : []
@@ -28,9 +26,7 @@ class MisBudgetUtilizationReportsController < ApplicationController
         send_data XlsxWorkbook.from_csv(
           budget_report_csv,
           title: "MIS Budget Utilization Report",
-          sheet_name: "MIS Budget Report",
-          protected: true,
-          protection_password: PROTECTION_PASSWORD
+          sheet_name: "MIS Budget Report"
         ),
           filename: "mis_budget_utilization_report_#{Time.current.strftime("%Y%m%d_%H%M%S")}.xlsx",
           type: XlsxWorkbook::CONTENT_TYPE

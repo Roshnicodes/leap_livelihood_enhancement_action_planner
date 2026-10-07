@@ -7,6 +7,7 @@ class BudgetUtilizationsController < ApplicationController
   ALL_PROJECTS_VALUE = "all".freeze
   MONTH_OPTIONS = BudgetUtilization::MONTH_KEYS.map { |month| [ month.capitalize, month ] }.freeze
   MONTH_KEYS = BudgetUtilization::MONTH_KEYS
+  EXPORT_PROTECTION_PASSWORD = ENV.fetch("BUDGET_UTILIZATION_REPORT_PASSWORD", "FiN@26#Utl$7Qx").freeze
 
   def index
     load_budget_workspace
@@ -22,6 +23,7 @@ class BudgetUtilizationsController < ApplicationController
             title: "Budget Utilization",
             sheet_name: "Utilization",
             protected: true,
+            protection_password: EXPORT_PROTECTION_PASSWORD,
             unlocked_headers: [ "#{@selected_month.capitalize} Utilized" ]
           ),
             filename: budget_utilization_filename,
