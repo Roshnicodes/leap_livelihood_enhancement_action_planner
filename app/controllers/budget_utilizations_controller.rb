@@ -7,7 +7,9 @@ class BudgetUtilizationsController < ApplicationController
   ALL_PROJECTS_VALUE = "all".freeze
   MONTH_OPTIONS = BudgetUtilization::MONTH_KEYS.map { |month| [ month.capitalize, month ] }.freeze
   MONTH_KEYS = BudgetUtilization::MONTH_KEYS
-  EXPORT_PROTECTION_PASSWORD = ENV.fetch("BUDGET_UTILIZATION_REPORT_PASSWORD", "FiN@26#Utl$7Qx").freeze
+  # Keep this value in application code so deployed servers cannot silently
+  # override the password with an out-of-date environment variable.
+  EXPORT_PROTECTION_PASSWORD = "MIS@54321".freeze
 
   def index
     load_budget_workspace

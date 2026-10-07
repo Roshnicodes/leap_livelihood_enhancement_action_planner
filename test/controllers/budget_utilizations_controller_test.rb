@@ -101,6 +101,7 @@ class BudgetUtilizationsControllerTest < ActionDispatch::IntegrationTest
       :excel_password_hash,
       BudgetUtilizationsController::EXPORT_PROTECTION_PASSWORD
     )
+    assert_equal "8B44", expected_password_hash
     assert_match(/<sheetProtection[^>]*password="#{expected_password_hash}"/, sheet_xml)
     assert_no_match(/<c r="K5"[^>]*s="4"/, sheet_xml)
     assert_match(/<c r="M5"[^>]*s="4"/, sheet_xml)
