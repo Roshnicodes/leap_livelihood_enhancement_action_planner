@@ -2,6 +2,7 @@ require "csv"
 
 class BudgetUtilizationsController < ApplicationController
   before_action :require_login
+  before_action :require_budget_utilization_access
   before_action :require_budget_utilization_edit_access, only: %i[update import]
 
   ALL_PROJECTS_VALUE = "all".freeze
@@ -105,6 +106,12 @@ class BudgetUtilizationsController < ApplicationController
   end
 
   private
+
+  def require_budget_utilization_access
+    return if current_user&.admin? || BudgetUtilization.finance_user?(current_user)
+
+    redirect_to dashboard_path, alert: "Budget utilization is available only to Finance and MIS."
+  end
 
   def require_budget_utilization_edit_access
     return if BudgetUtilization.finance_user?(current_user)

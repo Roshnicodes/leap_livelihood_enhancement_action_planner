@@ -62,17 +62,25 @@ class ActionPlanFcoMappingTest < ActiveSupport::TestCase
     file&.unlink
   end
 
-  test "jamtara fco ids use canonical jamtara name" do
+  test "jamtara and pakur fco ids retain their separate canonical names" do
     ActionPlanRow.create!(
       po_id: "PO-JAM-1",
       project_name: "Jamtara Project",
       user_id: "18",
       user_name: "Pakur - FCO"
     )
+    ActionPlanRow.create!(
+      po_id: "PO-PAK-1",
+      project_name: "Pakur Project",
+      user_id: "19",
+      user_name: "Jamtara - FCO"
+    )
 
     fcos = ActionPlanFcoMapping.action_plan_fcos
 
     assert_includes fcos, { fco_id: "18", fco_name: "Jamtara - FCO", fco_ids: [ "18" ] }
+    assert_includes fcos, { fco_id: "19", fco_name: "Pakur - FCO", fco_ids: [ "19" ] }
     assert_equal "Jamtara - FCO", ActionPlanFcoGroup.name_for("18", "Pakur - FCO")
+    assert_equal "Pakur - FCO", ActionPlanFcoGroup.name_for("19", "Jamtara - FCO")
   end
 end

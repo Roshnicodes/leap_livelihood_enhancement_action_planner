@@ -23,6 +23,12 @@ Rails.application.routes.draw do
   post "budget_utilizations/import" => "budget_utilizations#import", as: :import_budget_utilizations
   get "budget_utilization_reports" => "budget_utilization_reports#index", as: :budget_utilization_reports
   get "mis_budget_utilization_reports" => "mis_budget_utilization_reports#index", as: :mis_budget_utilization_reports
+  resource :pnb_dashboard, only: :show, controller: :phn_dashboards do
+    get :settings
+    patch :settings, action: :update
+  end
+  get "phn_dashboard" => redirect("/pnb_dashboard")
+  get "phn_dashboard/settings" => redirect("/pnb_dashboard/settings")
   get "report_masters" => "report_masters#index"
   get "report_information" => "report_information#index"
   resources :project_information_sheets, only: %i[index create]

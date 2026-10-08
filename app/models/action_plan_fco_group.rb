@@ -7,7 +7,7 @@ class ActionPlanFcoGroup
     # caused their targets/achievements to appear under the wrong FCO.
     "15" => { ids: %w[15], name: "Mandla - FCO" },
     "18" => { ids: %w[18], name: "Jamtara - FCO" },
-    "19" => { ids: %w[19], name: "Jamtara - FCO" },
+    "19" => { ids: %w[19], name: "Pakur - FCO" },
     "28" => { ids: %w[28], name: "Financial Inclusion" }
   }.freeze
 

@@ -1,0 +1,35 @@
+<% content_for :title, "PNB Dashboard | LEAP" %>
+
+<section class="phn-dashboard-hero">
+  <div class="phn-dashboard-hero-copy">
+    <p class="phn-dashboard-eyebrow"><span></span>MIS · POWER BI</p>
+    <h1>PNB Dashboard</h1>
+  </div>
+  <div class="phn-dashboard-hero-meta">
+    <span class="phn-live-dot"></span>
+    <div>
+      <strong>Live dashboard</strong>
+      <small>PNB analytics</small>
+    </div>
+  </div>
+</section>
+
+<section class="phn-dashboard-workspace">
+  <div class="phn-dashboard-toolbar">
+    <div>
+      <span class="phn-powerbi-mark">P</span>
+      <span>Power BI dashboard</span>
+    </div>
+    <%= link_to "Refresh", pnb_dashboard_path, class: "phn-refresh-button", data: { turbo: false } %>
+  </div>
+
+  <div class="phn-dashboard-frame-wrap">
+    <iframe
+      class="phn-dashboard-frame"
+      src="<%= @dashboard_link.url %>"
+      title="PNB Dashboard"
+      referrerpolicy="strict-origin-when-cross-origin"
+      allowfullscreen>
+    </iframe>
+  </div>
+</section>

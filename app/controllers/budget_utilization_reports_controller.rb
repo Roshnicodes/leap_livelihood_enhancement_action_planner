@@ -32,25 +32,36 @@ class BudgetUtilizationReportsController < ApplicationController
 
   def report_rows_for_all_projects
     months = MONTH_KEYS[0..MONTH_KEYS.index(@latest_month)]
-    project_names = BudgetUtilization.submitted.with_single_bli_code.distinct.order(:project_name).pluck(:project_name).compact_blank
+    utilizations_scope = BudgetUtilization.submitted.with_single_bli_code.where(month: months)
+    activities_scope = BliActivity.active
+
+    unless full_report_access?
+      vertical_names = visible_vertical_names
+      return [] if vertical_names.blank?
+
+      utilizations_scope = utilizations_scope.where(vertical_name: vertical_names)
+      activities_scope = activities_scope.where(vertical_name: vertical_names)
+    end
+
+    project_names = utilizations_scope.distinct.order(:project_name).pluck(:project_name).compact_blank
     return [] if project_names.blank?
 
-    utilizations = BudgetUtilization.submitted.with_single_bli_code.includes(:submitted_by, :updated_by).where(project_name: project_names, month: months)
+    utilizations = utilizations_scope.includes(:submitted_by, :updated_by).where(project_name: project_names)
       .group_by(&:project_name)
 
     project_names.filter_map do |project_name|
       project_utilizations = utilizations[project_name] || []
       next if project_utilizations.blank?
 
-      row = project_row(project_name, months, project_utilizations)
+      row = project_row(project_name, months, project_utilizations, activities_scope)
       next if row[:total_expenditure].to_d.zero?
 
       row
     end
   end
 
-  def project_row(project_name, months, project_utilizations)
-    activities = BliActivity.active.where(project_name: project_name)
+  def project_row(project_name, months, project_utilizations, activities_scope)
+    activities = activities_scope.where(project_name: project_name)
     return if activities.none?
 
     total_allocated = activities.sum { |activity| activity.allocated_fund.to_d }
@@ -148,5 +159,13 @@ class BudgetUtilizationReportsController < ApplicationController
 
   def format_datetime(timestamp)
     timestamp&.in_time_zone("Asia/Kolkata")&.strftime("%d %b %Y, %I:%M %p")
+  end
+
+  def full_report_access?
+    current_user&.admin? || BudgetUtilization.finance_user?(current_user)
+  end
+
+  def visible_vertical_names
+    current_user&.employee&.verticals.to_a.compact_blank
   end
 end

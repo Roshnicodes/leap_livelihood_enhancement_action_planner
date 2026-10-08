@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_05_090000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_08_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -418,6 +418,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_05_090000) do
     t.index ["updated_by_id"], name: "index_budget_utilizations_on_updated_by_id"
   end
 
+  create_table "dashboard_links", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "key", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "updated_by_id"
+    t.text "url", null: false
+    t.index ["key"], name: "index_dashboard_links_on_key", unique: true
+    t.index ["updated_by_id"], name: "index_dashboard_links_on_updated_by_id"
+  end
+
   create_table "donor_report_types", force: :cascade do |t|
     t.boolean "active", default: true, null: false
     t.datetime "created_at", null: false
@@ -773,6 +783,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_05_090000) do
   add_foreign_key "bli_activities", "employees"
   add_foreign_key "budget_utilizations", "users", column: "submitted_by_id"
   add_foreign_key "budget_utilizations", "users", column: "updated_by_id"
+  add_foreign_key "dashboard_links", "users", column: "updated_by_id"
   add_foreign_key "donor_report_uploads", "donor_report_types"
   add_foreign_key "donor_report_uploads", "users", column: "uploaded_by_id"
   add_foreign_key "employee_vertical_mappings", "employees"

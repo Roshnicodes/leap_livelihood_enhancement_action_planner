@@ -136,7 +136,7 @@ class ApplicationController < ActionController::Base
   end
 
   def menu_show_budget_utilization?
-    current_user.present?
+    current_user&.admin? || BudgetUtilization.finance_user?(current_user)
   end
 
   def menu_show_budget_utilization_report?

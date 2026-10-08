@@ -1,0 +1,31 @@
+<% content_for :title, "PNB Dashboard Settings | LEAP" %>
+
+<section class="page-header phn-settings-header">
+  <div>
+    <p class="eyebrow">MIS Workspace</p>
+    <h1>PNB Dashboard Settings</h1>
+    <p class="muted">Manage the Power BI source used by the PNB Dashboard menu.</p>
+  </div>
+  <%= link_to "View PNB Dashboard", pnb_dashboard_path, class: "secondary-button" %>
+</section>
+
+<section class="table-panel phn-dashboard-settings">
+  <div class="phn-settings-intro">
+    <span class="phn-settings-icon">P</span>
+    <div>
+      <h2>Power BI link</h2>
+      <p>Paste the current published Power BI URL. The dashboard will load inside LEAP only after someone opens the PNB Dashboard menu.</p>
+    </div>
+  </div>
+
+  <%= form_with model: @dashboard_link, url: settings_pnb_dashboard_path, method: :patch, class: "phn-dashboard-link-form" do |form| %>
+    <label>
+      <span class="filter-label">Published dashboard URL</span>
+      <%= form.url_field :url, class: "input", required: true, autocomplete: "off", placeholder: "https://app.powerbi.com/view?..." %>
+      <% if @dashboard_link.errors[:url].any? %>
+        <small class="field-error"><%= @dashboard_link.errors[:url].to_sentence %></small>
+      <% end %>
+    </label>
+    <%= form.submit "Save Dashboard Link", class: "primary-button" %>
+  <% end %>
+</section>

@@ -18,7 +18,7 @@ class ActionPlanStatusReportTest < ActiveSupport::TestCase
     assert_equal "Financial Inclusion", report_row[:fco_name]
   end
 
-  test "jamtara fco ids keep jamtara label even when imported name is pakur" do
+  test "jamtara and pakur fco ids keep their separate canonical labels" do
     ActionPlanRow.create!(
       po_id: "PO-JAM-18",
       project_name: "Jamtara Project 18",
@@ -30,7 +30,7 @@ class ActionPlanStatusReportTest < ActiveSupport::TestCase
     )
     ActionPlanRow.create!(
       po_id: "PO-JAM-19",
-      project_name: "Jamtara Project 19",
+      project_name: "Pakur Project 19",
       statte: "JH",
       user_id: "19",
       user_name: "Pakur - FCO",
@@ -40,10 +40,12 @@ class ActionPlanStatusReportTest < ActiveSupport::TestCase
 
     report_rows = ActionPlanStatusReport.new.fco_submission_rows
     jamtara_rows = report_rows.select { |row| row[:fco_name] == "Jamtara - FCO" }
+    pakur_rows = report_rows.select { |row| row[:fco_name] == "Pakur - FCO" }
 
     assert_equal "Jamtara - FCO", ActionPlanFcoGroup.name_for("18", "Pakur - FCO")
-    assert_equal "Jamtara - FCO", ActionPlanFcoGroup.name_for("19", "Pakur - FCO")
-    assert_equal [ [ "18" ], [ "19" ] ], jamtara_rows.map { |row| row[:fco_ids] }.sort
+    assert_equal "Pakur - FCO", ActionPlanFcoGroup.name_for("19", "Jamtara - FCO")
+    assert_equal [ [ "18" ] ], jamtara_rows.map { |row| row[:fco_ids] }
+    assert_equal [ [ "19" ] ], pakur_rows.map { |row| row[:fco_ids] }
   end
 
   test "action plan report ignores achievement submissions created by mis" do

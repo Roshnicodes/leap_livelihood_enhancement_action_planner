@@ -6,7 +6,8 @@ class BudgetUtilizationsControllerTest < ActionDispatch::IntegrationTest
   setup do
     @finance_employee = Employee.create!(employee_code: BudgetUtilization::FINANCE_EMPLOYEE_CODE, name: "Accounts User")
     @finance_user = User.create!(login: @finance_employee.employee_code, employee: @finance_employee, password: "secret")
-    @field_employee = Employee.create!(employee_code: "2001", name: "Field User")
+    @field_employee = Employee.create!(employee_code: "2001", name: "Field User", active: true)
+    @field_user = User.create!(login: @field_employee.employee_code, employee: @field_employee, password: "secret")
 
     VerticalPercent.create!(vertical_name: "Agriculture", apr: 10, may: 10, total: 20)
     create_activity(project_name: "Project A", bli_code: "1.1", activity_name: "Seeds")
@@ -60,6 +61,24 @@ class BudgetUtilizationsControllerTest < ActionDispatch::IntegrationTest
     assert_select "input[data-budget-utilization-input]", 0
     assert_select "form[action='#{import_budget_utilizations_path}'][method='post']", 0
     assert_select "a[href='#{budget_utilizations_path(project: "all", month: "apr", format: :xlsx)}']", text: "Download Excel Sheet"
+  end
+
+  test "non finance users cannot open budget utilization or see its menu link" do
+    delete logout_path
+    post login_path, params: { login: @field_user.login, password: "secret" }
+
+    get budget_utilizations_path(project: "Project A", month: "apr")
+
+    assert_redirected_to dashboard_path
+    assert_equal "Budget utilization is available only to Finance and MIS.", flash[:alert]
+
+    follow_redirect!
+    assert_redirected_to plan_submissions_path
+
+    follow_redirect!
+
+    assert_response :success
+    assert_select "a[href='#{budget_utilizations_path}']", count: 0
   end
 
   test "project ids fall back to close project aliases and project titles" do

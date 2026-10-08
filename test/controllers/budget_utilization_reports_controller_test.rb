@@ -4,6 +4,10 @@ class BudgetUtilizationReportsControllerTest < ActionDispatch::IntegrationTest
   setup do
     @admin = User.create!(login: "mis-budget-report", role: "admin", password: "secret")
     @field_employee = Employee.create!(employee_code: "2002", name: "Field User")
+    @vertical_viewer = Employee.create!(employee_code: "2003", name: "Agriculture Viewer", active: true)
+    @vertical_viewer_user = User.create!(login: @vertical_viewer.employee_code, employee: @vertical_viewer, password: "secret")
+    @agriculture = VerticalPercent.create!(vertical_name: "Agriculture")
+    EmployeeVerticalMapping.create!(employee: @vertical_viewer, vertical_percent: @agriculture)
 
     create_activity(project_name: "Project A", bli_code: "1.1", activity_name: "Seeds", allocated_fund: 1_000)
     create_activity(project_name: "Project A", bli_code: "1.1", activity_name: "Seed support", allocated_fund: 500)
@@ -36,6 +40,40 @@ class BudgetUtilizationReportsControllerTest < ActionDispatch::IntegrationTest
 
     assert project_row
     assert_equal BigDecimal("1700"), BigDecimal(project_row.fetch("Total Allocated Budget"))
+  end
+
+  test "non MIS users only receive report data for their assigned verticals" do
+    health = VerticalPercent.create!(vertical_name: "Health")
+    create_activity(project_name: "Project B", bli_code: "2.1", activity_name: "Health Camp", allocated_fund: 500, vertical_name: health.vertical_name)
+    BudgetUtilization.create!(
+      project_name: "Project B",
+      activity_name: "Health Camp",
+      vertical_name: health.vertical_name,
+      bli_code: "2.1",
+      month: "apr",
+      planned_amount: 50,
+      utilized_amount: 20,
+      status: "submitted",
+      updated_by: @admin,
+      submitted_by: @admin,
+      submitted_at: Time.current
+    )
+
+    delete logout_path
+    post login_path, params: { login: @vertical_viewer_user.login, password: "secret" }
+
+    get budget_utilization_reports_path
+
+    assert_response :success
+    assert_includes response.body, "Project A"
+    refute_includes response.body, "Project B"
+
+    get budget_utilization_reports_path(format: :xlsx)
+
+    assert_response :success
+    rows = xlsx_rows(response.body)
+    assert_includes rows.map { |row| row["Project"] }, "Project A"
+    assert_not_includes rows.map { |row| row["Project"] }, "Project B"
   end
 
   private
