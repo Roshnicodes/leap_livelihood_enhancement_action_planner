@@ -10,9 +10,14 @@ class MisBudgetUtilizationReportsController < ApplicationController
   def index
     prepare_filters
     @rows = @latest_month.present? ? report_rows : []
-    @project_total = @rows.sum { |row| row[:allocated_fund].to_d }
+    # The BLI allocation is the full financial-year amount.  The summary cards,
+    # however, describe the period selected above, so total only the monthly
+    # allocations currently present in the report.
+    @period_allocated_total = @rows.sum do |row|
+      row[:month_allocated].values.sum { |amount| amount.to_d }
+    end
     @expenditure_total = @rows.sum { |row| row[:total_expenditure].to_d }
-    @remaining_total = @project_total - @expenditure_total
+    @remaining_total = @period_allocated_total - @expenditure_total
     @project_count = @rows.map { |row| row[:project_name] }.compact_blank.uniq.size
 
     respond_to do |format|
@@ -96,7 +101,7 @@ class MisBudgetUtilizationReportsController < ApplicationController
       month_allocated: month_allocated,
       month_utilized: month_utilized,
       total_expenditure: total_expenditure,
-      total_remaining: activity.allocated_fund.to_d - total_expenditure
+      total_remaining: month_allocated.values.sum { |amount| amount.to_d } - total_expenditure
     }
   end
 

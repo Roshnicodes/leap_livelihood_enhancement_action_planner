@@ -66,7 +66,7 @@
   <section class="metric-grid metric-grid-compact budget-utilization-metrics mis-budget-metrics">
     <article class="metric metric-teal"><span>No of BLI Rows</span><strong><%= @rows.size %></strong></article>
     <article class="metric metric-ink"><span>No of Project</span><strong><%= @project_count %></strong></article>
-    <article class="metric"><span>Total Allocated Budget</span><strong><%= currency(@project_total) %></strong></article>
+    <article class="metric"><span>Total Allocated Budget</span><strong><%= currency(@period_allocated_total) %></strong></article>
     <article class="metric metric-blue"><span>Total Expenditure</span><strong><%= currency(@expenditure_total) %></strong></article>
     <article class="metric metric-rose"><span>Total Remaining Budget</span><strong><%= currency(@remaining_total) %></strong></article>
   </section>

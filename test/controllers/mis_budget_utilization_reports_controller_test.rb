@@ -135,6 +135,26 @@ class MisBudgetUtilizationReportsControllerTest < ActionDispatch::IntegrationTes
     assert_select "th", text: "May Expenses", count: 0
   end
 
+  test "MIS summary cards use the selected quarter or month allocation" do
+    post login_path, params: { login: @admin.login, password: "secret" }
+
+    get mis_budget_utilization_reports_path(period: "quarter_1")
+
+    assert_response :success
+    assert_select ".mis-budget-metrics .metric:nth-child(3) strong", "₹600"
+    assert_select ".mis-budget-metrics .metric:nth-child(4) strong", "₹145"
+    assert_select ".mis-budget-metrics .metric:nth-child(5) strong", "₹455"
+    assert_select "tbody tr:first-child td:nth-child(12)", "₹100"
+
+    get mis_budget_utilization_reports_path(period: "monthly", period_month: "apr")
+
+    assert_response :success
+    assert_select ".mis-budget-metrics .metric:nth-child(3) strong", "₹500"
+    assert_select ".mis-budget-metrics .metric:nth-child(4) strong", "₹120"
+    assert_select ".mis-budget-metrics .metric:nth-child(5) strong", "₹380"
+    assert_select "tbody tr:first-child td:nth-child(12)", "₹25"
+  end
+
   test "MIS office filter uses cleaned office names without changing office display" do
     branch_employee = Employee.create!(
       employee_code: "2005",
