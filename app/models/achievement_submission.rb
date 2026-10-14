@@ -16,6 +16,7 @@ class AchievementSubmission < ApplicationRecord
   validates :current_stage, inclusion: { in: STAGES }
   validates :month, inclusion: { in: ActionPlanRow::MONTH_COLUMNS }
   validate :approval_route_must_be_available
+  after_commit -> { ApprovalMailNotifier.call(self) }, on: %i[create update]
 
   scope :for_rows, lambda { |row_ids, month|
     joins(:achievement_submission_rows)

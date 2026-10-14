@@ -13,6 +13,7 @@ class ProjectSummarySubmission < ApplicationRecord
 
   before_validation :assign_default_approver, on: :create
   before_validation :assign_final_approver_after_first_approval
+  after_commit -> { ApprovalMailNotifier.call(self) }, on: %i[create update]
 
   def pending?
     status == "pending"

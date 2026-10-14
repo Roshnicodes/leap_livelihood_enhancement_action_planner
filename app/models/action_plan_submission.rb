@@ -18,6 +18,7 @@ class ActionPlanSubmission < ApplicationRecord
   validate :approval_route_must_be_available
 
   before_validation :assign_approvers
+  after_commit -> { ApprovalMailNotifier.call(self) }, on: %i[create update]
 
   scope :pending_for_stage, ->(stage) { where(status: "pending", current_stage: stage) }
 

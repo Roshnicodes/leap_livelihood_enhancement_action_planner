@@ -83,6 +83,7 @@ Rails.application.routes.draw do
   namespace :api, defaults: { format: :json } do
     get "project_action_plan" => "action_plans#project"
     get "vertical_action_plan" => "action_plans#vertical"
+    get "mis_budget_utilization" => "mis_budget_utilization_reports#index"
     get "project_summary_approvals" => "project_summary_approvals#index"
     patch "project_summary_approvals/approve" => "project_summary_approvals#bulk_approve"
     patch "project_summary_approvals/return" => "project_summary_approvals#bulk_return"

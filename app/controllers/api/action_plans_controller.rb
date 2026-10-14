@@ -1,6 +1,7 @@
 module Api
   class ActionPlansController < ApplicationController
     include ActionPlanPresenter
+    include ApiKeyAuthentication
 
     before_action :require_json_login
 
