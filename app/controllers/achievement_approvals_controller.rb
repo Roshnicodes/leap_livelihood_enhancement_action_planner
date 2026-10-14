@@ -147,8 +147,16 @@ class AchievementApprovalsController < ApplicationController
     end
   end
 
+  # The view asks for each submission's rows more than once, so they are built
+  # once per request, from the rows index already preloaded.
   def achievement_submission_rows(submission)
-    items = submission.achievement_submission_rows.includes(:action_plan_row).sort_by do |item|
+    @achievement_submission_rows ||= {}
+    @achievement_submission_rows[submission.id] ||= build_achievement_submission_rows(submission)
+  end
+
+  def build_achievement_submission_rows(submission)
+    association = submission.achievement_submission_rows
+    items = (association.loaded? ? association.to_a : association.includes(:action_plan_row).to_a).sort_by do |item|
       row = item.action_plan_row
       [
         ActionPlanRow.format_decimal_string(row.asa_theme_id).to_f,
@@ -157,11 +165,11 @@ class AchievementApprovalsController < ApplicationController
       ]
     end
 
-    details = AchievementEntryDetail.for_rows(items.map(&:action_plan_row_id), submission.month)
+    details = achievement_entry_details_for(submission, items)
 
     items.map do |item|
       row = item.action_plan_row
-      detail = details[row.id]
+      detail = details[[ row.id, submission.month ]]
       {
         row: row,
         target_value: row.public_send(submission.month).to_i,
@@ -169,6 +177,24 @@ class AchievementApprovalsController < ApplicationController
         remark: detail&.remark,
         files: detail&.files
       }
+    end
+  end
+
+  # One query for the remarks and files of every listed submission instead of
+  # one per submission.
+  def achievement_entry_details_for(submission, items)
+    if @submissions&.include?(submission)
+      @achievement_entry_details ||= begin
+        submissions = @submissions
+        row_ids = submissions.flat_map { |record| record.achievement_submission_rows.map(&:action_plan_row_id) }.uniq
+        AchievementEntryDetail
+          .where(action_plan_row_id: row_ids, month: submissions.map(&:month).uniq)
+          .includes(files_attachments: :blob)
+          .index_by { |detail| [ detail.action_plan_row_id, detail.month ] }
+      end
+    else
+      AchievementEntryDetail.for_rows(items.map(&:action_plan_row_id), submission.month)
+        .transform_keys { |row_id| [ row_id, submission.month ] }
     end
   end
 

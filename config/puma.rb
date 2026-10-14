@@ -31,6 +31,15 @@ threads threads_count, threads_count
 # Specifies the `port` that Puma will listen on to receive requests; default is 3000.
 port ENV.fetch("PORT", 3000)
 
+# Off by default (one process). Set WEB_CONCURRENCY=2 (or one per CPU core, if
+# RAM allows ~500 MB each) so a heavy request such as a Power BI refresh or a
+# big report no longer makes everyone else wait.
+workers_count = Integer(ENV.fetch("WEB_CONCURRENCY", 0))
+if workers_count > 1
+  workers workers_count
+  preload_app!
+end
+
 # Allow puma to be restarted by `bin/rails restart` command.
 plugin :tmp_restart
 

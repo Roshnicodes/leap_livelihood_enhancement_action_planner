@@ -22,6 +22,11 @@ module LeapLivelihoodEnhancementActionPlanner
     # in config/environments, which are processed later.
     #
     config.time_zone = "Asia/Kolkata"
+
+    # JSON APIs (Power BI pulls several MB) go out gzipped; nginx already
+    # compresses the HTML pages, so those are left alone.
+    config.middleware.use Rack::Deflater,
+      if: ->(_env, _status, headers, _body) { headers["content-type"].to_s.start_with?("application/json") }
     # config.eager_load_paths << Rails.root.join("extras")
   end
 end

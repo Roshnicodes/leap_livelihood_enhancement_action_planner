@@ -65,10 +65,7 @@ class ActionPlanStatusReport
         submission.state_code.to_s == mapping.state_code.to_s &&
           submission.theme_ids.include?(mapping.asa_theme_id.to_s)
       end
-      total_fco = active_rows
-        .where(statte: mapping.state_code, asa_theme_id: mapping.asa_theme_id)
-        .distinct
-        .count(:user_id)
+      total_fco = fco_counts_by_state_theme.fetch([ mapping.state_code.to_s, mapping.asa_theme_id.to_s ], 0)
 
       {
         vertical_name: mapping.asa_theme.presence || "ASA Theme #{mapping.asa_theme_id}",
@@ -305,9 +302,11 @@ class ActionPlanStatusReport
 
       active_rows
         .where.not(user_id: [ nil, "" ], project_name: [ nil, "" ])
-        .find_each do |row|
-          canonical_id = ActionPlanFcoGroup.canonical_id(row.user_id)
-          lookup[canonical_id] << row.project_name.to_s.squish
+        .distinct
+        .pluck(:user_id, :project_name)
+        .each do |user_id, project_name|
+          canonical_id = ActionPlanFcoGroup.canonical_id(user_id)
+          lookup[canonical_id] << project_name.to_s.squish
         end
 
       lookup.transform_values { |projects| projects.uniq.sort }
@@ -395,6 +394,15 @@ class ActionPlanStatusReport
 
   def approval_export_value(detail)
     [ detail[:status], *detail[:audit_lines] ].compact_blank.join("; ")
+  end
+
+  # Distinct FCOs per state + ASA theme in one grouped query, not one per mapping.
+  def fco_counts_by_state_theme
+    @fco_counts_by_state_theme ||= active_rows
+      .group(:statte, :asa_theme_id)
+      .distinct
+      .count(:user_id)
+      .transform_keys { |state, theme_id| [ state.to_s, theme_id.to_s ] }
   end
 
   def vertical_mappings

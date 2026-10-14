@@ -18,6 +18,10 @@ class ApplicationController < ActionController::Base
   # Changes to the importmap will invalidate the etag for HTML responses
   stale_when_importmap_changes
 
+  # FCO transfers are memoised per process; reload them on every request so a
+  # transfer made through one Puma worker is seen by all the others.
+  prepend_before_action { ActionPlanFcoTransfer.reset_resolution_cache! }
+
   private
 
   def current_user

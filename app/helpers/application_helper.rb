@@ -11,17 +11,16 @@ module ApplicationHelper
     number_with_precision(amount, precision: 0, delimiter: "", separator: ".")
   end
 
+  # Same output as number_with_precision(precision: 2, delimiter: ",",
+  # strip_insignificant_zeros: true), without its per-call I18n lookups: big
+  # tables call this tens of thousands of times per page.
   def whole_number(amount)
     value = amount.to_d
     sign = value.negative? ? "-" : ""
-    formatted = number_with_precision(
-      value.abs,
-      precision: 2,
-      delimiter: ",",
-      separator: ".",
-      strip_insignificant_zeros: true
-    )
-    "#{sign}#{formatted}"
+    integer, fraction = value.abs.round(2).to_s("F").split(".")
+    fraction = fraction.to_s.sub(/0+\z/, "")
+    integer = integer.reverse.scan(/\d{1,3}/).join(",").reverse
+    "#{sign}#{integer}#{".#{fraction}" unless fraction.empty?}"
   end
 
   def action_plan_cell(value, pill: false, decimal: false)
