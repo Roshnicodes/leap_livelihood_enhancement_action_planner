@@ -89,9 +89,10 @@
 </section>
 
 <% if selected_project.present? %>
-  <% planned_total = rows.sum { |row| month_display_pairs.sum { |pair| row.public_send("original_#{pair[:target_column]}").to_i } } %>
-  <% current_total = rows.sum { |row| month_display_pairs.sum { |pair| row.public_send(pair[:target_column]).to_i } } %>
-  <% achievement_total = rows.sum { |row| month_display_pairs.sum { |pair| row.public_send(pair[:achievement_column]).to_d } } %>
+  <% row_month_values = rows.map { |row| action_plan_month_values(row, month_display_pairs) } %>
+  <% planned_total = row_month_values.sum { |values| values[:planned_total] } %>
+  <% current_total = row_month_values.sum { |values| values[:target_total] } %>
+  <% achievement_total = row_month_values.sum { |values| values[:achievement_total] } %>
 
   <section class="metric-grid metric-grid-compact">
     <% if selected_project == "all" %>

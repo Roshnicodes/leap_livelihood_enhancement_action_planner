@@ -11,11 +11,33 @@ module ApplicationHelper
     number_with_precision(amount, precision: 0, delimiter: "", separator: ".")
   end
 
+  # One action plan row's month values, read once per request: the table cells,
+  # the row totals and the totals above the table all need them, and reading
+  # each attribute again for every use is most of a big plan's render time.
+  def action_plan_month_values(row, month_display_pairs)
+    @action_plan_month_values ||= {}.compare_by_identity
+    by_row = @action_plan_month_values[month_display_pairs] ||= {}.compare_by_identity
+    by_row[row] ||= begin
+      targets = month_display_pairs.map { |pair| row.public_send(pair[:target_column]) }
+      originals = month_display_pairs.map { |pair| row.public_send("original_#{pair[:target_column]}") }
+      achievements = month_display_pairs.map { |pair| row.public_send(pair[:achievement_column]) }
+      {
+        targets: targets,
+        achievements: achievements,
+        target_total: targets.sum(&:to_i),
+        planned_total: originals.sum(&:to_i),
+        achievement_total: achievements.sum(&:to_d)
+      }
+    end
+  end
+
   # Same output as number_with_precision(precision: 2, delimiter: ",",
   # strip_insignificant_zeros: true), without its per-call I18n lookups: big
   # tables call this tens of thousands of times per page.
   def whole_number(amount)
     value = amount.to_d
+    return "0" if value.zero?
+
     sign = value.negative? ? "-" : ""
     integer, fraction = value.abs.round(2).to_s("F").split(".")
     fraction = fraction.to_s.sub(/0+\z/, "")
