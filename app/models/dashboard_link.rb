@@ -13,7 +13,7 @@ class DashboardLink < ApplicationRecord
   before_validation :normalize_url
 
   # The existing key remains unchanged so a deployed PHN link is preserved
-  # while the user-facing dashboard has been renamed to PNB.
+  # while the user-facing dashboard has been renamed to P&B.
   def self.pnb_dashboard
     find_or_create_by!(key: PHN_DASHBOARD_KEY) do |dashboard_link|
       dashboard_link.url = DEFAULT_PNB_DASHBOARD_URL

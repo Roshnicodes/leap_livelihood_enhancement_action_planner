@@ -7,28 +7,28 @@ class PhnDashboardsControllerTest < ActionDispatch::IntegrationTest
     @user = User.create!(login: @employee.employee_code, employee: @employee, password: "secret")
   end
 
-  test "MIS can open the PNB dashboard from the MIS menu" do
+  test "MIS can open the P&B dashboard from the MIS menu" do
     post login_path, params: { login: @admin.login, password: "secret" }
 
     get pnb_dashboard_path
 
     assert_response :success
-    assert_select "h1", "PNB Dashboard"
-    assert_select ".sidebar-section.is-open a[href='#{pnb_dashboard_path}']", text: /PNB Dashboard/
-    assert_select ".sidebar-section.is-open a[href='#{settings_pnb_dashboard_path}']", text: /PNB Link Settings/
-    assert_select "iframe[title='PNB Dashboard'][src='#{DashboardLink::DEFAULT_PNB_DASHBOARD_URL}']"
+    assert_select "h1", "P&B Dashboard"
+    assert_select ".sidebar-section.is-open a[href='#{pnb_dashboard_path}']", text: /P&B Dashboard/
+    assert_select ".sidebar-section.is-open a[href='#{settings_pnb_dashboard_path}']", text: /P&B Link Settings/
+    assert_select "iframe[title='P&B Dashboard'][src='#{DashboardLink::DEFAULT_PNB_DASHBOARD_URL}']"
     assert_select "input[name='dashboard_link[url]']", count: 0
     assert_select "a", text: "Open in new tab", count: 0
   end
 
-  test "MIS can update the PNB dashboard URL from its separate settings page" do
+  test "MIS can update the P&B dashboard URL from its separate settings page" do
     post login_path, params: { login: @admin.login, password: "secret" }
     updated_url = "https://app.powerbi.com/view?r=updated-dashboard"
 
     get settings_pnb_dashboard_path
 
     assert_response :success
-    assert_select "h1", "PNB Dashboard Settings"
+    assert_select "h1", "P&B Dashboard Settings"
     assert_select "input[name='dashboard_link[url]'][value='#{DashboardLink::DEFAULT_PNB_DASHBOARD_URL}']"
 
     patch settings_pnb_dashboard_path, params: { dashboard_link: { url: updated_url } }
