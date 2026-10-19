@@ -1,35 +1,9 @@
 <% content_for :title, "P&B Dashboard | LEAP" %>
 
-<section class="phn-dashboard-hero">
-  <div class="phn-dashboard-hero-copy">
-    <p class="phn-dashboard-eyebrow"><span></span>MIS · POWER BI</p>
-    <h1>P&amp;B Dashboard</h1>
-  </div>
-  <div class="phn-dashboard-hero-meta">
-    <span class="phn-live-dot"></span>
-    <div>
-      <strong>Live dashboard</strong>
-      <small>P&amp;B analytics</small>
-    </div>
-  </div>
-</section>
-
-<section class="phn-dashboard-workspace">
-  <div class="phn-dashboard-toolbar">
-    <div>
-      <span class="phn-powerbi-mark">P</span>
-      <span>Power BI dashboard</span>
-    </div>
-    <%= link_to "Refresh", pnb_dashboard_path, class: "phn-refresh-button", data: { turbo: false } %>
-  </div>
-
-  <div class="phn-dashboard-frame-wrap">
-    <iframe
-      class="phn-dashboard-frame"
-      src="<%= @dashboard_link.url %>"
-      title="P&amp;B Dashboard"
-      referrerpolicy="strict-origin-when-cross-origin"
-      allowfullscreen>
-    </iframe>
-  </div>
-</section>
+<%= render "dashboard_links/show",
+  dashboard_link: @dashboard_link,
+  title: "P&B Dashboard",
+  eyebrow: "MIS · POWER BI",
+  analytics_label: "P&B analytics",
+  refresh_path: pnb_dashboard_path,
+  settings_path: settings_pnb_dashboard_path %>

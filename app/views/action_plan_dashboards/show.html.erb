@@ -1,0 +1,9 @@
+<% content_for :title, "Action Plan Dashboard | LEAP" %>
+
+<%= render "dashboard_links/show",
+  dashboard_link: @dashboard_link,
+  title: "Action Plan Dashboard",
+  eyebrow: "MIS · POWER BI",
+  analytics_label: "Action Plan analytics",
+  refresh_path: action_plan_dashboard_path,
+  settings_path: settings_action_plan_dashboard_path %>

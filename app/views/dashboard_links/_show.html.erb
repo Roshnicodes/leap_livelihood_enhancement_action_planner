@@ -1,0 +1,41 @@
+<%# locals: dashboard_link:, title:, eyebrow:, analytics_label:, refresh_path:, settings_path: %>
+<section class="phn-dashboard-hero">
+  <div class="phn-dashboard-hero-copy">
+    <p class="phn-dashboard-eyebrow"><span></span><%= eyebrow %></p>
+    <h1><%= title %></h1>
+  </div>
+  <div class="phn-dashboard-hero-meta">
+    <span class="phn-live-dot"></span>
+    <div>
+      <strong>Live dashboard</strong>
+      <small><%= analytics_label %></small>
+    </div>
+  </div>
+</section>
+
+<section class="phn-dashboard-workspace">
+  <div class="phn-dashboard-toolbar">
+    <div>
+      <span class="phn-powerbi-mark">P</span>
+      <span>Power BI dashboard</span>
+    </div>
+    <%= link_to "Refresh", refresh_path, class: "phn-refresh-button", data: { turbo: false } %>
+  </div>
+
+  <% if dashboard_link.url.present? %>
+    <div class="phn-dashboard-frame-wrap">
+      <iframe
+        class="phn-dashboard-frame"
+        src="<%= dashboard_link.url %>"
+        title="<%= title %>"
+        referrerpolicy="strict-origin-when-cross-origin"
+        allowfullscreen>
+      </iframe>
+    </div>
+  <% else %>
+    <div class="empty-state">
+      <p>No Power BI link has been set for the <%= title %> yet.</p>
+      <%= link_to "Add Dashboard Link", settings_path, class: "primary-button" %>
+    </div>
+  <% end %>
+</section>

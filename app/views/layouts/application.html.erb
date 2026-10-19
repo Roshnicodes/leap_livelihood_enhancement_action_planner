@@ -34,9 +34,9 @@
 
           <nav class="sidebar-nav" data-sidebar-nav>
             <% if current_user.admin? %>
-              <% admin_open = controller_path.in?(%w[admin/employees admin/action_plan_fco_mappings phn_dashboards]) %>
+              <% admin_open = controller_path.in?(%w[admin/employees admin/action_plan_fco_mappings phn_dashboards action_plan_dashboards]) %>
               <% pb_controllers = %w[plan_submissions budget_utilizations budget_utilization_reports mis_budget_utilization_reports project_summary_records project_summary_approvals] %>
-              <% ap_controllers = %w[action_plans vertical_action_plans action_plan_records action_plan_reports achievement_entries achievement_entry_records achievement_approvals project_summary_approval_records] %>
+              <% ap_controllers = %w[action_plans vertical_action_plans action_plan_records action_plan_reports achievement_entries achievement_entry_records achievement_documents achievement_approvals project_summary_approval_records] %>
               <% report_controllers = %w[pis_report_uploads donor_report_uploads fund_report_uploads report_masters report_information project_information_sheets] %>
               <% pb_open = pb_controllers.include?(controller_name) || controller_path == "admin/pb_imports" %>
               <% ap_open = ap_controllers.include?(controller_name) || controller_path == "admin/action_plan_imports" %>
@@ -64,6 +64,14 @@
                   <%= link_to settings_pnb_dashboard_path, class: controller_name == "phn_dashboards" && action_name == "settings" ? "side-link active" : "side-link" do %>
                     <span class="side-icon">L</span>
                     <span>P&amp;B Link Settings</span>
+                  <% end %>
+                  <%= link_to action_plan_dashboard_path, class: controller_name == "action_plan_dashboards" && action_name == "show" ? "side-link active" : "side-link" do %>
+                    <span class="side-icon">D</span>
+                    <span>Action Plan Dashboard</span>
+                  <% end %>
+                  <%= link_to settings_action_plan_dashboard_path, class: controller_name == "action_plan_dashboards" && action_name == "settings" ? "side-link active" : "side-link" do %>
+                    <span class="side-icon">K</span>
+                    <span>Action Plan Link Settings</span>
                   <% end %>
                 </div>
               </div>
@@ -138,6 +146,10 @@
                     <span class="side-icon">N</span>
                     <span>Achievement Entry Record</span>
                   <% end %>
+                  <%= link_to achievement_documents_path, class: controller_name == "achievement_documents" ? "side-link active" : "side-link" do %>
+                    <span class="side-icon">O</span>
+                    <span>Achievement Documents</span>
+                  <% end %>
                   <%= link_to achievement_approvals_path(stage: default_achievement_approval_stage), class: controller_name == "achievement_approvals" ? "side-link active" : "side-link" do %>
                     <span class="side-icon">A</span>
                     <span>Achievement Approvals</span>
@@ -207,7 +219,7 @@
               </div>
             <% else %>
               <% pb_controllers = %w[plan_submissions budget_utilizations budget_utilization_reports project_summaries project_summary_records project_summary_approvals project_summary_approval_records] %>
-              <% ap_controllers = %w[action_plans achievement_entries achievement_entry_records achievement_approvals vertical_action_plans action_plan_records action_plan_approvals] %>
+              <% ap_controllers = %w[action_plans achievement_entries achievement_entry_records achievement_documents achievement_approvals vertical_action_plans action_plan_records action_plan_approvals] %>
               <% report_controllers = %w[pis_report_uploads donor_report_uploads fund_report_uploads report_information project_information_sheets] %>
               <% pb_open = pb_controllers.include?(controller_name) %>
               <% ap_open = ap_controllers.include?(controller_name) %>
@@ -294,6 +306,10 @@
                       <%= link_to achievement_entry_records_path, class: controller_name == "achievement_entry_records" ? "side-link active" : "side-link" do %>
                         <span class="side-icon">N</span>
                         <span>Achievement Entry Record</span>
+                      <% end %>
+                      <%= link_to achievement_documents_path, class: controller_name == "achievement_documents" ? "side-link active" : "side-link" do %>
+                        <span class="side-icon">O</span>
+                        <span>Achievement Documents</span>
                       <% end %>
                     <% end %>
                     <% if menu_show_achievement_approvals? %>

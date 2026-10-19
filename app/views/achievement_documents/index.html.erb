@@ -1,0 +1,93 @@
+<% content_for :title, "Achievement Documents | LEAP" %>
+
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Records</p>
+    <h1>Achievement Documents</h1>
+    <p class="muted">Documents uploaded with achievement entries, month by month.</p>
+  </div>
+  <div class="header-card">
+    <span>Total Documents</span>
+    <strong><%= @document_count %></strong>
+  </div>
+</section>
+
+<section class="toolbar records-filter-toolbar">
+  <%= form_with url: achievement_documents_path, method: :get, class: "filter-form achievement-record-filter-form" do |form| %>
+    <label>
+      <span class="filter-label">Project</span>
+      <%= form.select :project, options_for_select([["All Projects", ""]] + @project_options, @selected_project.to_s), {}, class: "select", onchange: "this.form.requestSubmit()" %>
+    </label>
+    <label>
+      <span class="filter-label">FCO</span>
+      <%= form.select :fco_id, options_for_select([["All FCO", ""]] + @fco_options, @selected_fco_id.to_s), {}, class: "select", onchange: "this.form.requestSubmit()" %>
+    </label>
+    <label>
+      <span class="filter-label">TO</span>
+      <%= form.select :to_id, options_for_select([["All TO", ""]] + @to_options, @selected_to_id.to_s), {}, class: "select", onchange: "this.form.requestSubmit()" %>
+    </label>
+    <label>
+      <span class="filter-label">Month</span>
+      <%= form.select :month, options_for_select(@month_options, @selected_month.to_s), {}, class: "select", onchange: "this.form.requestSubmit()" %>
+    </label>
+  <% end %>
+</section>
+
+<section class="metric-grid metric-grid-compact">
+  <article class="metric metric-teal"><span>Documents</span><strong><%= @document_count %></strong></article>
+  <article class="metric metric-blue"><span>Activities</span><strong><%= @activity_count %></strong></article>
+  <article class="metric"><span>Months</span><strong><%= @documents_by_month.size %></strong></article>
+</section>
+
+<% if @documents_by_month.empty? %>
+  <section class="table-panel">
+    <div class="empty-state">
+      <p>No documents uploaded for the selected filters.</p>
+    </div>
+  </section>
+<% end %>
+
+<% @documents_by_month.each do |month, details| %>
+  <section class="table-panel">
+    <div class="table-heading">
+      <div>
+        <h2><%= month.capitalize %></h2>
+        <p class="muted"><%= pluralize(details.sum { |detail| detail.files.attachments.size }, "document") %> · <%= pluralize(details.size, "activity") %></p>
+      </div>
+    </div>
+    <div class="responsive-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Project</th>
+            <th>FCO</th>
+            <th>TO</th>
+            <th>ASA Activity</th>
+            <th>Project Activity</th>
+            <th>Documents</th>
+            <th>Remark</th>
+            <th>Uploaded</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% details.each do |detail| %>
+            <% row = detail.action_plan_row %>
+            <tr>
+              <td><%= row.project_name %></td>
+              <td><%= ActionPlanFcoGroup.name_for(row.user_id, row.user_name) %></td>
+              <td><%= row.to_name.presence || "-" %></td>
+              <td>
+                <span class="code-pill"><%= action_plan_cell(row.asa_activity_id, decimal: true) %></span>
+                <div><%= row.asa_activity_name %></div>
+              </td>
+              <td><%= row.activity.presence || "-" %></td>
+              <td><%= render "shared/attachment_previews", attachments: detail.files.attachments, removable: false %></td>
+              <td><%= detail.remark.presence || "-" %></td>
+              <td><%= format_record_datetime(detail.files.attachments.map(&:created_at).max) %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+<% end %>

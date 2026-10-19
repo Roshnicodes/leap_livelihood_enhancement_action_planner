@@ -27,6 +27,11 @@ Rails.application.routes.draw do
     get :settings
     patch :settings, action: :update
   end
+  resource :action_plan_dashboard, only: :show do
+    get :settings
+    patch :settings, action: :update
+  end
+  get "achievement_documents" => "achievement_documents#index", as: :achievement_documents
   get "phn_dashboard" => redirect("/pnb_dashboard")
   get "phn_dashboard/settings" => redirect("/pnb_dashboard/settings")
   get "report_masters" => "report_masters#index"

@@ -2,6 +2,7 @@ require "uri"
 
 class DashboardLink < ApplicationRecord
   PHN_DASHBOARD_KEY = "phn_dashboard".freeze
+  ACTION_PLAN_DASHBOARD_KEY = "action_plan_dashboard".freeze
   DEFAULT_PNB_DASHBOARD_URL = "https://app.powerbi.com/view?r=eyJrIjoiYTUzNTY2ODYtMmYxNS00MDlmLTg1YzMtMmM3OTJkNGRlN2UyIiwidCI6ImQzODExMjIyLTI4MDItNDIzOC1hOTY3LTM2ZjQyODg4NGU1NiJ9&pageName=fc960431fa40bbffdefb".freeze
 
   belongs_to :updated_by, class_name: "User", optional: true
@@ -18,6 +19,11 @@ class DashboardLink < ApplicationRecord
     find_or_create_by!(key: PHN_DASHBOARD_KEY) do |dashboard_link|
       dashboard_link.url = DEFAULT_PNB_DASHBOARD_URL
     end
+  end
+
+  # No default link: the dashboard page asks MIS to add one until it is saved.
+  def self.action_plan_dashboard
+    find_or_initialize_by(key: ACTION_PLAN_DASHBOARD_KEY)
   end
 
   private
